@@ -1,0 +1,555 @@
+/* =========================
+   RESET / GLOBAL
+========================= */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+/* =========================
+   HEADER
+========================= */
+#header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 10px 10px;
+
+  z-index: 20;
+
+  pointer-events: none; /* 🔥 allow map interaction */
+}
+
+/* logo */
+.logo {
+  height: 25px;
+  width: auto;
+
+  object-fit: contain;
+
+  pointer-events: auto;
+}
+
+
+/* =========================
+   MAP
+========================= */
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* =========================
+   CAROUSEL SMOOTH ANIMATION
+========================= */
+#carousel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+
+  z-index: 10;
+  pointer-events: none;
+
+  padding-bottom: 10px;
+
+  transform: translateY(0);
+  opacity: 1;
+
+  transition:
+    transform 0.5s cubic-bezier(.22,.8,.22,1),
+    opacity 0.4s ease;
+}
+
+/* hidden state */
+#carousel.hidden {
+  transform: translateY(120%);
+  opacity: 0;
+}
+
+/* hidden state for auto-hide + gestures */
+#carousel.hidden {
+  transform: translateY(110%);
+  opacity: 0;
+}
+
+/* =========================
+   TRACK
+========================= */
+.carousel-track {
+  display: flex;
+  gap: 10px;
+
+  padding: 10px 12px;
+
+  overflow-x: auto;
+  overflow-y: visible;
+
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  pointer-events: auto;
+}
+
+.carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================
+   CARD
+========================= */
+.card {
+  flex: 0 0 auto;
+  width: 140px;
+
+  border-radius: 14px;
+  overflow: hidden;
+
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+
+  scroll-snap-align: center;
+
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+
+  transform: scale(0.88);
+  opacity: 10;
+
+  transition:
+    transform 0.35s cubic-bezier(.2,.8,.2,1),
+    box-shadow 0.35s ease,
+    opacity 0.3s ease;
+}
+
+/* active */
+.card.active {
+  transform: scale(1) translateY(-10px);
+  opacity: 1;
+
+  box-shadow:
+    0 16px 40px rgba(0,0,0,0.25),
+    0 6px 16px rgba(0,0,0,0.15);
+
+  z-index: 5;
+}
+/* =========================
+   HOVER EFFECT (DESKTOP)
+========================= */
+@media (hover: hover) and (pointer: fine) {
+
+  .card:hover {
+    transform: scale(0.95) translateY(-8px); /* subtle lift */
+    opacity: 10;
+
+    box-shadow:
+      0 12px 30px rgba(0,0,0,0.2),
+      0 4px 12px rgba(0,0,0,0.12);
+
+    z-index: 4;
+  }
+
+  /* 🔥 if already active, enhance it slightly */
+  .card.active:hover {
+    transform: scale(1.05) translateY(-14px);
+  }
+
+}
+/* =========================
+   IMAGE
+========================= */
+.card-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+
+  background: #f3f3f3;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-image img {
+  width: 100%;
+  height: auto;
+
+  object-fit: contain;
+  object-position: center;
+}
+
+/* portrait fix */
+.card-image img.portrait {
+  transform: scale(1.15);
+}
+
+/* =========================
+   TEXT
+========================= */
+.card-body {
+  padding: 8px;
+}
+
+.card-moment {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.card-meta {
+  font-size: 11px;
+  color: #666;
+}
+
+/* =========================
+   MARKERS
+========================= */
+.custom-marker {
+  width: 40px;
+  height: 40px;
+
+  background-size: cover;
+  background-position: center;
+
+  border-radius: 50%;
+  border: 2px solid white;
+
+  transform: scale(1);
+  transition:
+    transform 0.3s cubic-bezier(.2,.8,.2,1),
+    box-shadow 0.3s ease;
+
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+
+  z-index: 1;
+}
+
+.custom-marker.active {
+  transform: scale(1.35) translateY(-8px);
+
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.35),
+    0 4px 10px rgba(0,0,0,0.2);
+
+  z-index: 2;
+}
+
+/* =========================
+   POPUP
+========================= */
+.mapboxgl-popup {
+  max-width: 90vw !important;
+}
+
+/* remove tip */
+.mapboxgl-popup-tip {
+  display: none;
+}
+
+.mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+}
+
+/* popup card */
+.popup-card {
+  width: min(280px, 80vw);
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.popup-image {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #111;
+  padding: 0px;
+}
+
+.popup-image img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.popup-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.popup-btn {
+  margin-top: 10px;
+}
+
+.popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.popup-meta {
+  font-size: 12px;
+  color: #666;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media (max-width: 768px) {
+  .card {
+    width: 120px;
+  }
+
+  .carousel-track {
+    padding: 8px 10px;
+  }
+}
+
+/* =========================
+   SKELETON LOADING
+========================= */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  height: 140px;
+  border-radius: 12px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}/* =========================
+   POPUP BUTTON
+========================= */
+.popup-btn {
+  display: block;
+  margin-top: 10px;
+
+  text-align: center;
+  text-decoration: none;
+
+  background: rgb(22, 28, 79);
+  color: white;
+
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+/* hover */
+.popup-btn:hover {
+  background: #222;
+  transform: translateY(-1px);
+}
+
+/* tap */
+.popup-btn:active {
+  transform: scale(0.96);
+}
+
+/* =========================
+   POPUP REDESIGN
+========================= */
+.popup-card.redesign {
+  width: 280px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.25),
+    0 8px 20px rgba(0,0,0,0.15);
+}
+
+/* =========================
+   HERO IMAGE FIX
+========================= */
+.popup-hero {
+  position: relative;
+  aspect-ratio: 1 / 1; /* 🔥 natural scaling */
+  overflow: hidden;
+}
+
+.popup-hero img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center top; /* 🔥 prevents top cutoff */
+}
+
+
+/* TEXT ON IMAGE */
+.popup-hero-text {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+
+  color: white;
+}
+
+.popup-moment {
+  font-size: 11px;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* BODY */
+.popup-body {
+  padding: 12px;
+}
+
+.popup-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+/* BUTTON */
+.popup-btn {
+  display: block;
+  text-align: center;
+
+  background: black;
+  color: white;
+
+  padding: 10px;
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.popup-btn:hover {
+  background: #222;
+  transform: translateY(-1px);
+}
+
+.popup-btn:active {
+  transform: scale(0.96);
+}
+/* =========================
+   STEP 2 — MOBILE POPUP FIX
+========================= */
+
+@media (max-width: 768px) {
+
+  /* constrain popup width */
+  .mapboxgl-popup {
+    max-width: 85vw !important;
+    width: 85vw !important;
+  }
+
+  /* center popup horizontally */
+  .mapboxgl-popup {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* ensure card fills properly */
+  .popup-card {
+    width: 100%;
+  }
+
+  /* slightly smaller image */
+  .popup-image {
+    aspect-ratio: 1 / 1;
+  }
+
+  /* tighter spacing */
+  .popup-body {
+    padding: 10px;
+  }
+
+}
+/* =========================
+   POPUP HEIGHT FIX
+========================= */
+
+.popup-card {
+  width: 260px;              /* 🔥 fixed card width */
+  max-width: 85vw;
+
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* scrollable content */
+.popup-body {
+  overflow-y: auto;
+}
+
+/* keep image visible but controlled */
+.popup-image {
+  flex-shrink: 0;
+}
+
+/* ensure button always visible */
+.popup-btn {
+  margin-top: auto;
+}
+/* =========================
+   POPUP FIT TO CARD
+========================= */
+
+.mapboxgl-popup {
+  max-width: none !important; /* 🔥 remove Mapbox limit */
+}
+
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  width: auto !important;
+  overflow: visible;
+}

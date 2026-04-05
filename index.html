@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Map Marketplace</title>
+
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- MAP -->
+  <div id="map"></div>
+<div id="header">
+  <img src="logo.png" alt="Logo" class="logo">
+</div>
+  <!-- BOTTOM CAROUSEL -->
+  <div id="carousel">
+    <div id="listings" class="carousel-track">
+      <!-- JS will inject cards here -->
+      <div id="skeletons" class="carousel-track">
+  <div class="card skeleton"></div>
+  <div class="card skeleton"></div>
+  <div class="card skeleton"></div>
+</div>
+      
+      
+    </div>
+  </div>
+
+  <!-- MAPBOX -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <!-- APP -->
+  <script src="app.js"></script>
+
+</body>
+</html>
