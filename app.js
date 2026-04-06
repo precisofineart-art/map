@@ -148,7 +148,7 @@ mapEl.addEventListener("touchend", () => {
 
   setTimeout(() => {
     map.dragPan.disable();
-  }, 50);
+  }, 180);
 });
 
 /* =========================
