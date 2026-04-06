@@ -610,3 +610,7 @@ html, body {
   font-size: 9px;
   margin-bottom: 6px;
 }
+
+#map {
+  touch-action: pan-y;
+}

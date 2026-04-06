@@ -84,7 +84,6 @@ async function fetchProducts() {
     return [];
   }
 }
-
 /* =========================
    MAP
 ========================= */
@@ -93,6 +92,25 @@ const map = new mapboxgl.Map({
   style: "mapbox://styles/mapbox/satellite-streets-v12",
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom
+});
+
+/* =========================
+   SCROLL + TOUCH FIX (🔥 NEW)
+========================= */
+
+// disable scroll zoom (prevents page lock)
+map.scrollZoom.disable();
+
+// prevent rotation issues on mobile
+map.touchZoomRotate.disableRotation();
+
+// optional: enable zoom ONLY when holding CTRL (desktop)
+map.getCanvas().addEventListener("wheel", (e) => {
+  if (e.ctrlKey) {
+    map.scrollZoom.enable();
+  } else {
+    map.scrollZoom.disable();
+  }
 });
 
 /* =========================
