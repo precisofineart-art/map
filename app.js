@@ -95,23 +95,26 @@ const map = new mapboxgl.Map({
 });
 
 /* =========================
-   SCROLL + TOUCH FIX (🔥 NEW)
+   GOOGLE MAPS STYLE GESTURES
 ========================= */
 
-// disable scroll zoom (prevents page lock)
+// 🔥 Disable scroll zoom by default
 map.scrollZoom.disable();
 
-// prevent rotation issues on mobile
+// 🔥 Disable rotation (keeps UX clean)
 map.touchZoomRotate.disableRotation();
 
-// optional: enable zoom ONLY when holding CTRL (desktop)
+// 🔥 Desktop: enable zoom ONLY with ctrl/cmd (Google Maps behavior)
 map.getCanvas().addEventListener("wheel", (e) => {
-  if (e.ctrlKey) {
+  if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
   } else {
     map.scrollZoom.disable();
   }
 });
+
+// 🔥 Mobile: require 2 fingers to zoom
+map.touchZoomRotate.enable(); // keep pinch zoom
 
 /* =========================
    CAROUSEL

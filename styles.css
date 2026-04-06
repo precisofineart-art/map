@@ -612,5 +612,5 @@ html, body {
 }
 
 #map {
-  touch-action: pan-y;
+  touch-action: pan-y; /* 🔥 allows vertical scrolling with one finger */
 }
