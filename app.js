@@ -24,7 +24,7 @@ const HOME_VIEW = {
 let listings = [];
 let markers = [];
 let activePopup = null;
-let activeItem = null;
+
 /* =========================
    FETCH PRODUCTS
 ========================= */
@@ -84,6 +84,7 @@ async function fetchProducts() {
     return [];
   }
 }
+
 /* =========================
    MAP
 ========================= */
@@ -98,13 +99,9 @@ const map = new mapboxgl.Map({
    GOOGLE MAPS STYLE GESTURES
 ========================= */
 
-// 🔥 Disable scroll zoom by default
+// desktop scroll behavior
 map.scrollZoom.disable();
 
-// 🔥 Disable rotation (keeps UX clean)
-map.touchZoomRotate.disableRotation();
-
-// 🔥 Desktop: enable zoom ONLY with ctrl/cmd (Google Maps behavior)
 map.getCanvas().addEventListener("wheel", (e) => {
   if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
@@ -113,8 +110,46 @@ map.getCanvas().addEventListener("wheel", (e) => {
   }
 });
 
-// 🔥 Mobile: require 2 fingers to zoom
-map.touchZoomRotate.enable(); // keep pinch zoom
+// mobile pinch zoom
+map.touchZoomRotate.enable();
+map.touchZoomRotate.disableRotation();
+
+// disable double tap zoom
+map.doubleClickZoom.disable();
+
+/* =========================
+   MOBILE: LONG PRESS TO MOVE MAP
+========================= */
+
+let touchTimer = null;
+let isDraggingMap = false;
+
+map.dragPan.disable();
+
+const mapEl = map.getCanvas();
+
+mapEl.addEventListener("touchstart", () => {
+  isDraggingMap = false;
+
+  touchTimer = setTimeout(() => {
+    map.dragPan.enable();
+    isDraggingMap = true;
+  }, 180);
+});
+
+mapEl.addEventListener("touchmove", () => {
+  if (!isDraggingMap) {
+    map.dragPan.disable();
+  }
+});
+
+mapEl.addEventListener("touchend", () => {
+  clearTimeout(touchTimer);
+
+  setTimeout(() => {
+    map.dragPan.disable();
+  }, 50);
+});
 
 /* =========================
    CAROUSEL
@@ -132,8 +167,10 @@ function hideCarousel() {
 }
 
 /* =========================
-   RESET VIEW
+   RESET VIEW (SMART)
 ========================= */
+let activeItem = null;
+
 function resetView() {
 
   if (activePopup) {
@@ -143,27 +180,24 @@ function resetView() {
 
   showCarousel();
 
-  // 🔥 if marker was active → go to marker overview
   if (activeItem) {
     map.flyTo({
       center: [activeItem.lng, activeItem.lat],
-      zoom: 8,
-      speed: 0.5,
-      curve: 1.8
+      zoom: 6,
+      speed: 0.5
     });
 
-    activeItem = null; // clear state
+    activeItem = null;
     return;
   }
 
-  // 🔥 fallback → home view
   map.flyTo({
     center: HOME_VIEW.center,
     zoom: HOME_VIEW.zoom,
-    speed: 0.5,
-    curve: 1.8
+    speed: 0.5
   });
 }
+
 /* =========================
    POPUP
 ========================= */
@@ -175,23 +209,81 @@ function createPopup(item) {
     offset: 15
   }).setHTML(`
     <div class="popup-card">
-
       <button class="popup-close-btn">×</button>
-
       <div class="popup-image">
         <img src="${item.image}">
       </div>
-
       <div class="popup-body">
         <div class="popup-moment">${item.moment}</div>
         <div class="popup-title">${item.title}</div>
         <div class="popup-meta">${item.location}</div>
-        <a href="${item.link}" target="_blank" class="popup-btn"> View Print</a>
+        <a href="${item.link}" target="_blank" class="popup-btn">View Artwork</a>
       </div>
-
     </div>
   `);
 }
+
+/* =========================
+   MARKER CLICK (FIXED FLOW)
+========================= */
+function handleMarkerClick(item) {
+
+  activeItem = item;
+
+  hideCarousel();
+
+  if (activePopup) {
+    activePopup.remove();
+    activePopup = null;
+  }
+
+  map.flyTo({
+    center: [item.lng, item.lat],
+    zoom: 16,
+    speed: 0.7,
+    curve: 1.6
+  });
+
+  map.once("moveend", () => {
+
+    const popup = createPopup(item)
+      .setLngLat([item.lng, item.lat])
+      .addTo(map);
+
+    activePopup = popup;
+
+    // close button
+    setTimeout(() => {
+      const btn = document.querySelector(".popup-close-btn");
+      if (btn) {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          resetView();
+        };
+      }
+    }, 50);
+
+    // auto-fit
+    setTimeout(() => {
+      const popupEl = document.querySelector(".mapboxgl-popup");
+      if (!popupEl) return;
+
+      const rect = popupEl.getBoundingClientRect();
+      const mapRect = map.getContainer().getBoundingClientRect();
+
+      const offsetY = Math.min(rect.height / 2, mapRect.height * 0.35);
+
+      map.easeTo({
+        center: [item.lng, item.lat],
+        offset: [0, offsetY],
+        duration: 400
+      });
+
+    }, 100);
+
+  });
+}
+
 /* =========================
    RENDER
 ========================= */
@@ -204,31 +296,25 @@ function render() {
 
   listings.forEach((item) => {
 
-    /* CARD */
     if (list) {
       const card = document.createElement("div");
       card.className = "card";
 
       card.innerHTML = `
-  <div class="card-image">
-    <img src="${item.image}">
-  </div>
-  <div class="card-body">
-    <div class="card-moment">${item.moment}</div>
-    <div class="card-title">${item.title}</div>
-    <div class="card-meta">${item.location}</div>
-  </div>
-`;
+        <div class="card-image">
+          <img src="${item.image}">
+        </div>
+        <div class="card-body">
+          <div class="card-moment">${item.moment}</div>
+          <div class="card-title">${item.title}</div>
+          <div class="card-meta">${item.location}</div>
+        </div>
+      `;
 
-      card.onclick = () => {
-        activeItem = item;
-        handleMarkerClick(item);
-      };
-
+      card.onclick = () => handleMarkerClick(item);
       list.appendChild(card);
     }
 
-    /* MARKER */
     const el = document.createElement("div");
     el.className = "custom-marker";
     el.style.backgroundImage = `url(${item.image})`;
@@ -247,79 +333,11 @@ function render() {
 }
 
 /* =========================
-   CENTRAL CLICK HANDLER (🔥 NEW)
-========================= */
-function handleMarkerClick(item) {
-
-  hideCarousel();
-
-  if (activePopup) {
-    activePopup.remove();
-    activePopup = null;
-  }
-
-  // 🔥 STEP 1: ZOOM FIRST
-  map.flyTo({
-    center: [item.lng, item.lat],
-    zoom: 16,
-    speed: 0.7,
-    curve: 1.6,
-    essential: true
-  });
-
-  // 🔥 STEP 2: WAIT → THEN POPUP
-  map.once("moveend", () => {
-
-  const popup = createPopup(item)
-    .setLngLat([item.lng, item.lat])
-    .addTo(map);
-
-  activePopup = popup;
-
-  // 🔥 attach close button handler
-  setTimeout(() => {
-    const btn = document.querySelector(".popup-close-btn");
-    if (btn) {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        resetView();
-      };
-    }
-  }, 50);
-
-  // existing auto-fit logic...
-
-    // 🔥 STEP 3: AUTO-FIT
-    setTimeout(() => {
-      const popupEl = document.querySelector(".mapboxgl-popup");
-      if (!popupEl) return;
-
-      const popupRect = popupEl.getBoundingClientRect();
-      const mapRect = map.getContainer().getBoundingClientRect();
-
-      const offsetY = Math.min(
-        popupRect.height / 2,
-        mapRect.height * 0.35
-      );
-
-      map.easeTo({
-        center: [item.lng, item.lat],
-        offset: [0, offsetY],
-        duration: 400
-      });
-
-    }, 100);
-
-  });
-}
-
-/* =========================
    INIT
 ========================= */
 map.on("load", async () => {
   listings = await fetchProducts();
   render();
-
   setTimeout(showCarousel, 200);
 });
 
