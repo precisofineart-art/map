@@ -9,7 +9,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 
-
 /* =========================
    HOME VIEW
 ========================= */
@@ -24,6 +23,7 @@ const HOME_VIEW = {
 let listings = [];
 let markers = [];
 let activePopup = null;
+let activeItem = null;
 
 /* =========================
    FETCH PRODUCTS
@@ -99,9 +99,10 @@ const map = new mapboxgl.Map({
    GOOGLE MAPS STYLE GESTURES
 ========================= */
 
-// desktop scroll behavior
+// disable scroll zoom (prevents page lock)
 map.scrollZoom.disable();
 
+// desktop: zoom only with ctrl/cmd
 map.getCanvas().addEventListener("wheel", (e) => {
   if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
@@ -110,59 +111,12 @@ map.getCanvas().addEventListener("wheel", (e) => {
   }
 });
 
-// mobile pinch zoom
+// mobile: enable pinch + two-finger pan
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 
-// disable double tap zoom
+// optional: disable double tap zoom
 map.doubleClickZoom.disable();
-
-/* =========================
-   MOBILE: RELIABLE LONG PRESS DRAG
-========================= */
-
-let touchTimer = null;
-let isLongPress = false;
-
-const mapEl = map.getCanvas();
-
-// start with drag disabled
-map.dragPan.disable();
-
-/* TOUCH START */
-mapEl.addEventListener("touchstart", (e) => {
-
-  isLongPress = false;
-
-  touchTimer = setTimeout(() => {
-    isLongPress = true;
-    map.dragPan.enable(); // 🔥 enable drag ONLY after hold
-  }, 180);
-
-});
-
-/* TOUCH MOVE */
-mapEl.addEventListener("touchmove", (e) => {
-
-  if (!isLongPress) {
-    // 🔥 allow page scroll (do NOT block)
-    return;
-  }
-
-});
-
-/* TOUCH END */
-mapEl.addEventListener("touchend", () => {
-
-  clearTimeout(touchTimer);
-
-  // 🔥 disable drag again AFTER interaction
-  setTimeout(() => {
-    map.dragPan.disable();
-    isLongPress = false;
-  }, 50);
-
-});
 
 /* =========================
    CAROUSEL
@@ -180,10 +134,8 @@ function hideCarousel() {
 }
 
 /* =========================
-   RESET VIEW (SMART)
+   RESET VIEW
 ========================= */
-let activeItem = null;
-
 function resetView() {
 
   if (activePopup) {
@@ -237,7 +189,7 @@ function createPopup(item) {
 }
 
 /* =========================
-   MARKER CLICK (FIXED FLOW)
+   MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
 
@@ -250,6 +202,7 @@ function handleMarkerClick(item) {
     activePopup = null;
   }
 
+  // zoom first
   map.flyTo({
     center: [item.lng, item.lat],
     zoom: 16,
@@ -257,6 +210,7 @@ function handleMarkerClick(item) {
     curve: 1.6
   });
 
+  // after zoom → popup
   map.once("moveend", () => {
 
     const popup = createPopup(item)
@@ -276,7 +230,7 @@ function handleMarkerClick(item) {
       }
     }, 50);
 
-    // auto-fit
+    // auto-fit popup
     setTimeout(() => {
       const popupEl = document.querySelector(".mapboxgl-popup");
       if (!popupEl) return;
