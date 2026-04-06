@@ -134,7 +134,7 @@ mapEl.addEventListener("touchstart", () => {
   touchTimer = setTimeout(() => {
     map.dragPan.enable();
     isDraggingMap = true;
-  }, 180);
+  }, 10);
 });
 
 mapEl.addEventListener("touchmove", () => {
