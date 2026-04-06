@@ -118,37 +118,50 @@ map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.disable();
 
 /* =========================
-   MOBILE: LONG PRESS TO MOVE MAP
+   MOBILE: RELIABLE LONG PRESS DRAG
 ========================= */
 
 let touchTimer = null;
-let isDraggingMap = false;
-
-map.dragPan.disable();
+let isLongPress = false;
 
 const mapEl = map.getCanvas();
 
-mapEl.addEventListener("touchstart", () => {
-  isDraggingMap = false;
+// start with drag disabled
+map.dragPan.disable();
+
+/* TOUCH START */
+mapEl.addEventListener("touchstart", (e) => {
+
+  isLongPress = false;
 
   touchTimer = setTimeout(() => {
-    map.dragPan.enable();
-    isDraggingMap = true;
-  }, 10);
+    isLongPress = true;
+    map.dragPan.enable(); // 🔥 enable drag ONLY after hold
+  }, 180);
+
 });
 
-mapEl.addEventListener("touchmove", () => {
-  if (!isDraggingMap) {
-    map.dragPan.disable();
+/* TOUCH MOVE */
+mapEl.addEventListener("touchmove", (e) => {
+
+  if (!isLongPress) {
+    // 🔥 allow page scroll (do NOT block)
+    return;
   }
+
 });
 
+/* TOUCH END */
 mapEl.addEventListener("touchend", () => {
+
   clearTimeout(touchTimer);
 
+  // 🔥 disable drag again AFTER interaction
   setTimeout(() => {
     map.dragPan.disable();
-  }, 180);
+    isLongPress = false;
+  }, 50);
+
 });
 
 /* =========================
