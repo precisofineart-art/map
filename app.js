@@ -235,15 +235,20 @@ function handleMarkerClick(item) {
       const popupEl = document.querySelector(".mapboxgl-popup");
       if (!popupEl) return;
 
-      const rect = popupEl.getBoundingClientRect();
-      const mapRect = map.getContainer().getBoundingClientRect();
+       const popupRect = popupEl.getBoundingClientRect();
 
-      const offsetY = Math.min(rect.height / 2, mapRect.height * 0.35);
+  // 🔥 use FULL viewport, not just map
+  const viewportHeight = window.innerHeight;
 
+  // how far popup pushes down
+  const offsetY = Math.min(
+    popupRect.height / 2,
+    viewportHeight * 0.3
+  );
       map.easeTo({
         center: [item.lng, item.lat],
         offset: [0, offsetY],
-        duration: 400
+        duration: 500
       });
 
     }, 100);
