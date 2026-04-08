@@ -238,7 +238,7 @@ function handleMarkerClick(item) {
        const popupRect = popupEl.getBoundingClientRect();
 
   // 🔥 use FULL viewport, not just map
-  const viewportHeight = window.innerHeight;
+  const viewportHeight = map.getContainer().offsetHeight;
 
   // how far popup pushes down
   const offsetY = Math.min(
@@ -251,7 +251,7 @@ function handleMarkerClick(item) {
         duration: 500
       });
 
-    }, 100);
+    }, 180);
 
   });
 }
