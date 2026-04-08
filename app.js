@@ -219,7 +219,7 @@ function handleMarkerClick(item) {
   map.flyTo({
     center: [item.lng, item.lat],
     zoom: 16,
-    speed: 0.7,
+    speed: 0.9,
     curve: 1.6
   });
 
@@ -232,6 +232,18 @@ function handleMarkerClick(item) {
 
     activePopup = popup;
 
+el.classList.add("active");
+
+// 🔥 quick pop effect
+el.animate([
+  { transform: "scale(1)" },
+  { transform: "scale(1.5)" },
+  { transform: "scale(1.35)" }
+], {
+  duration: 300,
+  easing: "cubic-bezier(.2,.8,.2,1)"
+});
+    
     // close button
     setTimeout(() => {
       const btn = document.querySelector(".popup-close-btn");

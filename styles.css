@@ -223,33 +223,84 @@ html, body {
 }
 
 /* =========================
-   MARKERS
+   MARKER BASE
 ========================= */
+
 .custom-marker {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+  border: 2px solid #fff;
 
   background-size: cover;
   background-position: center;
 
-  border-radius: 50%;
-  border: 2px solid white;
+  transform: translateZ(0); /* 🔥 prevents jitter */
+  will-change: transform;
 
-  transform: scale(1);
-  
-    transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  transition:
+    transform 0.25s cubic-bezier(.2,.8,.2,1),
+    box-shadow 0.25s ease;
 
-  
+  cursor: pointer;
+}
+
+ /* =========================
+   ACTIVE STATE
+========================= */
+
 .custom-marker.active {
   transform: scale(1.35);
 
   box-shadow:
-    0 12px 28px rgba(0,0,0,0.35),
-    0 4px 10px rgba(0,0,0,0.2);
+    0 16px 40px rgba(0,0,0,0.4),
+    0 6px 16px rgba(0,0,0,0.25);
 
   z-index: 2;
 }
 
+/* stop pulse when active */
+.custom-marker.active::after {
+  display: none;
+}
+
+/* =========================
+   IDLE PULSE
+========================= */
+
+.custom-marker::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+
+  animation: markerPulse 2.5s infinite;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .custom-marker:hover {
+    transform: scale(1.15);
+    box-shadow:
+      0 10px 22px rgba(0,0,0,0.3),
+      0 4px 10px rgba(0,0,0,0.2);
+  }
+}
 /* =========================
    POPUP LAYOUT UPGRADE
 ========================= */
