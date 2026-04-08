@@ -9,7 +9,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 
-
 /* =========================
    HOME VIEW
 ========================= */
@@ -25,6 +24,19 @@ let listings = [];
 let markers = [];
 let activePopup = null;
 let activeItem = null;
+
+/* =========================
+   FOCUS ZONE (🔥 KEY FEATURE)
+========================= */
+function getFocusOffset() {
+  const mapEl = map.getContainer();
+  const height = mapEl.offsetHeight;
+
+  const headerOffset = height * 0.08;
+  const carouselOffset = height * 0.22;
+
+  return [0, headerOffset + carouselOffset];
+}
 
 /* =========================
    FETCH PRODUCTS
@@ -95,9 +107,7 @@ const map = new mapboxgl.Map({
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom
 });
-window.addEventListener("resize", () => {
-  map.resize();
-});
+
 /* =========================
    GESTURES
 ========================= */
@@ -141,7 +151,8 @@ function resetView() {
     map.flyTo({
       center: [activeItem.lng, activeItem.lat],
       zoom: 6,
-      speed: 0.5
+      speed: 0.5,
+      offset: getFocusOffset()
     });
 
     activeItem = null;
@@ -151,7 +162,8 @@ function resetView() {
   map.flyTo({
     center: HOME_VIEW.center,
     zoom: HOME_VIEW.zoom,
-    speed: 0.5
+    speed: 0.5,
+    offset: getFocusOffset()
   });
 }
 
@@ -197,7 +209,8 @@ function handleMarkerClick(item) {
     center: [item.lng, item.lat],
     zoom: 16,
     speed: 0.7,
-    curve: 1.6
+    curve: 1.6,
+    offset: getFocusOffset()
   });
 
   map.once("moveend", () => {
@@ -219,23 +232,23 @@ function handleMarkerClick(item) {
       }
     }, 50);
 
-    // 🔥 PERFECT CENTERING FIX
+    // 🔥 PERFECT VISUAL CENTERING
     setTimeout(() => {
       const popupEl = document.querySelector(".mapboxgl-popup");
       if (!popupEl) return;
 
-      const mapContainer = map.getContainer();
-      const mapRect = mapContainer.getBoundingClientRect();
+      const mapRect = map.getContainer().getBoundingClientRect();
       const popupRect = popupEl.getBoundingClientRect();
 
       const mapCenterY = mapRect.top + mapRect.height / 2;
       const popupCenterY = popupRect.top + popupRect.height / 2;
 
       const deltaY = popupCenterY - mapCenterY;
+      const baseOffset = getFocusOffset()[1];
 
       map.easeTo({
         center: [item.lng, item.lat],
-        offset: [0, -deltaY], // 🔥 dynamic correction
+        offset: [0, -deltaY + baseOffset],
         duration: 600
       });
 
@@ -298,6 +311,13 @@ map.on("load", async () => {
   listings = await fetchProducts();
   render();
   setTimeout(showCarousel, 200);
+});
+
+/* =========================
+   RESIZE FIX (🔥 IMPORTANT)
+========================= */
+window.addEventListener("resize", () => {
+  map.resize();
 });
 
 /* =========================
