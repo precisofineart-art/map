@@ -9,6 +9,7 @@ mapboxgl.accessToken = 'pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 
+
 /* =========================
    HOME VIEW
 ========================= */
@@ -96,13 +97,10 @@ const map = new mapboxgl.Map({
 });
 
 /* =========================
-   GOOGLE MAPS STYLE GESTURES
+   GESTURES
 ========================= */
-
-// disable scroll zoom (prevents page lock)
 map.scrollZoom.disable();
 
-// desktop: zoom only with ctrl/cmd
 map.getCanvas().addEventListener("wheel", (e) => {
   if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
@@ -111,33 +109,25 @@ map.getCanvas().addEventListener("wheel", (e) => {
   }
 });
 
-// mobile: enable pinch + two-finger pan
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
-
-// optional: disable double tap zoom
 map.doubleClickZoom.disable();
 
 /* =========================
    CAROUSEL
 ========================= */
 function showCarousel() {
-  const el = document.getElementById("carousel");
-  if (!el) return;
-  el.classList.remove("hidden");
+  document.getElementById("carousel")?.classList.remove("hidden");
 }
 
 function hideCarousel() {
-  const el = document.getElementById("carousel");
-  if (!el) return;
-  el.classList.add("hidden");
+  document.getElementById("carousel")?.classList.add("hidden");
 }
 
 /* =========================
    RESET VIEW
 ========================= */
 function resetView() {
-
   if (activePopup) {
     activePopup.remove();
     activePopup = null;
@@ -194,7 +184,6 @@ function createPopup(item) {
 function handleMarkerClick(item) {
 
   activeItem = item;
-
   hideCarousel();
 
   if (activePopup) {
@@ -202,7 +191,6 @@ function handleMarkerClick(item) {
     activePopup = null;
   }
 
-  // zoom first
   map.flyTo({
     center: [item.lng, item.lat],
     zoom: 16,
@@ -210,7 +198,6 @@ function handleMarkerClick(item) {
     curve: 1.6
   });
 
-  // after zoom → popup
   map.once("moveend", () => {
 
     const popup = createPopup(item)
@@ -230,29 +217,27 @@ function handleMarkerClick(item) {
       }
     }, 50);
 
-    // auto-fit popup
+    // 🔥 PERFECT CENTERING FIX
     setTimeout(() => {
       const popupEl = document.querySelector(".mapboxgl-popup");
       if (!popupEl) return;
 
-       const popupRect = popupEl.getBoundingClientRect();
+      const mapContainer = map.getContainer();
+      const mapRect = mapContainer.getBoundingClientRect();
+      const popupRect = popupEl.getBoundingClientRect();
 
-  // 🔥 use FULL viewport, not just map
-  const viewportHeight = map.getContainer().offsetHeight;
+      const mapCenterY = mapRect.top + mapRect.height / 2;
+      const popupCenterY = popupRect.top + popupRect.height / 2;
 
-  // how far popup pushes down
-  const offsetY = Math.min(
-    popupRect.height / 2,
-    viewportHeight * 0.3
-  );
+      const deltaY = popupCenterY - mapCenterY;
+
       map.easeTo({
         center: [item.lng, item.lat],
-        offset: [0, offsetY],
-        duration: 500
+        offset: [0, -deltaY], // 🔥 dynamic correction
+        duration: 600
       });
 
-    }, 180);
-
+    }, 200);
   });
 }
 
