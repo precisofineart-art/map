@@ -95,7 +95,9 @@ const map = new mapboxgl.Map({
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom
 });
-
+window.addEventListener("resize", () => {
+  map.resize();
+});
 /* =========================
    GESTURES
 ========================= */
