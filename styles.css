@@ -240,6 +240,10 @@ html, body {
     transition: transform 0.25s ease, box-shadow 0.25s ease; }
 
   
+
+ 
+
+
 .custom-marker.active {
   transform: scale(1.35) translateY(-8px);
 
@@ -251,126 +255,60 @@ html, body {
 }
 
 /* =========================
-   POPUP LAYOUT UPGRADE
+   POPUP
 ========================= */
+.mapboxgl-popup {
+  max-width: 90vw !important;
+}
 
 .mapboxgl-popup {
-  max-width: 280px !important;
-  display: flex !important;
-  justify-content: center;
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+  transition: all 0.3s ease;
 }
 
-.mapboxgl-popup-content {
-  padding: 0 !important;
-  background: transparent;
-  box-shadow: none;
+.mapboxgl-popup.mapboxgl-popup-anchor-bottom {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
-/* CARD */
+/* popup card */
 .popup-card {
-  width: 260px;
-  max-width: 90vw;
-
-  background: #f8f8f8;
-  border-radius: 16px;
-  overflow: hidden;
-
-  display: flex;
-  flex-direction: column;
-
-  box-shadow:
-    0 20px 50px rgba(0,0,0,0.25),
-    0 6px 18px rgba(0,0,0,0.15);
-
-  animation: popupIn 0.25s ease;
-
   position: relative;
 }
 
-/* IMAGE */
 .popup-image {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+  padding: 0px;
 }
 
 .popup-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
-/* CONTENT */
-.popup-content {
+.popup-body {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-/* HEADER */
-.popup-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.popup-moment {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #888;
-}
-
-.popup-title {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: #111;
-}
-
-/* LOCATION */
-.popup-location {
-  font-size: 12px;
-  color: #666;
-}
-
-/* ACTIONS */
-.popup-actions {
-  margin-top: 6px;
-}
-
-/* BUTTON */
 .popup-btn {
-  display: inline-block;
-
-  padding: 8px 12px;
-  border-radius: 8px;
-
-  background: #000;
-  color: #fff;
-
-  font-size: 12px;
-  font-weight: 600;
-
-  text-decoration: none;
-
-  transition: all 0.2s ease;
+  margin-top: 10px;
 }
-
-.popup-btn:hover {
-  background: #111;
-  transform: translateY(-1px);
-}
-
-/* CLOSE */
 .popup-close-btn {
   position: absolute;
   top: 8px;
   right: 8px;
 
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 
   border: none;
   border-radius: 50%;
@@ -378,21 +316,50 @@ html, body {
   background: rgba(0,0,0,0.6);
   color: #fff;
 
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+
   cursor: pointer;
+  z-index: 2;
+
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
-/* ANIMATION */
-@keyframes popupIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.popup-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+
+  width: 28px;
+  height: 28px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+
+  cursor: pointer;
+  z-index: 2;
+
+  transition: background 0.2s ease, transform 0.2s ease;
 }
+.popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.popup-meta {
+  font-size: 12px;
+  color: #666;
+}
+
 /* =========================
    MOBILE
 ========================= */
@@ -472,6 +439,45 @@ html, body {
     0 8px 20px rgba(0,0,0,0.15);
 }
 
+/* =========================
+   HERO IMAGE FIX
+========================= */
+.popup-hero {
+  position: relative;
+  aspect-ratio: 1 / 1; /* 🔥 natural scaling */
+  overflow: hidden;
+}
+
+.popup-hero img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center top; /* 🔥 prevents top cutoff */
+}
+
+
+/* TEXT ON IMAGE */
+.popup-hero-text {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+
+  color: white;
+}
+
+.popup-moment {
+  font-size: 11px;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
 
 /* BODY */
 .popup-body {
@@ -559,7 +565,7 @@ html, body {
   width: 260px;              /* 🔥 fixed card width */
   max-width: 85vw;
 
-  border-radius: px;
+  border-radius: 16px;
   overflow: hidden;
   background: #fff;
 
@@ -597,11 +603,11 @@ html, body {
 
 .card-moment {
   display: inline-block;
-  background: rgba(0,0,0,0.0);
-  color: #666666;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
   padding: 2px 6px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 9px;
   margin-bottom: 6px;
 }
 
