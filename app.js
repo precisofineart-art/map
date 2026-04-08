@@ -174,15 +174,28 @@ function createPopup(item) {
     offset: 15
   }).setHTML(`
     <div class="popup-card">
+
       <button class="popup-close-btn">×</button>
+
       <div class="popup-image">
         <img src="${item.image}">
       </div>
-      <div class="popup-body">
-        <div class="popup-moment">${item.moment}</div>
-        <div class="popup-title">${item.title}</div>
-        <div class="popup-meta">${item.location}</div>
-        <a href="${item.link}" target="_blank" class="popup-btn">View Artwork</a>
+
+      <div class="popup-content">
+
+        <div class="popup-header">
+          <div class="popup-moment">${item.moment}</div>
+          <div class="popup-title">${item.title}</div>
+        </div>
+
+        <div class="popup-location">${item.location}</div>
+
+        <div class="popup-actions">
+          <a href="${item.link}" target="_blank" class="popup-btn">
+            View Artwork
+          </a>
+        </div>
+
       </div>
     </div>
   `);
@@ -320,3 +333,37 @@ map.on("click", (e) => {
   if (e.originalEvent.target.closest(".mapboxgl-popup")) return;
   resetView();
 });
+
+/* =========================
+   CENTER CARD AUTO-FOCUS
+========================= */
+
+function updateActiveCard() {
+  const container = document.querySelector(".carousel-track");
+  const cards = document.querySelectorAll(".card");
+
+  if (!container || !cards.length) return;
+
+  const containerRect = container.getBoundingClientRect();
+  const centerX = containerRect.left + containerRect.width / 2;
+
+  let closestCard = null;
+  let closestDistance = Infinity;
+
+  cards.forEach((card) => {
+    const rect = card.getBoundingClientRect();
+    const cardCenter = rect.left + rect.width / 2;
+    const distance = Math.abs(centerX - cardCenter);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestCard = card;
+    }
+  });
+
+  cards.forEach((c) => c.classList.remove("active"));
+
+  if (closestCard) {
+    closestCard.classList.add("active");
+  }
+}
