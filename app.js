@@ -174,28 +174,15 @@ function createPopup(item) {
     offset: 15
   }).setHTML(`
     <div class="popup-card">
-
       <button class="popup-close-btn">×</button>
-
       <div class="popup-image">
         <img src="${item.image}">
       </div>
-
-      <div class="popup-content">
-
-        <div class="popup-header">
-          <div class="popup-moment">${item.moment}</div>
-          <div class="popup-title">${item.title}</div>
-        </div>
-
-        <div class="popup-location">${item.location}</div>
-
-        <div class="popup-actions">
-          <a href="${item.link}" target="_blank" class="popup-btn">
-            View Artwork
-          </a>
-        </div>
-
+      <div class="popup-body">
+        <div class="popup-moment">${item.moment}</div>
+        <div class="popup-title">${item.title}</div>
+        <div class="popup-meta">${item.location}</div>
+        <a href="${item.link}" target="_blank" class="popup-btn">View Artwork</a>
       </div>
     </div>
   `);
@@ -219,7 +206,7 @@ function handleMarkerClick(item) {
   map.flyTo({
     center: [item.lng, item.lat],
     zoom: 16,
-    speed: 0.9,
+    speed: 0.7,
     curve: 1.6
   });
 
@@ -232,18 +219,6 @@ function handleMarkerClick(item) {
 
     activePopup = popup;
 
-el.classList.add("active");
-
-// 🔥 quick pop effect
-el.animate([
-  { transform: "scale(1)" },
-  { transform: "scale(1.5)" },
-  { transform: "scale(1.35)" }
-], {
-  duration: 300,
-  easing: "cubic-bezier(.2,.8,.2,1)"
-});
-    
     // close button
     setTimeout(() => {
       const btn = document.querySelector(".popup-close-btn");
@@ -345,37 +320,3 @@ map.on("click", (e) => {
   if (e.originalEvent.target.closest(".mapboxgl-popup")) return;
   resetView();
 });
-
-/* =========================
-   CENTER CARD AUTO-FOCUS
-========================= */
-
-function updateActiveCard() {
-  const container = document.querySelector(".carousel-track");
-  const cards = document.querySelectorAll(".card");
-
-  if (!container || !cards.length) return;
-
-  const containerRect = container.getBoundingClientRect();
-  const centerX = containerRect.left + containerRect.width / 2;
-
-  let closestCard = null;
-  let closestDistance = Infinity;
-
-  cards.forEach((card) => {
-    const rect = card.getBoundingClientRect();
-    const cardCenter = rect.left + rect.width / 2;
-    const distance = Math.abs(centerX - cardCenter);
-
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      closestCard = card;
-    }
-  });
-
-  cards.forEach((c) => c.classList.remove("active"));
-
-  if (closestCard) {
-    closestCard.classList.add("active");
-  }
-}
