@@ -26,19 +26,6 @@ let activePopup = null;
 let activeItem = null;
 
 /* =========================
-   FOCUS ZONE (🔥 KEY FEATURE)
-========================= */
-function getFocusOffset() {
-  const mapEl = map.getContainer();
-  const height = mapEl.offsetHeight;
-
-  const headerOffset = height * 0.08;
-  const carouselOffset = height * 0.22;
-
-  return [0, headerOffset + carouselOffset];
-}
-
-/* =========================
    FETCH PRODUCTS
 ========================= */
 async function fetchProducts() {
@@ -109,10 +96,13 @@ const map = new mapboxgl.Map({
 });
 
 /* =========================
-   GESTURES
+   GOOGLE MAPS STYLE GESTURES
 ========================= */
+
+// disable scroll zoom (prevents page lock)
 map.scrollZoom.disable();
 
+// desktop: zoom only with ctrl/cmd
 map.getCanvas().addEventListener("wheel", (e) => {
   if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
@@ -121,25 +111,33 @@ map.getCanvas().addEventListener("wheel", (e) => {
   }
 });
 
+// mobile: enable pinch + two-finger pan
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
+
+// optional: disable double tap zoom
 map.doubleClickZoom.disable();
 
 /* =========================
    CAROUSEL
 ========================= */
 function showCarousel() {
-  document.getElementById("carousel")?.classList.remove("hidden");
+  const el = document.getElementById("carousel");
+  if (!el) return;
+  el.classList.remove("hidden");
 }
 
 function hideCarousel() {
-  document.getElementById("carousel")?.classList.add("hidden");
+  const el = document.getElementById("carousel");
+  if (!el) return;
+  el.classList.add("hidden");
 }
 
 /* =========================
    RESET VIEW
 ========================= */
 function resetView() {
+
   if (activePopup) {
     activePopup.remove();
     activePopup = null;
@@ -147,23 +145,12 @@ function resetView() {
 
   showCarousel();
 
-  if (activeItem) {
-    map.flyTo({
-      center: [activeItem.lng, activeItem.lat],
-      zoom: 6,
-      speed: 0.5,
-      offset: getFocusOffset()
-    });
-
-    activeItem = null;
-    return;
-  }
+  activeItem = null;
 
   map.flyTo({
     center: HOME_VIEW.center,
     zoom: HOME_VIEW.zoom,
-    speed: 0.5,
-    offset: getFocusOffset()
+    speed: 0.6
   });
 }
 
@@ -205,55 +192,73 @@ function handleMarkerClick(item) {
     activePopup = null;
   }
 
+  const targetLngLat = [item.lng, item.lat];
+
+  // 🔥 Step 1: fly WITHOUT offset (true center first)
   map.flyTo({
-    center: [item.lng, item.lat],
-    zoom: 16,
-    speed: 0.7,
-    curve: 1.6,
-    offset: getFocusOffset()
+    center: targetLngLat,
+    zoom: 15.5,
+    speed: 0.8,
+    curve: 1.4
   });
 
   map.once("moveend", () => {
 
-    const popup = createPopup(item)
-      .setLngLat([item.lng, item.lat])
+    // 🔥 Step 2: create popup OFFSCREEN to measure
+    const tempPopup = createPopup(item)
+      .setLngLat(targetLngLat)
       .addTo(map);
 
-    activePopup = popup;
+    const popupEl = document.querySelector(".mapboxgl-popup");
+    if (!popupEl) return;
 
-    // close button
-    setTimeout(() => {
-      const btn = document.querySelector(".popup-close-btn");
-      if (btn) {
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          resetView();
-        };
-      }
-    }, 50);
+    const rect = popupEl.getBoundingClientRect();
 
-    // 🔥 PERFECT VISUAL CENTERING
-    setTimeout(() => {
-      const popupEl = document.querySelector(".mapboxgl-popup");
-      if (!popupEl) return;
+    // 🔥 Step 3: calculate EXACT offset based on popup height
+    const popupHeight = rect.height;
 
-      const mapRect = map.getContainer().getBoundingClientRect();
-      const popupRect = popupEl.getBoundingClientRect();
+    // how much to push marker down so popup fits above it
+    const isDesktop = window.innerWidth > 768;
 
-      const mapCenterY = mapRect.top + mapRect.height / 2;
-      const popupCenterY = popupRect.top + popupRect.height / 2;
+// 🔥 smarter offset
+const offsetY = isDesktop
+  ? popupHeight * 0.56   // push more on desktop
+  : popupHeight * 0.55;  // lighter on mobile
 
-      const deltaY = popupCenterY - mapCenterY;
-      const baseOffset = getFocusOffset()[1];
+    // remove temp popup
+    tempPopup.remove();
 
-      map.easeTo({
-        center: [item.lng, item.lat],
-        offset: [0, -deltaY + baseOffset],
-        duration: 600
-      });
+    // 🔥 Step 4: move map ONCE to correct visual position
+    map.easeTo({
+      center: targetLngLat,
+      offset: [0, offsetY],
+      duration: 400
+    });
 
-    }, 200);
+    map.once("moveend", () => {
+
+      // 🔥 Step 5: now add REAL popup (perfectly placed)
+      const popup = createPopup(item)
+        .setLngLat(targetLngLat)
+        .addTo(map);
+
+      activePopup = popup;
+
+      // close button
+      setTimeout(() => {
+        const btn = document.querySelector(".popup-close-btn");
+        if (btn) {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            resetView();
+          };
+        }
+      }, 50);
+
+    });
+
   });
+
 }
 
 /* =========================
@@ -311,13 +316,6 @@ map.on("load", async () => {
   listings = await fetchProducts();
   render();
   setTimeout(showCarousel, 200);
-});
-
-/* =========================
-   RESIZE FIX (🔥 IMPORTANT)
-========================= */
-window.addEventListener("resize", () => {
-  map.resize();
 });
 
 /* =========================
