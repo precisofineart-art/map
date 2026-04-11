@@ -1,12 +1,11 @@
-mapboxgl.accessToken = 'pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3OWhjeG0xIn0.0kik_HY1s4mLhwZE3W3aRQ';
+mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3OWhjeG0xIn0.0kik_HY1s4mLhwZE3W3aRQ";
 
 /* =========================
    CONFIG
 ========================= */
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
-const IMAGE_SIZE = "?width=600&height=600&crop=center";
-const FALLBACK_IMAGE = "https://picsum.photos/600";
+const FALLBACK_IMAGE = "https://picsum.photos/800";
 
 /* =========================
    HOME VIEW
@@ -21,66 +20,106 @@ const HOME_VIEW = {
 ========================= */
 let listings = [];
 let markers = [];
-let edgeMarkers = [];
 let activePopup = null;
 let activeItem = null;
-let lastInteraction = 0;
-let hoverPreviewTimeout = null;
+let isResetting = false;
 
 /* =========================
    HELPERS
 ========================= */
+function isDesktopSheet() {
+  return window.innerWidth >= 980;
+}
+
 function escapeHtml(value = "") {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
+function getImageUrl(node) {
+  return node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE;
+}
+
 function getItemId(item) {
-  return `${item.title}-${item.lat}-${item.lng}`;
+  return `${item.title}|${item.lat}|${item.lng}`;
 }
 
-function getOptimizedImage(url) {
-  if (!url) return FALLBACK_IMAGE;
-  return `${url}${IMAGE_SIZE}`;
-}
-function isDesktopHoverDevice() {
-  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+function clearMarkers() {
+  markers.forEach((marker) => marker.remove());
+  markers = [];
 }
 
-function clearActiveStates() {
-  document.querySelectorAll(".card.active").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(".custom-marker.active").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(".edge-marker.active").forEach((el) => el.classList.remove("active"));
+function setSheetImage(id, src, alt) {
+  const img = document.getElementById(id);
+  if (!img) return;
+  img.src = src || FALLBACK_IMAGE;
+  img.alt = alt || "";
 }
 
-function applyActiveState(item) {
-  if (!item) return;
+function showCarousel() {
+  const el = document.getElementById("carousel");
+  if (el) el.classList.remove("hidden");
+}
 
-  const itemId = getItemId(item);
-  const activeCard = document.querySelector(`.card[data-item-id="${itemId}"]`);
-  const activeMarker = document.querySelector(`.custom-marker[data-item-id="${itemId}"]`);
-  const activeEdgeMarker = document.querySelector(`.edge-marker[data-item-id="${itemId}"]`);
+function hideCarousel() {
+  const el = document.getElementById("carousel");
+  if (el) el.classList.add("hidden");
+}
 
-  if (activeCard) {
-    activeCard.classList.add("active");
-    activeCard.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest"
-    });
+function showPlaceSheet(item) {
+  const sheet = document.getElementById("place-sheet");
+  if (!sheet) return;
+
+  const title = document.getElementById("sheet-title");
+  const subtitle = document.getElementById("sheet-subtitle");
+  const info = document.getElementById("sheet-info-text");
+
+  if (title) title.textContent = item.title;
+  if (subtitle) {
+    subtitle.textContent = `${item.location || "Artwork location"} · ${item.moment || "Explore"}`;
+  }
+  if (info) {
+    info.textContent = item.location
+      ? `Explore this artwork near ${item.location}. Open directions to continue to the artwork listing.`
+      : "Explore this artwork directly from the map.";
   }
 
-  if (activeMarker) {
-    activeMarker.classList.add("active");
-  }
+  setSheetImage("sheet-image-main", item.image, item.title);
+  setSheetImage("sheet-image-side-1", item.image, item.title);
+  setSheetImage("sheet-image-side-2", item.image, item.title);
 
-  if (activeEdgeMarker) {
-    activeEdgeMarker.classList.add("active");
-  }
+  sheet.classList.remove("hidden");
+}
+
+function hidePlaceSheet() {
+  const sheet = document.getElementById("place-sheet");
+  if (sheet) sheet.classList.add("hidden");
+}
+
+function updateSelectionState() {
+  const activeId = activeItem ? getItemId(activeItem) : null;
+
+  document.querySelectorAll(".card").forEach((card) => {
+    const isActive = Boolean(activeId && card.dataset.itemId === activeId);
+    card.classList.toggle("active", isActive);
+
+    if (isActive) {
+      card.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest"
+      });
+    }
+  });
+
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    const isActive = Boolean(activeId && markerEl.dataset.itemId === activeId);
+    markerEl.classList.toggle("active", isActive);
+  });
 }
 
 function bindPopupClose() {
@@ -91,163 +130,6 @@ function bindPopupClose() {
     e.stopPropagation();
     resetView();
   };
-}
-function previewItemOnHover(item) {
-  if (!item) return;
-  if (!isDesktopHoverDevice()) return;
-  if (activeItem) return;
-
-  clearTimeout(hoverPreviewTimeout);
-
-  hoverPreviewTimeout = window.setTimeout(() => {
-    map.easeTo({
-      center: [item.lng, item.lat],
-      zoom: Math.max(map.getZoom(), 9.5),
-      duration: 3000,
-      curve: 1.8,
-      easing: (t) => 1 - Math.pow(1 - t, 3),
-      essential: true
-    });
-  }, 120);
-}
-
-function clearHoverPreview() {
-  if (!isDesktopHoverDevice()) return;
-  if (activeItem) return;
-
-  map.easeTo({
-    center: HOME_VIEW.center,
-    zoom: Math.max(HOME_VIEW.zoom, Math.min(map.getZoom(), 5.5)),
-    duration: 450,
-    essential: true
-  });
-}
-
-function clearMarkers() {
-  markers.forEach((marker) => marker.remove());
-  markers = [];
-}
-
-function getEdgeOverlay() {
-  let overlay = document.getElementById("edge-markers-overlay");
-
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "edge-markers-overlay";
-    map.getContainer().appendChild(overlay);
-  }
-
-  ensureEdgeOverlayStyles();
-
-  return overlay;
-}
-
-function ensureEdgeOverlayStyles() {
-  if (document.getElementById("edge-marker-inline-styles")) return;
-
-  const style = document.createElement("style");
-  style.id = "edge-marker-inline-styles";
-  style.textContent = `
-    #edge-markers-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 12;
-    }
-
-    .edge-marker {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      border: 2px solid rgba(255, 255, 255, 0.95);
-      border-radius: 999px;
-      background: rgba(17, 17, 17, 0.88);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-      overflow: hidden;
-      pointer-events: auto;
-      cursor: pointer;
-      appearance: none;
-    }
-
-    .edge-marker-thumb {
-      display: block;
-      width: 100%;
-      height: 100%;
-      background-size: cover;
-      background-position: center;
-    }
-
-    .edge-marker.active {
-      transform: translate(-50%, -50%) scale(1.08);
-      box-shadow:
-        0 10px 22px rgba(0, 0, 0, 0.22),
-        0 0 0 2px rgba(255, 255, 255, 0.18);
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
-function clearEdgeMarkers() {
-  edgeMarkers.forEach((marker) => marker.remove());
-  edgeMarkers = [];
-}
-
-function updateEdgeMarkers() {
-  const overlay = getEdgeOverlay();
-  const container = map.getContainer();
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  const padding = 28;
-  const bounds = map.getBounds();
-
-  clearEdgeMarkers();
-
-  if (!listings.length || !bounds) return;
-
-  listings.forEach((item) => {
-    if (activeItem && getItemId(activeItem) === getItemId(item)) return;
-
-    const lngLat = [item.lng, item.lat];
-    const point = map.project(lngLat);
-    const inViewport =
-      point.x >= 0 && point.x <= width &&
-      point.y >= 0 && point.y <= height;
-
-    const inBounds = bounds.contains(lngLat);
-
-    if (inViewport && inBounds) return;
-
-    const clampedX = Math.min(Math.max(point.x, padding), width - padding);
-    const clampedY = Math.min(Math.max(point.y, padding), height - padding);
-
-    const edgeMarker = document.createElement("button");
-    edgeMarker.type = "button";
-    edgeMarker.className = "edge-marker";
-    edgeMarker.dataset.itemId = getItemId(item);
-    edgeMarker.setAttribute("aria-label", `${item.title} is outside the current map view`);
-    edgeMarker.style.left = `${clampedX}px`;
-    edgeMarker.style.top = `${clampedY}px`;
-
-    const thumb = document.createElement("span");
-    thumb.className = "edge-marker-thumb";
-    thumb.style.backgroundImage = `url(${item.image})`;
-    edgeMarker.appendChild(thumb);
-
-    edgeMarker.onclick = (e) => {
-      e.stopPropagation();
-      handleMarkerClick(item);
-    };
-
-    overlay.appendChild(edgeMarker);
-    edgeMarkers.push(edgeMarker);
-  });
-
-  if (activeItem) {
-    applyActiveState(activeItem);
-  }
 }
 
 /* =========================
@@ -285,27 +167,29 @@ async function fetchProducts() {
     });
 
     const json = await res.json();
-    const productEdges = json?.data?.products?.edges || [];
+    const edges = json?.data?.products?.edges || [];
 
-    return productEdges
+    return edges
       .map(({ node }) => {
-        const lat = parseFloat(node.lat?.value);
-        const lng = parseFloat(node.lng?.value);
+        const lat = Number.parseFloat(node.lat?.value);
+        const lng = Number.parseFloat(node.lng?.value);
         if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
-        return {
+        const item = {
           title: node.title,
           lat,
           lng,
-          image: getOptimizedImage(node.images.edges[0]?.node.url),
+          image: getImageUrl(node),
           link: `${SHOP_URL}/products/${node.handle}`,
           location: node.location?.value || "",
           moment: node.moment?.value || "Explore"
         };
+
+        return { ...item, id: getItemId(item) };
       })
       .filter(Boolean);
-  } catch (err) {
-    console.warn("Fetch error:", err);
+  } catch (error) {
+    console.warn("Fetch error:", error);
     return [];
   }
 }
@@ -321,7 +205,7 @@ const map = new mapboxgl.Map({
 });
 
 /* =========================
-   GOOGLE MAPS STYLE GESTURES
+   GESTURES
 ========================= */
 map.scrollZoom.disable();
 
@@ -340,51 +224,32 @@ map.keyboard.enable();
 map.doubleClickZoom.enable();
 
 /* =========================
-   DESKTOP ZOOM CONTROLS
-========================= */
-if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-  const zoomControl = new mapboxgl.NavigationControl({
-    showCompass: false,
-    visualizePitch: true
-  });
-
-  map.addControl(zoomControl, "top-right");
-}
-/* =========================
-   CAROUSEL
-========================= */
-function showCarousel() {
-  const el = document.getElementById("carousel");
-  if (!el) return;
-  el.classList.remove("hidden");
-}
-
-function hideCarousel() {
-  const el = document.getElementById("carousel");
-  if (!el) return;
-  el.classList.add("hidden");
-}
-
-/* =========================
    RESET VIEW
 ========================= */
 function resetView() {
+  isResetting = true;
+
   if (activePopup) {
     activePopup.remove();
     activePopup = null;
   }
 
-  clearActiveStates();
-  showCarousel();
   activeItem = null;
-
-  clearEdgeMarkers();
+  hidePlaceSheet();
+  showCarousel();
+  updateSelectionState();
 
   map.flyTo({
     center: HOME_VIEW.center,
     zoom: HOME_VIEW.zoom,
-    speed: 0.6
+    speed: 0.38,
+    curve: 1.7,
+    essential: true
   });
+
+  window.setTimeout(() => {
+    isResetting = false;
+  }, 450);
 }
 
 /* =========================
@@ -400,7 +265,7 @@ function createPopup(item) {
     <div class="popup-card">
       <button class="popup-close-btn" aria-label="Close popup">×</button>
       <div class="popup-image">
-        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" loading="lazy">
+        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
       </div>
       <div class="popup-body">
         <div class="popup-moment">${escapeHtml(item.moment)}</div>
@@ -416,11 +281,8 @@ function createPopup(item) {
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
-  lastInteraction = Date.now();
   activeItem = item;
-
-  clearActiveStates();
-  applyActiveState(item);
+  updateSelectionState();
   hideCarousel();
 
   if (activePopup) {
@@ -430,43 +292,29 @@ function handleMarkerClick(item) {
 
   const targetLngLat = [item.lng, item.lat];
 
+  if (isDesktopSheet()) {
+    showPlaceSheet(item);
+
+    map.flyTo({
+      center: targetLngLat,
+      zoom: 15,
+      offset: [260, 40],
+      speed: 0.34,
+      curve: 1.85,
+      essential: true
+    });
+
+    return;
+  }
+
+  hidePlaceSheet();
+
   map.flyTo({
     center: targetLngLat,
     zoom: 15.5,
-    speed: 0.8,
-    curve: 1.4
-  });
-
-  map.once("moveend", () => {
-    const tempPopup = createPopup(item)
-      .setLngLat(targetLngLat)
-      .addTo(map);
-
-    const popupEl = document.querySelector(".mapboxgl-popup");
-    if (!popupEl) return;
-
-    const rect = popupEl.getBoundingClientRect();
-    const popupHeight = rect.height;
-    const isDesktop = window.innerWidth > 768;
-    const offsetY = isDesktop ? popupHeight * 0.56 : popupHeight * 0.55;
-
-    tempPopup.remove();
-
-    map.easeTo({
-      center: targetLngLat,
-      offset: [0, offsetY],
-      duration: 400
-    });
-
-    map.once("moveend", () => {
-      const popup = createPopup(item)
-        .setLngLat(targetLngLat)
-        .addTo(map);
-
-      activePopup = popup;
-      bindPopupClose();
-      applyActiveState(item);
-    });
+    speed: 0.34,
+    curve: 1.9,
+    essential: true
   });
 }
 
@@ -475,26 +323,19 @@ function handleMarkerClick(item) {
 ========================= */
 function render() {
   const list = document.getElementById("listings");
-  const carousel = document.getElementById("carousel");
-  if (carousel) {
-    carousel.classList.add("ready");
-  }
   if (list) list.innerHTML = "";
 
   clearMarkers();
-  clearEdgeMarkers();
 
   listings.forEach((item) => {
-    const itemId = getItemId(item);
-
     if (list) {
       const card = document.createElement("div");
       card.className = "card";
-      card.dataset.itemId = itemId;
+      card.dataset.itemId = item.id;
 
       card.innerHTML = `
         <div class="card-image">
-          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" loading="lazy">
+          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
         </div>
         <div class="card-body">
           <div class="card-moment">${escapeHtml(item.moment)}</div>
@@ -504,17 +345,12 @@ function render() {
       `;
 
       card.onclick = () => handleMarkerClick(item);
-      card.onmouseenter = () => previewItemOnHover(item);
-      card.onfocus = () => previewItemOnHover(item);
-      card.onmouseleave = () => clearHoverPreview();
-      card.onblur = () => clearHoverPreview();
-
       list.appendChild(card);
     }
 
     const el = document.createElement("div");
     el.className = "custom-marker";
-    el.dataset.itemId = itemId;
+    el.dataset.itemId = item.id;
     el.style.backgroundImage = `url(${item.image})`;
     el.setAttribute("role", "button");
     el.setAttribute("aria-label", item.title);
@@ -531,31 +367,50 @@ function render() {
     markers.push(marker);
   });
 
-  updateEdgeMarkers();
-
   document.getElementById("skeletons")?.remove();
+  updateSelectionState();
+}
+
+/* =========================
+   UI WIRING
+========================= */
+function wireDesktopUi() {
+  document.getElementById("sheet-close")?.addEventListener("click", resetView);
+  document.getElementById("gm-reset")?.addEventListener("click", resetView);
+
+
+  document.getElementById("sheet-directions")?.addEventListener("click", () => {
+    if (activeItem?.link) {
+      window.open(activeItem.link, "_blank", "noopener,noreferrer");
+    }
+  });
 }
 
 /* =========================
    INIT
 ========================= */
 map.on("load", async () => {
-  getEdgeOverlay();
   listings = await fetchProducts();
   render();
-  updateEdgeMarkers();
+  wireDesktopUi();
+  hidePlaceSheet();
   setTimeout(showCarousel, 200);
 });
 
-map.on("move", updateEdgeMarkers);
-map.on("zoom", updateEdgeMarkers);
-map.on("resize", updateEdgeMarkers);
+window.addEventListener("resize", () => {
+  if (!isDesktopSheet()) {
+    hidePlaceSheet();
+  } else if (activeItem) {
+    showPlaceSheet(activeItem);
+  }
+});
 
 /* =========================
    MAP CLICK
 ========================= */
 map.on("click", (e) => {
-  if (Date.now() - lastInteraction < 300) return;
+  if (isResetting) return;
   if (e.originalEvent.target.closest(".mapboxgl-popup")) return;
+  if (e.originalEvent.target.closest("#google-ui")) return;
   resetView();
 });
