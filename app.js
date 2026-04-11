@@ -77,6 +77,7 @@ function showPlaceSheet(item) {
   const title = document.getElementById("sheet-title");
   const subtitle = document.getElementById("sheet-subtitle");
   const info = document.getElementById("sheet-info-text");
+  const time = document.getElementById("sheet-time");
 
   if (title) title.textContent = item.title;
   if (subtitle) {
@@ -86,6 +87,9 @@ function showPlaceSheet(item) {
     info.textContent = item.location
       ? `Explore this artwork near ${item.location}. Open directions to continue to the artwork listing.`
       : "Explore this artwork directly from the map.";
+  }
+  if (time) {
+    time.textContent = item.moment || "Any time";
   }
 
   setSheetImage("sheet-image-main", item.image, item.title);
@@ -307,11 +311,12 @@ function handleMarkerClick(item) {
     return;
   }
 
-  hidePlaceSheet();
+  showPlaceSheet(item);
 
   map.flyTo({
     center: targetLngLat,
     zoom: 15.5,
+    offset: [0, -180],
     speed: 0.34,
     curve: 1.9,
     essential: true
