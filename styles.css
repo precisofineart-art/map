@@ -5,14 +5,15 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
   overflow: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-
 }
+
 /* =========================
    HEADER
 ========================= */
@@ -21,75 +22,59 @@ html, body {
   top: 0;
   left: 0;
   width: 100%;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  padding: 10px 10px;
-
+  padding: 10px;
   z-index: 20;
-
-  pointer-events: auto; /* 🔥 allow map interaction */
+  pointer-events: auto;
 }
 
-/* logo */
 .logo {
   height: 56px;
   width: auto;
-
   object-fit: contain;
-
   pointer-events: auto;
 }
 
 .logo-link {
-  pointer-events: auto; /* 🔥 allows clicking */
   display: inline-block;
+  pointer-events: auto;
 }
+
 .logo-link:active {
   transform: scale(0.95);
 }
+
 /* =========================
    MAP
 ========================= */
 #map {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
+  touch-action: pan-x pan-y;
 }
 
 /* =========================
-   CAROUSEL SMOOTH ANIMATION
+   CAROUSEL
 ========================= */
 #carousel {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-
   z-index: 10;
   pointer-events: none;
-
   padding-bottom: 10px;
-
   transform: translateY(0);
   opacity: 1;
-
   transition:
-    transform 0.5s cubic-bezier(.22,.8,.22,1),
+    transform 0.5s cubic-bezier(.22, .8, .22, 1),
     opacity 0.4s ease;
 }
 
-/* hidden state */
-#carousel.hidden {
-  transform: translateY(120%);
-  opacity: 0;
-}
-
-/* hidden state for auto-hide + gestures */
 #carousel.hidden {
   transform: translateY(110%);
   opacity: 0;
@@ -101,15 +86,11 @@ html, body {
 .carousel-track {
   display: flex;
   gap: 10px;
-
   padding: 10px 12px;
-
   overflow-x: auto;
   overflow-y: visible;
-
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-
   pointer-events: auto;
 }
 
@@ -123,69 +104,55 @@ html, body {
 .card {
   flex: 0 0 auto;
   width: 140px;
-
   border-radius: 20px;
   overflow: hidden;
-
-  background: rgba(255,255,255,0.95);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-
   scroll-snap-align: center;
-
-  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   padding-bottom: 4px;
   transform: scale(0.88);
-  opacity: 10;
-
+  opacity: 1;
   transition:
-    transform 0.35s cubic-bezier(.2,.8,.2,1),
+    transform 0.35s cubic-bezier(.2, .8, .2, 1),
     box-shadow 0.35s ease,
     opacity 0.3s ease;
+  cursor: pointer;
 }
 
-/* active */
 .card.active {
   transform: scale(1) translateY(-10px);
   opacity: 1;
-
   box-shadow:
-    0 16px 40px rgba(0,0,0,0.25),
-    0 6px 16px rgba(0,0,0,0.15);
-
+    0 16px 40px rgba(0, 0, 0, 0.25),
+    0 6px 16px rgba(0, 0, 0, 0.15);
   z-index: 5;
 }
-/* =========================
-   HOVER EFFECT (DESKTOP)
-========================= */
+
 @media (hover: hover) and (pointer: fine) {
-
   .card:hover {
-    transform: scale(0.95) translateY(-8px); /* subtle lift */
-    opacity: 10;
-
+    transform: scale(0.95) translateY(-8px);
+    opacity: 1;
     box-shadow:
-      0 12px 30px rgba(0,0,0,0.2),
-      0 4px 12px rgba(0,0,0,0.12);
-
+      0 12px 30px rgba(0, 0, 0, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.12);
     z-index: 4;
   }
 
-  /* 🔥 if already active, enhance it slightly */
   .card.active:hover {
     transform: scale(1.05) translateY(-14px);
   }
-
 }
+
 /* =========================
    IMAGE
 ========================= */
 .card-image {
   width: 100%;
   aspect-ratio: 1 / 1;
-
   background: #f3f3f3;
   overflow: hidden;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,20 +160,11 @@ html, body {
 
 .card-image img {
   width: 100%;
-  height: auto;
-
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   object-position: center;
+  display: block;
 }
-
-/* portrait fix */
-.card-image img.portrait {
-  transform: scale(1.15);
-}
-
-/* =========================
-   CARD TYPOGRAPHY UPGRADE
-========================= */
 
 .card-body {
   padding: 8px 8px 10px;
@@ -215,31 +173,29 @@ html, body {
   gap: 6px;
 }
 
-/* MOMENT TAG */
 .card-moment {
-  font-size: 9px;
-  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-
-  color: rgba(0,0,0,0.5);
+  color: rgba(0, 0, 0, 0.5);
 }
 
-/* TITLE (primary focus) */
 .card-title {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-
   color: #111;
 }
 
-/* LOCATION / META */
 .card-meta {
   font-size: 10px;
   font-weight: 500;
-
-  color: rgba(0,0,0,0.6);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 /* =========================
@@ -248,29 +204,20 @@ html, body {
 .custom-marker {
   width: 40px;
   height: 40px;
-
   background-size: cover;
   background-position: center;
-
   border-radius: 50%;
   border: 2px solid white;
-
   transform: scale(1);
-  
-    transition: transform 0.25s ease, box-shadow 0.25s ease; }
-
-  
-
- 
-
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+}
 
 .custom-marker.active {
   transform: scale(1.35) translateY(-8px);
-
   box-shadow:
-    0 12px 28px rgba(0,0,0,0.35),
-    0 4px 10px rgba(0,0,0,0.2);
-
+    0 12px 28px rgba(0, 0, 0, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.2);
   z-index: 2;
 }
 
@@ -278,10 +225,8 @@ html, body {
    POPUP
 ========================= */
 .mapboxgl-popup {
-  max-width: 90vw !important;
-}
-
-.mapboxgl-popup {
+  max-width: none !important;
+  z-index: 30;
   opacity: 0;
   transform: translateY(10px) scale(0.96);
   transition: all 0.3s ease;
@@ -292,92 +237,149 @@ html, body {
   transform: translateY(0) scale(1);
 }
 
-/* popup card */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 20px !important;
+  overflow: hidden;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: auto !important;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: rgba(17, 17, 17, 0.92) !important;
+}
+
 .popup-card {
   position: relative;
+  width: min(320px, 86vw);
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(17, 17, 17, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.28),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
 }
 
 .popup-image {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #ffffff;
-  padding: 0px;
+  aspect-ratio: 1 / 1;
+  background: #111;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .popup-image img {
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
 }
 
 .popup-body {
-  padding: 12px;
+  padding: 14px 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  overflow-y: auto;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
+    rgba(17, 17, 17, 0.92);
 }
 
-.popup-btn {
-  margin-top: 10px;
-}
-.popup-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-
-  width: 28px;
-  height: 28px;
-
-  border: none;
-  border-radius: 50%;
-
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-
-  font-size: 18px;
-  line-height: 28px;
-  text-align: center;
-
-  cursor: pointer;
-  z-index: 2;
-
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.popup-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-
-  width: 28px;
-  height: 28px;
-
-  border: none;
-  border-radius: 50%;
-
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-
-  font-size: 18px;
-  line-height: 28px;
-  text-align: center;
-
-  cursor: pointer;
-  z-index: 2;
-
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.popup-title {
-  font-size: 14px;
+.popup-moment {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
   font-weight: 700;
-  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.popup-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
 }
 
 .popup-meta {
-  font-size: 12px;
-  color: #666;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.popup-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  color: #111;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.popup-btn:hover {
+  background: #fff;
+  transform: translateY(-1px);
+  opacity: 0.96;
+}
+
+.popup-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.popup-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.48);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+  z-index: 3;
+}
+
+.popup-close-btn:hover {
+  background: rgba(0, 0, 0, 0.62);
+  transform: scale(1.04);
+}
+
+.popup-close-btn:active {
+  transform: scale(0.96);
 }
 
 /* =========================
@@ -390,6 +392,28 @@ html, body {
 
   .carousel-track {
     padding: 8px 10px;
+  }
+
+  .popup-card {
+    width: min(300px, 84vw);
+    border-radius: 18px;
+  }
+
+  .popup-body {
+    padding: 12px 12px 14px;
+  }
+
+  .popup-title {
+    font-size: 16px;
+  }
+
+  .popup-meta {
+    font-size: 12px;
+  }
+
+  .popup-btn {
+    min-height: 42px;
+    padding: 11px 12px;
   }
 }
 
@@ -410,227 +434,11 @@ html, body {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}/* =========================
-   POPUP BUTTON
-========================= */
-.popup-btn {
-  display: block;
-  margin-top: 10px;
-
-  text-align: center;
-  text-decoration: none;
-
-  background: rgb(22, 28, 79);
-  color: white;
-
-  padding: 8px 10px;
-  border-radius: 8px;
-
-  font-size: 13px;
-  font-weight: 600;
-
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-/* hover */
-.popup-btn:hover {
-  background: #222;
-  transform: translateY(-1px);
-}
-
-/* tap */
-.popup-btn:active {
-  transform: scale(0.96);
-}
-
-/* =========================
-   POPUP REDESIGN
-========================= */
-.popup-card.redesign {
-  width: 280px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: white;
-
-  box-shadow:
-    0 20px 60px rgba(0,0,0,0.25),
-    0 8px 20px rgba(0,0,0,0.15);
-}
-
-/* =========================
-   HERO IMAGE FIX
-========================= */
-.popup-hero {
-  position: relative;
-  aspect-ratio: 1 / 1; /* 🔥 natural scaling */
-  overflow: hidden;
-}
-
-.popup-hero img {
-  width: 100%;
-  height: 100%;
-
-  object-fit: cover;
-  object-position: center top; /* 🔥 prevents top cutoff */
-}
-
-
-/* TEXT ON IMAGE */
-.popup-hero-text {
-  position: absolute;
-  bottom: 10px;
-  left: 12px;
-  right: 12px;
-
-  color: white;
-}
-
-.popup-moment {
-  font-size: 11px;
-  opacity: 0.8;
-  text-transform: uppercase;
-}
-
-.popup-title {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-/* BODY */
-.popup-body {
-  padding: 12px;
-}
-
-.popup-meta {
-  font-size: 12px;
-  color: #ffffff;
-  margin-bottom: 10px;
-}
-
-/* BUTTON */
-.popup-btn {
-  display: block;
-  text-align: center;
-
-  background: black;
-  color: white;
-
-  padding: 10px;
-  border-radius: 10px;
-
-  font-size: 13px;
-  font-weight: 600;
-
-  text-decoration: none;
-
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.popup-btn:hover {
-  background: #000000;
-  transform: translateY(-1px);
-}
-
-.popup-btn:active {
-  transform: scale(0.96);
-}
-/* =========================
-   STEP 2 — MOBILE POPUP FIX
-========================= */
-
-@media (max-width: 768px) {
-
-
-
-  .mapboxgl-popup {
-    max-width: 80vw !important;
+  0% {
+    background-position: 200% 0;
   }
 
-  .popup-card {
-    width: 80vw;
-    max-width: 300px;
-    margin: 0 auto;
+  100% {
+    background-position: -200% 0;
   }
-
-  .popup-image img {
-    height: 200px;
-  }
-
-  .popup-body {
-    padding: 10px;
-  }
-
-  .popup-title {
-    font-size: 14px;
-  }
-
-  .popup-meta {
-    font-size: 11px;
-  }
-
-  .popup-btn {
-    padding: 9px;
-    font-size: 13px;
-  }
-}
-
-/* =========================
-   POPUP HEIGHT FIX
-========================= */
-
-.popup-card {
-  width: 260px;              /* 🔥 fixed card width */
-  max-width: 85vw;
-
-  border-radius: 16px;
-  overflow: hidden;
-  background: #fff;
-
-  display: flex;
-  flex-direction: column;
-}
-
-/* scrollable content */
-.popup-body {
-  overflow-y: auto;
-}
-
-/* keep image visible but controlled */
-.popup-image {
-  flex-shrink: 0;
-}
-
-/* ensure button always visible */
-.popup-btn {
-  margin-top: auto;
-}
-/* =========================
-   POPUP FIT TO CARD
-========================= */
-
-.mapboxgl-popup {
-  max-width: none !important; /* 🔥 remove Mapbox limit */
-}
-
-.mapboxgl-popup-content {
-  padding: 0 !important;
-  width: auto !important;
-  overflow: visible;
-}
-
-.card-moment {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0);
-  color: #4b4b4b;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-#map {
-  touch-action: pan-y; /* 🔥 allows vertical scrolling with one finger */
 }

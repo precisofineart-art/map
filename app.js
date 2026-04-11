@@ -1,13 +1,12 @@
-
-
 mapboxgl.accessToken = 'pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3OWhjeG0xIn0.0kik_HY1s4mLhwZE3W3aRQ';
-
 
 /* =========================
    CONFIG
 ========================= */
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
+const IMAGE_SIZE = "?width=600&height=600&crop=center";
+const FALLBACK_IMAGE = "https://picsum.photos/600";
 
 /* =========================
    HOME VIEW
@@ -24,6 +23,68 @@ let listings = [];
 let markers = [];
 let activePopup = null;
 let activeItem = null;
+let lastInteraction = 0;
+
+/* =========================
+   HELPERS
+========================= */
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getItemId(item) {
+  return `${item.title}-${item.lat}-${item.lng}`;
+}
+
+function getOptimizedImage(url) {
+  if (!url) return FALLBACK_IMAGE;
+  return `${url}${IMAGE_SIZE}`;
+}
+
+function clearActiveStates() {
+  document.querySelectorAll(".card.active").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(".custom-marker.active").forEach((el) => el.classList.remove("active"));
+}
+
+function applyActiveState(item) {
+  if (!item) return;
+
+  const itemId = getItemId(item);
+  const activeCard = document.querySelector(`.card[data-item-id="${itemId}"]`);
+  const activeMarker = document.querySelector(`.custom-marker[data-item-id="${itemId}"]`);
+
+  if (activeCard) {
+    activeCard.classList.add("active");
+    activeCard.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest"
+    });
+  }
+
+  if (activeMarker) {
+    activeMarker.classList.add("active");
+  }
+}
+
+function bindPopupClose() {
+  const btn = document.querySelector(".popup-close-btn");
+  if (!btn) return;
+
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    resetView();
+  };
+}
+function clearMarkers() {
+  markers.forEach((marker) => marker.remove());
+  markers = [];
+}
 
 /* =========================
    FETCH PRODUCTS
@@ -60,25 +121,25 @@ async function fetchProducts() {
     });
 
     const json = await res.json();
+    const productEdges = json?.data?.products?.edges || [];
 
-    return json.data.products.edges
+    return productEdges
       .map(({ node }) => {
         const lat = parseFloat(node.lat?.value);
         const lng = parseFloat(node.lng?.value);
-        if (isNaN(lat) || isNaN(lng)) return null;
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
         return {
           title: node.title,
           lat,
           lng,
-          image: node.images.edges[0]?.node.url || "https://picsum.photos/400",
+          image: getOptimizedImage(node.images.edges[0]?.node.url),
           link: `${SHOP_URL}/products/${node.handle}`,
           location: node.location?.value || "",
           moment: node.moment?.value || "Explore"
         };
       })
       .filter(Boolean);
-
   } catch (err) {
     console.warn("Fetch error:", err);
     return [];
@@ -98,11 +159,8 @@ const map = new mapboxgl.Map({
 /* =========================
    GOOGLE MAPS STYLE GESTURES
 ========================= */
-
-// disable scroll zoom (prevents page lock)
 map.scrollZoom.disable();
 
-// desktop: zoom only with ctrl/cmd
 map.getCanvas().addEventListener("wheel", (e) => {
   if (e.ctrlKey || e.metaKey) {
     map.scrollZoom.enable();
@@ -111,12 +169,12 @@ map.getCanvas().addEventListener("wheel", (e) => {
   }
 });
 
-// mobile: enable pinch + two-finger pan
+map.dragPan.enable();
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
-
-// optional: disable double tap zoom
+map.keyboard.enable();
 map.doubleClickZoom.disable();
+
 
 /* =========================
    CAROUSEL
@@ -137,14 +195,13 @@ function hideCarousel() {
    RESET VIEW
 ========================= */
 function resetView() {
-
   if (activePopup) {
     activePopup.remove();
     activePopup = null;
   }
 
+  clearActiveStates();
   showCarousel();
-
   activeItem = null;
 
   map.flyTo({
@@ -165,15 +222,15 @@ function createPopup(item) {
     offset: 15
   }).setHTML(`
     <div class="popup-card">
-      <button class="popup-close-btn">×</button>
+      <button class="popup-close-btn" aria-label="Close popup">×</button>
       <div class="popup-image">
-        <img src="${item.image}">
+        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" loading="lazy">
       </div>
       <div class="popup-body">
-        <div class="popup-moment">${item.moment}</div>
-        <div class="popup-title">${item.title}</div>
-        <div class="popup-meta">${item.location}</div>
-        <a href="${item.link}" target="_blank" class="popup-btn">View Artwork</a>
+        <div class="popup-moment">${escapeHtml(item.moment)}</div>
+        <div class="popup-title">${escapeHtml(item.title)}</div>
+        <div class="popup-meta">${escapeHtml(item.location)}</div>
+        <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="popup-btn">View Artwork</a>
       </div>
     </div>
   `);
@@ -183,8 +240,11 @@ function createPopup(item) {
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
-
+  lastInteraction = Date.now();
   activeItem = item;
+
+  clearActiveStates();
+  applyActiveState(item);
   hideCarousel();
 
   if (activePopup) {
@@ -194,7 +254,6 @@ function handleMarkerClick(item) {
 
   const targetLngLat = [item.lng, item.lat];
 
-  // 🔥 Step 1: fly WITHOUT offset (true center first)
   map.flyTo({
     center: targetLngLat,
     zoom: 15.5,
@@ -203,8 +262,6 @@ function handleMarkerClick(item) {
   });
 
   map.once("moveend", () => {
-
-    // 🔥 Step 2: create popup OFFSCREEN to measure
     const tempPopup = createPopup(item)
       .setLngLat(targetLngLat)
       .addTo(map);
@@ -213,22 +270,12 @@ function handleMarkerClick(item) {
     if (!popupEl) return;
 
     const rect = popupEl.getBoundingClientRect();
-
-    // 🔥 Step 3: calculate EXACT offset based on popup height
     const popupHeight = rect.height;
-
-    // how much to push marker down so popup fits above it
     const isDesktop = window.innerWidth > 768;
+    const offsetY = isDesktop ? popupHeight * 0.56 : popupHeight * 0.55;
 
-// 🔥 smarter offset
-const offsetY = isDesktop
-  ? popupHeight * 0.56   // push more on desktop
-  : popupHeight * 0.55;  // lighter on mobile
-
-    // remove temp popup
     tempPopup.remove();
 
-    // 🔥 Step 4: move map ONCE to correct visual position
     map.easeTo({
       center: targetLngLat,
       offset: [0, offsetY],
@@ -236,29 +283,15 @@ const offsetY = isDesktop
     });
 
     map.once("moveend", () => {
-
-      // 🔥 Step 5: now add REAL popup (perfectly placed)
       const popup = createPopup(item)
         .setLngLat(targetLngLat)
         .addTo(map);
 
       activePopup = popup;
-
-      // close button
-      setTimeout(() => {
-        const btn = document.querySelector(".popup-close-btn");
-        if (btn) {
-          btn.onclick = (e) => {
-            e.stopPropagation();
-            resetView();
-          };
-        }
-      }, 50);
-
+      bindPopupClose();
+      applyActiveState(item);
     });
-
   });
-
 }
 
 /* =========================
@@ -268,23 +301,24 @@ function render() {
   const list = document.getElementById("listings");
   if (list) list.innerHTML = "";
 
-  markers.forEach(m => m.remove());
-  markers = [];
+  clearMarkers();
 
   listings.forEach((item) => {
+    const itemId = getItemId(item);
 
     if (list) {
       const card = document.createElement("div");
       card.className = "card";
+      card.dataset.itemId = itemId;
 
       card.innerHTML = `
         <div class="card-image">
-          <img src="${item.image}">
+          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" loading="lazy">
         </div>
         <div class="card-body">
-          <div class="card-moment">${item.moment}</div>
-          <div class="card-title">${item.title}</div>
-          <div class="card-meta">${item.location}</div>
+          <div class="card-moment">${escapeHtml(item.moment)}</div>
+          <div class="card-title">${escapeHtml(item.title)}</div>
+          <div class="card-meta">${escapeHtml(item.location)}</div>
         </div>
       `;
 
@@ -294,19 +328,24 @@ function render() {
 
     const el = document.createElement("div");
     el.className = "custom-marker";
+    el.dataset.itemId = itemId;
     el.style.backgroundImage = `url(${item.image})`;
-
-    const marker = new mapboxgl.Marker(el)
-      .setLngLat([item.lng, item.lat])
-      .addTo(map);
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", item.title);
 
     el.onclick = (e) => {
       e.stopPropagation();
       handleMarkerClick(item);
     };
 
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat([item.lng, item.lat])
+      .addTo(map);
+
     markers.push(marker);
   });
+
+  document.getElementById("skeletons")?.remove();
 }
 
 /* =========================
@@ -322,6 +361,7 @@ map.on("load", async () => {
    MAP CLICK
 ========================= */
 map.on("click", (e) => {
+  if (Date.now() - lastInteraction < 300) return;
   if (e.originalEvent.target.closest(".mapboxgl-popup")) return;
   resetView();
 });
