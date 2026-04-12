@@ -1,5 +1,6 @@
 mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3OWhjeG0xIn0.0kik_HY1s4mLhwZE3W3aRQ";
 
+
 /* =========================
    CONFIG
 ========================= */
@@ -20,28 +21,17 @@ const HOME_VIEW = {
 ========================= */
 let listings = [];
 let markers = [];
-let activePopup = null;
 let activeItem = null;
 let isResetting = false;
 
 /* =========================
    HELPERS
 ========================= */
-function isDesktopSheet() {
-  return window.innerWidth >= 980;
-}
-
 function escapeHtml(value = "") {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function getImageUrl(node) {
-  return node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE;
+    .replace(/>/g, "&gt;");
 }
 
 function getItemId(item) {
@@ -49,25 +39,8 @@ function getItemId(item) {
 }
 
 function clearMarkers() {
-  markers.forEach((marker) => marker.remove());
+  markers.forEach(m => m.remove());
   markers = [];
-}
-
-function setSheetImage(id, src, alt) {
-  const img = document.getElementById(id);
-  if (!img) return;
-  img.src = src || FALLBACK_IMAGE;
-  img.alt = alt || "";
-}
-
-function showCarousel() {
-  const el = document.getElementById("carousel");
-  if (el) el.classList.remove("hidden");
-}
-
-function hideCarousel() {
-  const el = document.getElementById("carousel");
-  if (el) el.classList.add("hidden");
 }
 
 function showPlaceSheet(item) {
@@ -75,65 +48,45 @@ function showPlaceSheet(item) {
   if (!sheet) return;
 
   const title = document.getElementById("sheet-title");
-  const subtitle = document.getElementById("sheet-subtitle");
-  const info = document.getElementById("sheet-info-text");
   const time = document.getElementById("sheet-time");
+  const subtitle = document.getElementById("sheet-subtitle");
+  const image = document.getElementById("sheet-image-main");
+  const productLink = document.getElementById("sheet-product-link");
 
-  if (title) title.textContent = item.title;
-  if (subtitle) {
-    subtitle.textContent = `${item.location || "Artwork location"} · ${item.moment || "Explore"}`;
+  if (title) title.textContent = item.title || "";
+  if (time) time.textContent = item.time || "Any time";
+  if (subtitle) subtitle.textContent = item.moment || "Explore";
+  if (image) {
+    image.src = item.image || "";
+    image.alt = item.title || "";
   }
-  if (info) {
-    info.textContent = item.location
-      ? `Explore this artwork near ${item.location}. Open directions to continue to the artwork listing.`
-      : "Explore this artwork directly from the map.";
+  if (productLink) {
+    productLink.href = item.link || "#";
+    productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
   }
-  if (time) {
-    time.textContent = item.moment || "Any time";
-  }
-
-  setSheetImage("sheet-image-main", item.image, item.title);
-  setSheetImage("sheet-image-side-1", item.image, item.title);
-  setSheetImage("sheet-image-side-2", item.image, item.title);
 
   sheet.classList.remove("hidden");
 }
+function resetView() {
+  isResetting = true;
+  activeItem = null;
+  if (window.location.hash) {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
 
-function hidePlaceSheet() {
-  const sheet = document.getElementById("place-sheet");
-  if (sheet) sheet.classList.add("hidden");
-}
+  document.getElementById("place-sheet")?.classList.add("hidden");
 
-function updateSelectionState() {
-  const activeId = activeItem ? getItemId(activeItem) : null;
-
-  document.querySelectorAll(".card").forEach((card) => {
-    const isActive = Boolean(activeId && card.dataset.itemId === activeId);
-    card.classList.toggle("active", isActive);
-
-    if (isActive) {
-      card.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest"
-      });
-    }
+  map.flyTo({
+    center: HOME_VIEW.center,
+    zoom: HOME_VIEW.zoom,
+    speed: 0.38,
+    curve: 1.7,
+    essential: true
   });
 
-  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
-    const isActive = Boolean(activeId && markerEl.dataset.itemId === activeId);
-    markerEl.classList.toggle("active", isActive);
-  });
-}
-
-function bindPopupClose() {
-  const btn = document.querySelector(".popup-close-btn");
-  if (!btn) return;
-
-  btn.onclick = (e) => {
-    e.stopPropagation();
-    resetView();
-  };
+  window.setTimeout(() => {
+    isResetting = false;
+  }, 450);
 }
 
 /* =========================
@@ -160,40 +113,43 @@ async function fetchProducts() {
                 }
                 lat: metafield(namespace: "custom", key: "lat") { value }
                 lng: metafield(namespace: "custom", key: "lng") { value }
-                location: metafield(namespace: "custom", key: "location") { value }
                 moment: metafield(namespace: "custom", key: "moment") { value }
+                time: metafield(namespace: "custom", key: "time") { value }
               }
             }
           }
-        }
-        `
+        }`
       })
     });
+
+    if (!res.ok) {
+      throw new Error(`Storefront request failed: ${res.status}`);
+    }
 
     const json = await res.json();
     const edges = json?.data?.products?.edges || [];
 
     return edges
       .map(({ node }) => {
-        const lat = Number.parseFloat(node.lat?.value);
-        const lng = Number.parseFloat(node.lng?.value);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+        const lat = parseFloat(node.lat?.value);
+        const lng = parseFloat(node.lng?.value);
+        if (isNaN(lat) || isNaN(lng)) return null;
 
         const item = {
           title: node.title,
           lat,
           lng,
-          image: getImageUrl(node),
+          image: node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE,
           link: `${SHOP_URL}/products/${node.handle}`,
-          location: node.location?.value || "",
-          moment: node.moment?.value || "Explore"
+          moment: node.moment?.value || "Explore",
+          time: node.time?.value || "Any time"
         };
 
         return { ...item, id: getItemId(item) };
       })
       .filter(Boolean);
   } catch (error) {
-    console.warn("Fetch error:", error);
+    console.error("Failed to fetch products:", error);
     return [];
   }
 }
@@ -209,116 +165,21 @@ const map = new mapboxgl.Map({
 });
 
 /* =========================
-   GESTURES
-========================= */
-map.scrollZoom.disable();
-
-map.getCanvas().addEventListener("wheel", (e) => {
-  if (e.ctrlKey || e.metaKey) {
-    map.scrollZoom.enable();
-  } else {
-    map.scrollZoom.disable();
-  }
-});
-
-map.dragPan.enable();
-map.touchZoomRotate.enable();
-map.touchZoomRotate.disableRotation();
-map.keyboard.enable();
-map.doubleClickZoom.enable();
-
-/* =========================
-   RESET VIEW
-========================= */
-function resetView() {
-  isResetting = true;
-
-  if (activePopup) {
-    activePopup.remove();
-    activePopup = null;
-  }
-
-  activeItem = null;
-  hidePlaceSheet();
-  showCarousel();
-  updateSelectionState();
-
-  map.flyTo({
-    center: HOME_VIEW.center,
-    zoom: HOME_VIEW.zoom,
-    speed: 0.38,
-    curve: 1.7,
-    essential: true
-  });
-
-  window.setTimeout(() => {
-    isResetting = false;
-  }, 450);
-}
-
-/* =========================
-   POPUP
-========================= */
-function createPopup(item) {
-  return new mapboxgl.Popup({
-    closeButton: false,
-    closeOnClick: false,
-    anchor: "bottom",
-    offset: 15
-  }).setHTML(`
-    <div class="popup-card">
-      <button class="popup-close-btn" aria-label="Close popup">×</button>
-      <div class="popup-image">
-        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
-      </div>
-      <div class="popup-body">
-        <div class="popup-moment">${escapeHtml(item.moment)}</div>
-        <div class="popup-title">${escapeHtml(item.title)}</div>
-        <div class="popup-meta">${escapeHtml(item.location)}</div>
-        <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="popup-btn">View Artwork</a>
-      </div>
-    </div>
-  `);
-}
-
-/* =========================
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
+  // 🔥 update URL
+  window.location.hash = `marker=${encodeURIComponent(item.id)}`;
+
   activeItem = item;
-  updateSelectionState();
-  hideCarousel();
-
-  if (activePopup) {
-    activePopup.remove();
-    activePopup = null;
-  }
-
-  const targetLngLat = [item.lng, item.lat];
-
-  if (isDesktopSheet()) {
-    showPlaceSheet(item);
-
-    map.flyTo({
-      center: targetLngLat,
-      zoom: 15,
-      offset: [260, 40],
-      speed: 0.34,
-      curve: 1.85,
-      essential: true
-    });
-
-    return;
-  }
 
   showPlaceSheet(item);
 
   map.flyTo({
-    center: targetLngLat,
-    zoom: 15.5,
-    offset: [0, -180],
-    speed: 0.34,
-    curve: 1.9,
+    center: [item.lng, item.lat],
+    zoom: 15,
+    speed: 0.4,
+    curve: 1.6,
     essential: true
   });
 }
@@ -327,68 +188,54 @@ function handleMarkerClick(item) {
    RENDER
 ========================= */
 function render() {
-  const list = document.getElementById("listings");
-  if (list) list.innerHTML = "";
-
   clearMarkers();
 
-  listings.forEach((item) => {
-    if (list) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.dataset.itemId = item.id;
-
-      card.innerHTML = `
-        <div class="card-image">
-          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
-        </div>
-        <div class="card-body">
-          <div class="card-moment">${escapeHtml(item.moment)}</div>
-          <div class="card-title">${escapeHtml(item.title)}</div>
-          <div class="card-meta">${escapeHtml(item.location)}</div>
-        </div>
-      `;
-
-      card.onclick = () => handleMarkerClick(item);
-      list.appendChild(card);
-    }
-
+  listings.forEach(item => {
     const el = document.createElement("div");
     el.className = "custom-marker";
-    el.dataset.itemId = item.id;
     el.style.backgroundImage = `url(${item.image})`;
+    el.dataset.itemId = item.id;
     el.setAttribute("role", "button");
-    el.setAttribute("aria-label", item.title);
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("aria-label", item.title || "Map marker");
 
-    el.onclick = (e) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       handleMarkerClick(item);
-    };
+    });
 
-    const marker = new mapboxgl.Marker(el)
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleMarkerClick(item);
+      }
+    });
+
+    const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([item.lng, item.lat])
       .addTo(map);
 
     markers.push(marker);
   });
-
-  document.getElementById("skeletons")?.remove();
-  updateSelectionState();
 }
 
 /* =========================
-   UI WIRING
+   HASH LINKING
 ========================= */
-function wireDesktopUi() {
-  document.getElementById("sheet-close")?.addEventListener("click", resetView);
-  document.getElementById("gm-reset")?.addEventListener("click", resetView);
+function openMarkerFromHash() {
+  const hash = window.location.hash;
 
+  if (!hash.startsWith("#marker=")) return;
 
-  document.getElementById("sheet-directions")?.addEventListener("click", () => {
-    if (activeItem?.link) {
-      window.open(activeItem.link, "_blank", "noopener,noreferrer");
-    }
-  });
+  const id = decodeURIComponent(hash.replace("#marker=", ""));
+  const item = listings.find(i => i.id === id);
+
+  if (!item) return;
+
+  setTimeout(() => {
+    handleMarkerClick(item);
+  }, 200);
 }
 
 /* =========================
@@ -397,25 +244,22 @@ function wireDesktopUi() {
 map.on("load", async () => {
   listings = await fetchProducts();
   render();
-  wireDesktopUi();
-  hidePlaceSheet();
-  setTimeout(showCarousel, 200);
+  document.getElementById("place-sheet")?.classList.add("hidden");
+
+  openMarkerFromHash();
 });
 
-window.addEventListener("resize", () => {
-  if (!isDesktopSheet()) {
-    hidePlaceSheet();
-  } else if (activeItem) {
-    showPlaceSheet(activeItem);
-  }
-});
+window.addEventListener("hashchange", openMarkerFromHash);
 
-/* =========================
-   MAP CLICK
-========================= */
+// close sheet button
+const closeBtn = document.getElementById("sheet-close");
+if (closeBtn) {
+  closeBtn.addEventListener("click", resetView);
+}
+
 map.on("click", (e) => {
   if (isResetting) return;
-  if (e.originalEvent.target.closest(".mapboxgl-popup")) return;
-  if (e.originalEvent.target.closest("#google-ui")) return;
+  if (e.originalEvent.target.closest(".custom-marker")) return;
+  if (e.originalEvent.target.closest("#place-sheet")) return;
   resetView();
 });
