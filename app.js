@@ -1,6 +1,5 @@
 mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3OWhjeG0xIn0.0kik_HY1s4mLhwZE3W3aRQ";
 
-
 /* =========================
    CONFIG
 ========================= */
@@ -39,7 +38,7 @@ function getItemId(item) {
 }
 
 function clearMarkers() {
-  markers.forEach(m => m.remove());
+  markers.forEach((marker) => marker.remove());
   markers = [];
 }
 
@@ -56,10 +55,12 @@ function showPlaceSheet(item) {
   if (title) title.textContent = item.title || "";
   if (time) time.textContent = item.time || "Any time";
   if (subtitle) subtitle.textContent = item.moment || "Explore";
+
   if (image) {
     image.src = item.image || "";
     image.alt = item.title || "";
   }
+
   if (productLink) {
     productLink.href = item.link || "#";
     productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
@@ -67,9 +68,11 @@ function showPlaceSheet(item) {
 
   sheet.classList.remove("hidden");
 }
+
 function resetView() {
   isResetting = true;
   activeItem = null;
+
   if (window.location.hash) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }
@@ -133,7 +136,7 @@ async function fetchProducts() {
       .map(({ node }) => {
         const lat = parseFloat(node.lat?.value);
         const lng = parseFloat(node.lng?.value);
-        if (isNaN(lat) || isNaN(lng)) return null;
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
         const item = {
           title: node.title,
@@ -168,11 +171,9 @@ const map = new mapboxgl.Map({
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
-  // 🔥 update URL
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
 
   activeItem = item;
-
   showPlaceSheet(item);
 
   map.flyTo({
@@ -190,7 +191,7 @@ function handleMarkerClick(item) {
 function render() {
   clearMarkers();
 
-  listings.forEach(item => {
+  listings.forEach((item) => {
     const el = document.createElement("div");
     el.className = "custom-marker";
     el.style.backgroundImage = `url(${item.image})`;
@@ -225,15 +226,13 @@ function render() {
 ========================= */
 function openMarkerFromHash() {
   const hash = window.location.hash;
-
   if (!hash.startsWith("#marker=")) return;
 
   const id = decodeURIComponent(hash.replace("#marker=", ""));
-  const item = listings.find(i => i.id === id);
-
+  const item = listings.find((entry) => entry.id === id);
   if (!item) return;
 
-  setTimeout(() => {
+  window.setTimeout(() => {
     handleMarkerClick(item);
   }, 200);
 }
@@ -251,7 +250,6 @@ map.on("load", async () => {
 
 window.addEventListener("hashchange", openMarkerFromHash);
 
-// close sheet button
 const closeBtn = document.getElementById("sheet-close");
 if (closeBtn) {
   closeBtn.addEventListener("click", resetView);
