@@ -51,6 +51,7 @@ function showPlaceSheet(item) {
   const subtitle = document.getElementById("sheet-subtitle");
   const image = document.getElementById("sheet-image-main");
   const productLink = document.getElementById("sheet-product-link");
+  const closeButton = document.getElementById("sheet-close");
 
   if (title) title.textContent = item.title || "";
   if (time) time.textContent = item.time || "Any time";
@@ -66,7 +67,12 @@ function showPlaceSheet(item) {
     productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
   }
 
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.toggle("active", markerEl.dataset.itemId === item.id);
+  });
+
   sheet.classList.remove("hidden");
+  closeButton?.focus({ preventScroll: true });
 }
 
 function resetView() {
@@ -78,6 +84,10 @@ function resetView() {
   }
 
   document.getElementById("place-sheet")?.classList.add("hidden");
+
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.remove("active");
+  });
 
   map.flyTo({
     center: HOME_VIEW.center,
@@ -167,13 +177,31 @@ const map = new mapboxgl.Map({
   zoom: HOME_VIEW.zoom
 });
 
+const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+
+if (isTouchDevice) {
+  map.dragPan.disable();
+  map.touchZoomRotate.enable();
+  map.touchZoomRotate.disableRotation();
+} else {
+  map.dragPan.enable();
+  map.touchZoomRotate.enable();
+  map.touchZoomRotate.disableRotation();
+}
+
+map.doubleClickZoom.enable();
+
 /* =========================
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
-  window.location.hash = `marker=${encodeURIComponent(item.id)}`;
+  if (activeItem?.id === item.id && !document.getElementById("place-sheet")?.classList.contains("hidden")) {
+    return;
+  }
 
+  window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
+
   showPlaceSheet(item);
 
   map.flyTo({
@@ -260,4 +288,10 @@ map.on("click", (e) => {
   if (e.originalEvent.target.closest(".custom-marker")) return;
   if (e.originalEvent.target.closest("#place-sheet")) return;
   resetView();
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    resetView();
+  }
 });
