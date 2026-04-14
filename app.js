@@ -117,12 +117,13 @@ function showPlaceSheet(item) {
 function initSheetDrag() {
   const sheet = document.getElementById("place-sheet");
   const handle = sheet?.querySelector(".place-sheet-handle");
-  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
-
-  if (!sheet || !handle || !isMobileViewport) return;
+  if (!sheet || !handle) return;
 
   let startY = 0;
   let startLevel = 1;
+  let isDragging = false;
+
+  const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
 
   const getCurrentLevel = () => {
     if (sheet.classList.contains("level-3")) return 3;
@@ -135,43 +136,77 @@ function initSheetDrag() {
     sheet.classList.add(`level-${level}`);
   };
 
-  const onPointerDown = (e) => {
+  const onPointerMove = (ev) => {
+    if (!isDragging) return;
+
+    const delta = ev.clientY - startY;
+
+    if (delta <= -45) {
+      if (startLevel === 1) {
+        setLevel(2);
+      } else if (startLevel === 2) {
+        setLevel(3);
+      }
+      isDragging = false;
+    } else if (delta >= 45) {
+      if (startLevel === 3) {
+        setLevel(2);
+      } else if (startLevel === 2) {
+        setLevel(1);
+      }
+      isDragging = false;
+    }
+  };
+
+  const onPointerUp = () => {
+    isDragging = false;
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
+  };
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (!isMobileViewport()) return;
     if (sheet.classList.contains("hidden")) return;
 
     startY = e.clientY;
     startLevel = getCurrentLevel();
-    handle.setPointerCapture?.(e.pointerId);
+    isDragging = true;
 
-    const onMove = (ev) => {
-      const delta = ev.clientY - startY;
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  });
+}
 
-      if (delta <= -50) {
-        if (startLevel === 1) {
-          setLevel(2);
-        } else if (startLevel === 2) {
-          setLevel(3);
-        }
-      } else if (delta >= 50) {
-        if (startLevel === 3) {
-          setLevel(2);
-        } else if (startLevel === 2) {
-          setLevel(1);
-        }
-      }
-    };
+function resetView() {
+  isResetting = true;
+  activeItem = null;
 
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
+  if (window.location.hash) {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-  };
+  const sheet = document.getElementById("place-sheet");
+  if (sheet) {
+    sheet.classList.add("hidden");
+    sheet.classList.remove("level-1", "level-2", "level-3");
+  }
 
-  handle.addEventListener("pointerdown", onPointerDown);
+  setActiveMarkerState("");
+  clearMarkerHoverStates();
+
+  map.flyTo({
+    center: HOME_VIEW.center,
+    zoom: HOME_VIEW.zoom,
+    speed: 0.38,
+    curve: 1.7,
+    essential: true
+  });
+
+  window.setTimeout(() => {
+    isResetting = false;
+  }, 450);
 }
 
 /* =========================
@@ -372,6 +407,7 @@ function openMarkerFromHash() {
 map.on("load", async () => {
   listings = await fetchProducts();
   render();
+  
   document.getElementById("place-sheet")?.classList.add("hidden");
 
   openMarkerFromHash();
