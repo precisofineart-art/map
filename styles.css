@@ -20,7 +20,7 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 #header {
@@ -77,6 +77,8 @@ body {
   background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   transition: transform 0.25s ease, opacity 0.25s ease;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -152,19 +154,26 @@ body {
 }
 
 .sheet-media {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 16px;
 }
 
 .sheet-media img {
   width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: min(46vh, 420px);
   display: block;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   border-radius: 18px;
 }
 
 #sheet-image-main {
-  aspect-ratio: 1 / 0.82;
+  aspect-ratio: auto;
+  background: #f3f3f3;
 }
 
 .sheet-media-stack {
@@ -235,12 +244,14 @@ body {
   border-radius: 50%;
   border: 2px solid white;
   transform: scale(1);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
   cursor: pointer;
 }
 
-.custom-marker:hover {
+.custom-marker:hover,
+.custom-marker.hover {
   transform: scale(1.12) translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .custom-marker.active {
@@ -248,6 +259,7 @@ body {
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.35),
     0 4px 10px rgba(0, 0, 0, 0.2);
+  filter: saturate(1.05);
   z-index: 2;
 }
 
@@ -268,6 +280,7 @@ body {
     width: 100%;
     max-width: 100%;
     max-height: 70vh;
+    min-height: 0;
     border-radius: 20px 20px 0 0;
     transform: translateY(0);
   }
@@ -275,6 +288,10 @@ body {
   .place-sheet.hidden {
     transform: translateY(100%);
     opacity: 1;
+  }
+
+  .sheet-media img {
+    max-height: min(34vh, 320px);
   }
 }
 

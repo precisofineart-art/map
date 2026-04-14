@@ -10,9 +10,9 @@
 </head>
 
 <body>
-  <div id="map"></div>
+  <main id="map" aria-label="Product map"></main>
 
-  <aside id="place-sheet" class="place-sheet hidden" aria-label="Place details">
+  <aside id="place-sheet" class="place-sheet hidden" aria-label="Place details" aria-labelledby="sheet-title" aria-describedby="sheet-subtitle" aria-live="polite">
     <div class="place-sheet-handle"></div>
 
     <div class="place-sheet-header">
@@ -28,7 +28,7 @@
     </div>
 
     <div class="sheet-media">
-      <img id="sheet-image-main" src="" alt="">
+      <img id="sheet-image-main" src="" alt="" loading="lazy" decoding="async" draggable="false">
     </div>
     
     <div class="sheet-cta">
@@ -40,11 +40,11 @@
 
   </aside>
 
-  <div id="header">
-    <a href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer" class="logo-link">
-      <img src="logo.png" alt="Preciso" class="logo">
+  <header id="header">
+    <a href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer" class="logo-link" aria-label="Open Preciso store">
+      <img src="logo.png" alt="Preciso" class="logo" draggable="false">
     </a>
-  </div>
+  </header>
 
   <div id="carousel">
     <div id="listings" class="carousel-track">

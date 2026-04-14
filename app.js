@@ -26,13 +26,6 @@ let isResetting = false;
 /* =========================
    HELPERS
 ========================= */
-function escapeHtml(value = "") {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
 function getItemId(item) {
   return `${item.title}|${item.lat}|${item.lng}`;
 }
@@ -40,6 +33,48 @@ function getItemId(item) {
 function clearMarkers() {
   markers.forEach((marker) => marker.remove());
   markers = [];
+}
+
+function setActiveMarkerState(itemId = "") {
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.toggle("active", markerEl.dataset.itemId === itemId);
+  });
+}
+
+function clearMarkerHoverStates() {
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.remove("hover");
+  });
+}
+
+function getSheetOffset() {
+  const sheet = document.getElementById("place-sheet");
+  const header = document.getElementById("header");
+  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+
+  if (!sheet || !isMobileViewport) {
+    return [0, 0];
+  }
+
+  const sheetHeight = sheet.getBoundingClientRect().height || 0;
+  const headerHeight = header?.getBoundingClientRect().height || 0;
+  const baseOffset = Math.round(sheetHeight * 0.6);
+  const headerOffset = Math.round(headerHeight * 0.4);
+
+  return [0, baseOffset - headerOffset];
+}
+
+function getFlyToOptions(item, zoom) {
+  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+
+  return {
+    center: [item.lng, item.lat],
+    zoom: zoom ?? (isMobileViewport ? 13.8 : 15),
+    offset: getSheetOffset(),
+    speed: 0.55,
+    curve: 1.42,
+    essential: true
+  };
 }
 
 function showPlaceSheet(item) {
@@ -58,8 +93,12 @@ function showPlaceSheet(item) {
   if (subtitle) subtitle.textContent = item.moment || "Explore";
 
   if (image) {
-    image.src = item.image || "";
+    image.src = item.image || FALLBACK_IMAGE;
     image.alt = item.title || "";
+    image.onerror = () => {
+      image.onerror = null;
+      image.src = FALLBACK_IMAGE;
+    };
   }
 
   if (productLink) {
@@ -67,9 +106,7 @@ function showPlaceSheet(item) {
     productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
   }
 
-  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
-    markerEl.classList.toggle("active", markerEl.dataset.itemId === item.id);
-  });
+  setActiveMarkerState(item.id);
 
   sheet.classList.remove("hidden");
   closeButton?.focus({ preventScroll: true });
@@ -85,9 +122,8 @@ function resetView() {
 
   document.getElementById("place-sheet")?.classList.add("hidden");
 
-  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
-    markerEl.classList.remove("active");
-  });
+  setActiveMarkerState("");
+  clearMarkerHoverStates();
 
   map.flyTo({
     center: HOME_VIEW.center,
@@ -178,11 +214,15 @@ const map = new mapboxgl.Map({
 });
 
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+const mapContainer = map.getContainer();
 
 if (isTouchDevice) {
-  map.dragPan.disable();
+  map.dragPan.enable();
   map.touchZoomRotate.enable();
   map.touchZoomRotate.disableRotation();
+  if (mapContainer) {
+    mapContainer.style.touchAction = "none";
+  }
 } else {
   map.dragPan.enable();
   map.touchZoomRotate.enable();
@@ -203,14 +243,7 @@ function handleMarkerClick(item) {
   activeItem = item;
 
   showPlaceSheet(item);
-
-  map.flyTo({
-    center: [item.lng, item.lat],
-    zoom: 15,
-    speed: 0.4,
-    curve: 1.6,
-    essential: true
-  });
+  map.flyTo(getFlyToOptions(item));
 }
 
 /* =========================
@@ -228,15 +261,43 @@ function render() {
     el.setAttribute("tabindex", "0");
     el.setAttribute("aria-label", item.title || "Map marker");
 
+    el.addEventListener("pointerenter", () => {
+      if (activeItem?.id !== item.id) {
+        el.classList.add("hover");
+      }
+    });
+
+    el.addEventListener("pointerleave", () => {
+      el.classList.remove("hover");
+    });
+
+    el.addEventListener("pointerdown", () => {
+      if (activeItem?.id !== item.id) {
+        el.classList.add("hover");
+      }
+    });
+
+    el.addEventListener("pointerup", () => {
+      if (activeItem?.id !== item.id) {
+        el.classList.remove("hover");
+      }
+    });
+
+    el.addEventListener("pointercancel", () => {
+      el.classList.remove("hover");
+    });
+
     el.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      el.classList.remove("hover");
       handleMarkerClick(item);
     });
 
     el.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        el.classList.remove("hover");
         handleMarkerClick(item);
       }
     });
@@ -261,7 +322,11 @@ function openMarkerFromHash() {
   if (!item) return;
 
   window.setTimeout(() => {
-    handleMarkerClick(item);
+    if (!activeItem || activeItem.id !== item.id) {
+      activeItem = item;
+      showPlaceSheet(item);
+      map.flyTo(getFlyToOptions(item));
+    }
   }, 200);
 }
 
@@ -283,10 +348,24 @@ if (closeBtn) {
   closeBtn.addEventListener("click", resetView);
 }
 
+window.addEventListener("resize", () => {
+  const sheet = document.getElementById("place-sheet");
+  const isSheetOpen = sheet && !sheet.classList.contains("hidden");
+
+  if (isSheetOpen && activeItem) {
+    map.easeTo({
+      center: [activeItem.lng, activeItem.lat],
+      offset: getSheetOffset(),
+      duration: 250,
+      essential: true
+    });
+  }
+});
+
 map.on("click", (e) => {
   if (isResetting) return;
-  if (e.originalEvent.target.closest(".custom-marker")) return;
-  if (e.originalEvent.target.closest("#place-sheet")) return;
+  if (e.originalEvent?.target?.closest?.(".custom-marker")) return;
+  if (e.originalEvent?.target?.closest?.("#place-sheet")) return;
   resetView();
 });
 
