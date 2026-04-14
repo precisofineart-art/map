@@ -56,10 +56,12 @@ function getSheetOffset() {
     return [0, 0];
   }
 
-  const sheetHeight = sheet.getBoundingClientRect().height || 0;
+  const rect = sheet.getBoundingClientRect();
+  const visibleSheetHeight = Math.max(0, window.innerHeight - rect.top);
   const headerHeight = header?.getBoundingClientRect().height || 0;
-  const baseOffset = Math.round(sheetHeight * 0.6);
-  const headerOffset = Math.round(headerHeight * 0.4);
+
+  const baseOffset = Math.round(visibleSheetHeight * 0.62);
+  const headerOffset = Math.round(headerHeight * 0.35);
 
   return [0, baseOffset - headerOffset];
 }
@@ -75,6 +77,17 @@ function getFlyToOptions(item, zoom) {
     curve: 1.42,
     essential: true
   };
+}
+
+function keepActiveMarkerVisible() {
+  if (!activeItem) return;
+
+  map.easeTo({
+    center: [activeItem.lng, activeItem.lat],
+    offset: getSheetOffset(),
+    duration: 220,
+    essential: true
+  });
 }
 
 function showPlaceSheet(item) {
@@ -134,6 +147,12 @@ function initSheetDrag() {
   const setLevel = (level) => {
     sheet.classList.remove("level-1", "level-2", "level-3");
     sheet.classList.add(`level-${level}`);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        keepActiveMarkerVisible();
+      });
+    });
   };
 
   const onPointerMove = (ev) => {
@@ -426,12 +445,7 @@ window.addEventListener("resize", () => {
   const isSheetOpen = sheet && !sheet.classList.contains("hidden");
 
   if (isSheetOpen && activeItem) {
-    map.easeTo({
-      center: [activeItem.lng, activeItem.lat],
-      offset: getSheetOffset(),
-      duration: 250,
-      essential: true
-    });
+    keepActiveMarkerVisible();
   }
 });
 
