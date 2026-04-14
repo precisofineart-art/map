@@ -109,33 +109,69 @@ function showPlaceSheet(item) {
   setActiveMarkerState(item.id);
 
   sheet.classList.remove("hidden");
+  sheet.classList.remove("level-2", "level-3");
+  sheet.classList.add("level-1");
   closeButton?.focus({ preventScroll: true });
 }
 
-function resetView() {
-  isResetting = true;
-  activeItem = null;
+function initSheetDrag() {
+  const sheet = document.getElementById("place-sheet");
+  const handle = sheet?.querySelector(".place-sheet-handle");
+  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
 
-  if (window.location.hash) {
-    history.replaceState(null, "", window.location.pathname + window.location.search);
-  }
+  if (!sheet || !handle || !isMobileViewport) return;
 
-  document.getElementById("place-sheet")?.classList.add("hidden");
+  let startY = 0;
+  let startLevel = 1;
 
-  setActiveMarkerState("");
-  clearMarkerHoverStates();
+  const getCurrentLevel = () => {
+    if (sheet.classList.contains("level-3")) return 3;
+    if (sheet.classList.contains("level-2")) return 2;
+    return 1;
+  };
 
-  map.flyTo({
-    center: HOME_VIEW.center,
-    zoom: HOME_VIEW.zoom,
-    speed: 0.38,
-    curve: 1.7,
-    essential: true
-  });
+  const setLevel = (level) => {
+    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.add(`level-${level}`);
+  };
 
-  window.setTimeout(() => {
-    isResetting = false;
-  }, 450);
+  const onPointerDown = (e) => {
+    if (sheet.classList.contains("hidden")) return;
+
+    startY = e.clientY;
+    startLevel = getCurrentLevel();
+    handle.setPointerCapture?.(e.pointerId);
+
+    const onMove = (ev) => {
+      const delta = ev.clientY - startY;
+
+      if (delta <= -50) {
+        if (startLevel === 1) {
+          setLevel(2);
+        } else if (startLevel === 2) {
+          setLevel(3);
+        }
+      } else if (delta >= 50) {
+        if (startLevel === 3) {
+          setLevel(2);
+        } else if (startLevel === 2) {
+          setLevel(1);
+        }
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  handle.addEventListener("pointerdown", onPointerDown);
 }
 
 /* =========================
@@ -339,6 +375,7 @@ map.on("load", async () => {
   document.getElementById("place-sheet")?.classList.add("hidden");
 
   openMarkerFromHash();
+  initSheetDrag();
 });
 
 window.addEventListener("hashchange", openMarkerFromHash);
