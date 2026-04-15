@@ -577,19 +577,30 @@ body {
 
 .edge-indicator {
   position: fixed;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   border: 2px solid #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
   transform: translate(-50%, -50%);
   z-index: 999;
   cursor: pointer;
+  display: none;
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  background-color: #d9d9d9;
+  margin-top: 8px;
 }
 
 .edge-indicator:active {
   transform: translate(-50%, -50%) scale(0.96);
+}
+
+.edge-indicator[data-edge="top"] {
+  display: none !important;
 }

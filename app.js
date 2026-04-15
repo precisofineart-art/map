@@ -22,7 +22,7 @@ let listings = [];
 let markers = [];
 let activeItem = null;
 let isResetting = false;
-let edgeIndicatorEl = null;
+let edgeIndicatorEls = new Map();
 
 /* =========================
    HELPERS
@@ -48,46 +48,110 @@ function clearMarkerHoverStates() {
   });
 }
 
+function clearEdgeIndicators() {
+  edgeIndicatorEls.forEach((el) => el.remove());
+  edgeIndicatorEls.clear();
+}
+
 function updateEdgeIndicator() {
-  if (!activeItem || !map) return;
-
-  const canvas = map.getCanvas();
-  const rect = canvas.getBoundingClientRect();
-
-  const point = map.project([activeItem.lng, activeItem.lat]);
-
-  const padding = 40;
-
-  const isOffscreen = (
-    point.x < padding ||
-    point.x > rect.width - padding ||
-    point.y < padding ||
-    point.y > rect.height - padding
-  );
-
-  if (!isOffscreen) {
-    if (edgeIndicatorEl) edgeIndicatorEl.style.display = "none";
+  if (!map || !listings.length) {
+    clearEdgeIndicators();
     return;
   }
 
-  if (!edgeIndicatorEl) {
-    edgeIndicatorEl = document.createElement("div");
-    edgeIndicatorEl.className = "edge-indicator";
-    document.body.appendChild(edgeIndicatorEl);
-
-    edgeIndicatorEl.addEventListener("click", () => {
-      keepActiveMarkerVisible();
-    });
+  const mapEl = document.getElementById("map");
+  const sheet = document.getElementById("place-sheet");
+  const header = document.getElementById("header");
+  if (!mapEl) {
+    clearEdgeIndicators();
+    return;
   }
 
-  edgeIndicatorEl.style.display = "block";
-  edgeIndicatorEl.style.backgroundImage = `url(${activeItem.image})`;
+  const mapRect = mapEl.getBoundingClientRect();
+  const sheetRect = sheet?.getBoundingClientRect();
+  const headerRect = header?.getBoundingClientRect();
 
-  let x = Math.min(rect.width - padding, Math.max(padding, point.x));
-  let y = Math.min(rect.height - padding, Math.max(padding, point.y));
+  const leftSafe = 18;
+  const rightSafe = Math.max(leftSafe, mapRect.width - 18);
+  const topSafe = Math.max(18, Math.round((headerRect?.bottom || 0) - mapRect.top + 12));
+  const bottomSafe = sheet && !sheet.classList.contains("hidden")
+    ? Math.round(sheetRect.top - mapRect.top - 18)
+    : mapRect.height - 18;
 
-  edgeIndicatorEl.style.left = `${x}px`;
-  edgeIndicatorEl.style.top = `${y}px`;
+  const nextVisibleIds = new Set();
+
+  listings.forEach((item) => {
+    const point = map.project([item.lng, item.lat]);
+    const isOffscreen = (
+      point.x < leftSafe ||
+      point.x > rightSafe ||
+      point.y < topSafe ||
+      point.y > bottomSafe
+    );
+
+    if (!isOffscreen) {
+      const existingEl = edgeIndicatorEls.get(item.id);
+      if (existingEl) {
+        existingEl.style.display = "none";
+        existingEl.classList.remove("active");
+        delete existingEl.dataset.edge;
+      }
+      return;
+    }
+
+    let indicatorEl = edgeIndicatorEls.get(item.id);
+    if (!indicatorEl) {
+      indicatorEl = document.createElement("button");
+      indicatorEl.type = "button";
+      indicatorEl.className = "edge-indicator";
+      indicatorEl.setAttribute("aria-label", `Show marker for ${item.title || "location"}`);
+      indicatorEl.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMarkerClick(item);
+      });
+      document.body.appendChild(indicatorEl);
+      edgeIndicatorEls.set(item.id, indicatorEl);
+    }
+
+    const clampY = Math.min(bottomSafe, Math.max(topSafe, point.y));
+    const distLeft = Math.abs(point.x - leftSafe);
+    const distRight = Math.abs(point.x - rightSafe);
+    const distBottom = Math.abs(point.y - bottomSafe);
+
+    let x;
+    let y;
+
+    if (point.y > bottomSafe || (distBottom <= distLeft && distBottom <= distRight)) {
+      x = Math.min(rightSafe, Math.max(leftSafe, point.x));
+      y = bottomSafe;
+      indicatorEl.dataset.edge = "bottom";
+    } else if (point.x < leftSafe || distLeft <= distRight) {
+      x = leftSafe;
+      y = clampY;
+      indicatorEl.dataset.edge = "left";
+    } else {
+      x = rightSafe;
+      y = clampY;
+      indicatorEl.dataset.edge = "right";
+    }
+
+    indicatorEl.style.display = "block";
+    indicatorEl.style.left = `${mapRect.left + x}px`;
+    indicatorEl.style.top = `${mapRect.top + y}px`;
+    indicatorEl.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
+    indicatorEl.classList.toggle("active", activeItem?.id === item.id);
+
+    nextVisibleIds.add(item.id);
+  });
+
+  edgeIndicatorEls.forEach((el, id) => {
+    if (!nextVisibleIds.has(id)) {
+      el.style.display = "none";
+      el.classList.remove("active");
+      delete el.dataset.edge;
+    }
+  });
 }
 
 function getSheetOffset() {
@@ -357,6 +421,7 @@ function resetView() {
 
   setActiveMarkerState("");
   clearMarkerHoverStates();
+  clearEdgeIndicators();
 
   map.flyTo({
     center: HOME_VIEW.center,
@@ -542,6 +607,7 @@ function render() {
 
     markers.push(marker);
   });
+  updateEdgeIndicator();
 }
 
 /* =========================
@@ -560,6 +626,7 @@ function openMarkerFromHash() {
       activeItem = item;
       showPlaceSheet(item);
       map.flyTo(getFlyToOptions(item));
+      setTimeout(updateEdgeIndicator, 300);
     }
   }, 200);
 }
@@ -577,6 +644,7 @@ map.on("load", async () => {
   initSheetDrag();
   map.on("move", updateEdgeIndicator);
   map.on("zoom", updateEdgeIndicator);
+  map.on("moveend", updateEdgeIndicator);
 });
 
 window.addEventListener("hashchange", openMarkerFromHash);
