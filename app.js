@@ -22,6 +22,7 @@ let listings = [];
 let markers = [];
 let activeItem = null;
 let isResetting = false;
+let edgeIndicatorEl = null;
 
 /* =========================
    HELPERS
@@ -45,6 +46,48 @@ function clearMarkerHoverStates() {
   document.querySelectorAll(".custom-marker").forEach((markerEl) => {
     markerEl.classList.remove("hover");
   });
+}
+
+function updateEdgeIndicator() {
+  if (!activeItem || !map) return;
+
+  const canvas = map.getCanvas();
+  const rect = canvas.getBoundingClientRect();
+
+  const point = map.project([activeItem.lng, activeItem.lat]);
+
+  const padding = 40;
+
+  const isOffscreen = (
+    point.x < padding ||
+    point.x > rect.width - padding ||
+    point.y < padding ||
+    point.y > rect.height - padding
+  );
+
+  if (!isOffscreen) {
+    if (edgeIndicatorEl) edgeIndicatorEl.style.display = "none";
+    return;
+  }
+
+  if (!edgeIndicatorEl) {
+    edgeIndicatorEl = document.createElement("div");
+    edgeIndicatorEl.className = "edge-indicator";
+    document.body.appendChild(edgeIndicatorEl);
+
+    edgeIndicatorEl.addEventListener("click", () => {
+      keepActiveMarkerVisible();
+    });
+  }
+
+  edgeIndicatorEl.style.display = "block";
+  edgeIndicatorEl.style.backgroundImage = `url(${activeItem.image})`;
+
+  let x = Math.min(rect.width - padding, Math.max(padding, point.x));
+  let y = Math.min(rect.height - padding, Math.max(padding, point.y));
+
+  edgeIndicatorEl.style.left = `${x}px`;
+  edgeIndicatorEl.style.top = `${y}px`;
 }
 
 function getSheetOffset() {
@@ -110,6 +153,7 @@ function keepActiveMarkerVisible() {
     duration: 260,
     essential: true
   });
+  setTimeout(updateEdgeIndicator, 300);
 }
 
 function showPlaceSheet(item) {
@@ -433,6 +477,7 @@ function handleMarkerClick(item) {
 
   showPlaceSheet(item);
   map.flyTo(getFlyToOptions(item));
+  setTimeout(updateEdgeIndicator, 300);
 }
 
 /* =========================
@@ -530,6 +575,8 @@ map.on("load", async () => {
 
   openMarkerFromHash();
   initSheetDrag();
+  map.on("move", updateEdgeIndicator);
+  map.on("zoom", updateEdgeIndicator);
 });
 
 window.addEventListener("hashchange", openMarkerFromHash);
