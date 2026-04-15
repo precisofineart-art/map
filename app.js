@@ -161,6 +161,7 @@ function initSheetDrag() {
   let startY = 0;
   let startLevel = 1;
   let isDragging = false;
+  let hasSnapped = false;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
 
@@ -181,25 +182,32 @@ function initSheetDrag() {
   };
 
   const onPointerMove = (ev) => {
-    if (!isDragging) return;
+    if (!isDragging || hasSnapped) return;
 
     const delta = ev.clientY - startY;
+    const threshold = 28;
 
-    if (delta <= -45) {
+    if (delta <= -threshold) {
       if (startLevel === 1) {
         setLevel(2);
       }
-      isDragging = false;
-    } else if (delta >= 45) {
+      hasSnapped = true;
+    } else if (delta >= threshold) {
       if (startLevel === 2) {
         setLevel(1);
       }
-      isDragging = false;
+      hasSnapped = true;
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (ev) => {
     isDragging = false;
+    hasSnapped = false;
+
+    if (ev?.pointerId != null) {
+      handle.releasePointerCapture?.(ev.pointerId);
+    }
+
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
@@ -212,8 +220,11 @@ function initSheetDrag() {
     startY = e.clientY;
     startLevel = getCurrentLevel();
     isDragging = true;
+    hasSnapped = false;
 
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    handle.setPointerCapture?.(e.pointerId);
+
+    window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
   });
