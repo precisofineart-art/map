@@ -60,18 +60,37 @@ function getSheetOffset() {
   const visibleSheetHeight = Math.max(0, window.innerHeight - rect.top);
   const headerHeight = header?.getBoundingClientRect().height || 0;
 
-  const baseOffset = Math.round(visibleSheetHeight * 0.62);
+  let sheetMultiplier = 0.62;
+
+  if (sheet.classList.contains("level-3")) {
+    sheetMultiplier = 0.9;
+  } else if (sheet.classList.contains("level-2")) {
+    sheetMultiplier = 0.76;
+  } else if (sheet.classList.contains("level-1")) {
+    sheetMultiplier = 0.5;
+  }
+
+  const baseOffset = Math.round(visibleSheetHeight * sheetMultiplier);
   const headerOffset = Math.round(headerHeight * 0.35);
 
   return [0, baseOffset - headerOffset];
 }
 
 function getFlyToOptions(item, zoom) {
+  const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+
+  let mobileZoom = 13.8;
+
+  if (sheet?.classList.contains("level-3")) {
+    mobileZoom = 13.2;
+  } else if (sheet?.classList.contains("level-2")) {
+    mobileZoom = 13.5;
+  }
 
   return {
     center: [item.lng, item.lat],
-    zoom: zoom ?? (isMobileViewport ? 13.8 : 15),
+    zoom: zoom ?? (isMobileViewport ? mobileZoom : 15),
     offset: getSheetOffset(),
     speed: 0.55,
     curve: 1.42,
@@ -82,8 +101,23 @@ function getFlyToOptions(item, zoom) {
 function keepActiveMarkerVisible() {
   if (!activeItem) return;
 
+  const sheet = document.getElementById("place-sheet");
+  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+
+  let zoom;
+  if (isMobileViewport) {
+    if (sheet?.classList.contains("level-3")) {
+      zoom = 13.2;
+    } else if (sheet?.classList.contains("level-2")) {
+      zoom = 13.5;
+    } else {
+      zoom = 13.8;
+    }
+  }
+
   map.easeTo({
     center: [activeItem.lng, activeItem.lat],
+    zoom,
     offset: getSheetOffset(),
     duration: 220,
     essential: true
