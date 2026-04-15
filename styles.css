@@ -219,13 +219,14 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0 16px;
+  min-height: 220px;
 }
 
 .sheet-media img {
   width: 100%;
   max-width: 100%;
   height: auto;
-  max-height: min(46vh, 420px);
+  max-height: min(52vh, 520px);
   display: block;
   object-fit: contain;
   object-position: center;
@@ -380,6 +381,12 @@ body {
     transform: translateY(24%);
   }
 
+  .place-sheet.level-2 .sheet-media {
+    min-height: 320px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
 
   .place-sheet.level-1 .sheet-media,
   .place-sheet.level-1 .sheet-cta {
@@ -404,7 +411,7 @@ body {
   }
 
   .sheet-media img {
-    max-height: min(30vh, 280px);
+    max-height: min(42vh, 380px);
   }
 }
 
