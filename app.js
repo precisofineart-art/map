@@ -162,6 +162,8 @@ function initSheetDrag() {
   let startLevel = 1;
   let isDragging = false;
   let hasSnapped = false;
+  let currentY = 0;
+  let rafId = 0;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
 
@@ -181,11 +183,12 @@ function initSheetDrag() {
     });
   };
 
-  const onPointerMove = (ev) => {
+  const evaluateDrag = () => {
+    rafId = 0;
     if (!isDragging || hasSnapped) return;
 
-    const delta = ev.clientY - startY;
-    const threshold = 28;
+    const delta = currentY - startY;
+    const threshold = 18;
 
     if (delta <= -threshold) {
       if (startLevel === 1) {
@@ -200,9 +203,25 @@ function initSheetDrag() {
     }
   };
 
+  const onPointerMove = (ev) => {
+    if (!isDragging || hasSnapped) return;
+
+    currentY = ev.clientY;
+    ev.preventDefault();
+
+    if (!rafId) {
+      rafId = window.requestAnimationFrame(evaluateDrag);
+    }
+  };
+
   const onPointerUp = (ev) => {
     isDragging = false;
     hasSnapped = false;
+
+    if (rafId) {
+      window.cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
 
     if (ev?.pointerId != null) {
       handle.releasePointerCapture?.(ev.pointerId);
@@ -218,13 +237,15 @@ function initSheetDrag() {
     if (sheet.classList.contains("hidden")) return;
 
     startY = e.clientY;
+    currentY = e.clientY;
     startLevel = getCurrentLevel();
     isDragging = true;
     hasSnapped = false;
 
+    e.preventDefault();
     handle.setPointerCapture?.(e.pointerId);
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
   });
