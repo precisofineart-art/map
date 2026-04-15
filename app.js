@@ -156,23 +156,38 @@ function showPlaceSheet(item) {
 function initSheetDrag() {
   const sheet = document.getElementById("place-sheet");
   const handle = sheet?.querySelector(".place-sheet-handle");
+  const header = sheet?.querySelector(".place-sheet-header");
   if (!sheet || !handle) return;
 
   let startY = 0;
-  let startLevel = 1;
+  let startTranslate = 0;
+  let currentTranslate = 0;
   let isDragging = false;
-  let hasSnapped = false;
-  let currentY = 0;
-  let rafId = 0;
+  let activePointerId = null;
+  let lastY = 0;
+  let lastTime = 0;
+  let velocityY = 0;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
+  const LEVEL_1 = 68;
+  const LEVEL_2 = 24;
 
   const getCurrentLevel = () => {
     if (sheet.classList.contains("level-2")) return 2;
     return 1;
   };
 
+  const getLevelTranslate = (level) => {
+    return level === 2 ? LEVEL_2 : LEVEL_1;
+  };
+
+  const clampTranslate = (value) => {
+    return Math.min(LEVEL_1, Math.max(LEVEL_2, value));
+  };
+
   const setLevel = (level) => {
+    sheet.style.transition = "";
+    sheet.style.transform = "";
     sheet.classList.remove("level-1", "level-2");
     sheet.classList.add(`level-${level}`);
 
@@ -183,72 +198,103 @@ function initSheetDrag() {
     });
   };
 
-  const evaluateDrag = () => {
-    rafId = 0;
-    if (!isDragging || hasSnapped) return;
-
-    const delta = currentY - startY;
-    const threshold = 18;
-
-    if (delta <= -threshold) {
-      if (startLevel === 1) {
-        setLevel(2);
-      }
-      hasSnapped = true;
-    } else if (delta >= threshold) {
-      if (startLevel === 2) {
-        setLevel(1);
-      }
-      hasSnapped = true;
-    }
-  };
-
   const onPointerMove = (ev) => {
-    if (!isDragging || hasSnapped) return;
+    if (!isDragging) return;
+    if (activePointerId !== null && ev.pointerId !== activePointerId) return;
 
-    currentY = ev.clientY;
-    ev.preventDefault();
+    const now = performance.now();
+    const deltaY = ev.clientY - startY;
+    const viewportHeight = Math.max(window.innerHeight, 1);
+    const deltaPercent = (deltaY / viewportHeight) * 100;
 
-    if (!rafId) {
-      rafId = window.requestAnimationFrame(evaluateDrag);
+    currentTranslate = clampTranslate(startTranslate + deltaPercent);
+    sheet.style.transform = `translateY(${currentTranslate}%)`;
+
+    const dt = now - lastTime;
+    if (dt > 0) {
+      velocityY = (ev.clientY - lastY) / dt;
     }
+
+    lastY = ev.clientY;
+    lastTime = now;
+    ev.preventDefault();
   };
 
   const onPointerUp = (ev) => {
+    if (activePointerId !== null && ev?.pointerId != null && ev.pointerId !== activePointerId) {
+      return;
+    }
+
+    if (activePointerId !== null) {
+      handle.releasePointerCapture?.(activePointerId);
+      header?.releasePointerCapture?.(activePointerId);
+      sheet.releasePointerCapture?.(activePointerId);
+    }
+
+    const midpoint = (LEVEL_1 + LEVEL_2) / 2;
+    const flickUp = velocityY < -0.35;
+    const flickDown = velocityY > 0.35;
+
+    let targetLevel;
+    if (flickUp) {
+      targetLevel = 2;
+    } else if (flickDown) {
+      targetLevel = 1;
+    } else {
+      targetLevel = currentTranslate <= midpoint ? 2 : 1;
+    }
+
     isDragging = false;
-    hasSnapped = false;
-
-    if (rafId) {
-      window.cancelAnimationFrame(rafId);
-      rafId = 0;
-    }
-
-    if (ev?.pointerId != null) {
-      handle.releasePointerCapture?.(ev.pointerId);
-    }
+    activePointerId = null;
+    velocityY = 0;
+    sheet.style.transition = "";
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
+
+    setLevel(targetLevel);
   };
 
-  handle.addEventListener("pointerdown", (e) => {
+  const onPointerDown = (e) => {
     if (!isMobileViewport()) return;
     if (sheet.classList.contains("hidden")) return;
+    if (e.target.closest("button, a")) return;
+
+    const isLevel1 = sheet.classList.contains("level-1");
+    if (!isLevel1) {
+      const rect = sheet.getBoundingClientRect();
+      const dragZoneHeight = 220;
+      if (e.clientY > rect.top + dragZoneHeight) return;
+    }
 
     startY = e.clientY;
-    currentY = e.clientY;
-    startLevel = getCurrentLevel();
+    startTranslate = getLevelTranslate(getCurrentLevel());
+    currentTranslate = startTranslate;
     isDragging = true;
-    hasSnapped = false;
+    activePointerId = e.pointerId;
+    lastY = e.clientY;
+    lastTime = performance.now();
+    velocityY = 0;
+
+    sheet.style.transition = "none";
 
     e.preventDefault();
-    handle.setPointerCapture?.(e.pointerId);
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
 
     window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
-  });
+  };
+
+  handle.addEventListener("pointerdown", onPointerDown);
+  header?.addEventListener("pointerdown", onPointerDown);
+  sheet.addEventListener("pointerdown", onPointerDown);
 }
 
 function resetView() {
@@ -479,7 +525,7 @@ function openMarkerFromHash() {
 map.on("load", async () => {
   listings = await fetchProducts();
   render();
-  
+
   document.getElementById("place-sheet")?.classList.add("hidden");
 
   openMarkerFromHash();
