@@ -63,7 +63,7 @@ function getSheetOffset() {
   let sheetMultiplier = 0.5;
 
   if (sheet.classList.contains("level-2")) {
-    sheetMultiplier = 0.78;
+    sheetMultiplier = 0.98;
   }
 
   const baseOffset = Math.round(visibleSheetHeight * sheetMultiplier);
