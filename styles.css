@@ -380,9 +380,6 @@ body {
     transform: translateY(24%);
   }
 
-  .place-sheet.level-3 {
-    transform: translateY(0%);
-  }
 
   .place-sheet.level-1 .sheet-media,
   .place-sheet.level-1 .sheet-cta {
@@ -393,13 +390,11 @@ body {
     padding-bottom: 12px;
   }
 
-  .place-sheet.level-2 .sheet-media,
-  .place-sheet.level-3 .sheet-media {
+  .place-sheet.level-2 .sheet-media {
     display: flex;
   }
 
-  .place-sheet.level-2 .sheet-cta,
-  .place-sheet.level-3 .sheet-cta {
+  .place-sheet.level-2 .sheet-cta {
     display: block;
   }
 

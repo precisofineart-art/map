@@ -60,14 +60,10 @@ function getSheetOffset() {
   const visibleSheetHeight = Math.max(0, window.innerHeight - rect.top);
   const headerHeight = header?.getBoundingClientRect().height || 0;
 
-  let sheetMultiplier = 0.62;
+  let sheetMultiplier = 0.5;
 
-  if (sheet.classList.contains("level-3")) {
-    sheetMultiplier = 0.9;
-  } else if (sheet.classList.contains("level-2")) {
-    sheetMultiplier = 0.76;
-  } else if (sheet.classList.contains("level-1")) {
-    sheetMultiplier = 0.5;
+  if (sheet.classList.contains("level-2")) {
+    sheetMultiplier = 0.78;
   }
 
   const baseOffset = Math.round(visibleSheetHeight * sheetMultiplier);
@@ -82,9 +78,7 @@ function getFlyToOptions(item, zoom) {
 
   let mobileZoom = 13.8;
 
-  if (sheet?.classList.contains("level-3")) {
-    mobileZoom = 13.2;
-  } else if (sheet?.classList.contains("level-2")) {
+  if (sheet?.classList.contains("level-2")) {
     mobileZoom = 13.5;
   }
 
@@ -106,9 +100,7 @@ function keepActiveMarkerVisible() {
 
   let zoom;
   if (isMobileViewport) {
-    if (sheet?.classList.contains("level-3")) {
-      zoom = 13.2;
-    } else if (sheet?.classList.contains("level-2")) {
+    if (sheet?.classList.contains("level-2")) {
       zoom = 13.5;
     } else {
       zoom = 13.8;
@@ -156,7 +148,7 @@ function showPlaceSheet(item) {
   setActiveMarkerState(item.id);
 
   sheet.classList.remove("hidden");
-  sheet.classList.remove("level-2", "level-3");
+  sheet.classList.remove("level-2");
   sheet.classList.add("level-1");
   closeButton?.focus({ preventScroll: true });
 }
@@ -173,13 +165,12 @@ function initSheetDrag() {
   const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
 
   const getCurrentLevel = () => {
-    if (sheet.classList.contains("level-3")) return 3;
     if (sheet.classList.contains("level-2")) return 2;
     return 1;
   };
 
   const setLevel = (level) => {
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.remove("level-1", "level-2");
     sheet.classList.add(`level-${level}`);
 
     requestAnimationFrame(() => {
@@ -197,14 +188,10 @@ function initSheetDrag() {
     if (delta <= -45) {
       if (startLevel === 1) {
         setLevel(2);
-      } else if (startLevel === 2) {
-        setLevel(3);
       }
       isDragging = false;
     } else if (delta >= 45) {
-      if (startLevel === 3) {
-        setLevel(2);
-      } else if (startLevel === 2) {
+      if (startLevel === 2) {
         setLevel(1);
       }
       isDragging = false;
@@ -243,7 +230,7 @@ function resetView() {
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.remove("level-1", "level-2");
   }
 
   setActiveMarkerState("");
