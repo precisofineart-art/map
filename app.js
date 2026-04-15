@@ -59,15 +59,10 @@ function getSheetOffset() {
   const rect = sheet.getBoundingClientRect();
   const visibleSheetHeight = Math.max(0, window.innerHeight - rect.top);
   const headerHeight = header?.getBoundingClientRect().height || 0;
+  const isLevel2 = sheet.classList.contains("level-2");
 
-  let sheetMultiplier = 0.5;
-
-  if (sheet.classList.contains("level-2")) {
-    sheetMultiplier = 0.98;
-  }
-
-  const baseOffset = Math.round(visibleSheetHeight * sheetMultiplier);
-  const headerOffset = Math.round(headerHeight * 0.35);
+  const baseOffset = Math.round(visibleSheetHeight * (isLevel2 ? 1.08 : 0.56));
+  const headerOffset = Math.round(headerHeight * 0.2);
 
   return [0, baseOffset - headerOffset];
 }
@@ -79,7 +74,7 @@ function getFlyToOptions(item, zoom) {
   let mobileZoom = 13.8;
 
   if (sheet?.classList.contains("level-2")) {
-    mobileZoom = 13.5;
+    mobileZoom = 12.8;
   }
 
   return {
@@ -100,18 +95,14 @@ function keepActiveMarkerVisible() {
 
   let zoom;
   if (isMobileViewport) {
-    if (sheet?.classList.contains("level-2")) {
-      zoom = 13.5;
-    } else {
-      zoom = 13.8;
-    }
+    zoom = sheet?.classList.contains("level-2") ? 12.8 : 13.8;
   }
 
   map.easeTo({
     center: [activeItem.lng, activeItem.lat],
     zoom,
     offset: getSheetOffset(),
-    duration: 220,
+    duration: 260,
     essential: true
   });
 }
@@ -196,6 +187,10 @@ function initSheetDrag() {
         keepActiveMarkerVisible();
       });
     });
+
+    window.setTimeout(() => {
+      keepActiveMarkerVisible();
+    }, 180);
   };
 
   const onPointerMove = (ev) => {
