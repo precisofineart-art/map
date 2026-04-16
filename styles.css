@@ -1,3 +1,7 @@
+body.marker-active .edge-indicator {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -311,6 +315,7 @@ body {
   border: 2px solid white;
   transform: scale(1);
   transform-origin: center center;
+  will-change: transform;
   transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, border-width 0.25s ease;
   cursor: pointer;
 }
@@ -322,13 +327,29 @@ body {
 }
 
 .custom-marker.active {
-  transform: scale(1.62) translateY(-12px);
+  transform: scale(1.38);
   border-width: 3px;
   box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.38),
-    0 6px 14px rgba(0, 0, 0, 0.22);
-  filter: saturate(1.08);
+    0 12px 26px rgba(0, 0, 0, 0.34),
+    0 4px 10px rgba(0, 0, 0, 0.2);
+  filter: saturate(1.06);
   z-index: 8;
+  animation: markerPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(1.38);
+  }
+  40% {
+    transform: scale(1.46);
+  }
+  60% {
+    transform: scale(1.46);
+  }
+  100% {
+    transform: scale(1.38);
+  }
 }
 
 @media (max-width: 979px) {
@@ -388,7 +409,6 @@ body {
     padding-left: 12px;
     padding-right: 12px;
   }
-
 
   .place-sheet.level-1 .sheet-media,
   .place-sheet.level-1 .sheet-cta {
@@ -604,5 +624,9 @@ body {
 }
 
 .edge-indicator[data-edge="top"] {
+  display: none !important;
+}
+
+body.marker-active .edge-indicator {
   display: none !important;
 }

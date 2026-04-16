@@ -7,6 +7,7 @@ const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 const FALLBACK_IMAGE = "https://picsum.photos/800";
 console.log("NEW APP.JS LOADED");
+
 /* =========================
    HOME VIEW
 ========================= */
@@ -53,23 +54,33 @@ function clearEdgeIndicators() {
   edgeIndicatorEls.clear();
 }
 
+function hideEdgeIndicators() {
+  edgeIndicatorEls.forEach((el) => {
+    el.style.display = "none";
+    el.classList.remove("active");
+    delete el.dataset.edge;
+  });
+}
+function syncMarkerActiveClass() {
+  const sheet = document.getElementById("place-sheet");
+  const sheetIsOpen = sheet && !sheet.classList.contains("hidden");
+  document.body.classList.toggle("marker-active", Boolean(activeItem) || Boolean(sheetIsOpen));
+}
 function updateEdgeIndicator() {
   if (!map || !listings.length) {
     clearEdgeIndicators();
     return;
   }
 
-  if (activeItem) {
-    edgeIndicatorEls.forEach((el) => {
-      el.style.display = "none";
-      el.classList.remove("active");
-      delete el.dataset.edge;
-    });
+  const sheet = document.getElementById("place-sheet");
+  const sheetIsOpen = sheet && !sheet.classList.contains("hidden");
+
+  if (activeItem || sheetIsOpen || document.body.classList.contains("marker-active")) {
+    hideEdgeIndicators();
     return;
   }
 
   const mapEl = document.getElementById("map");
-  const sheet = document.getElementById("place-sheet");
   const header = document.getElementById("header");
   if (!mapEl) {
     clearEdgeIndicators();
@@ -77,15 +88,12 @@ function updateEdgeIndicator() {
   }
 
   const mapRect = mapEl.getBoundingClientRect();
-  const sheetRect = sheet?.getBoundingClientRect();
   const headerRect = header?.getBoundingClientRect();
 
   const leftSafe = 18;
   const rightSafe = Math.max(leftSafe, mapRect.width - 18);
   const topSafe = Math.max(18, Math.round((headerRect?.bottom || 0) - mapRect.top + 12));
-  const bottomSafe = sheet && !sheet.classList.contains("hidden")
-    ? Math.round(sheetRect.top - mapRect.top - 18)
-    : mapRect.height - 18;
+  const bottomSafe = mapRect.height - 18;
 
   const nextVisibleIds = new Set();
 
@@ -149,7 +157,7 @@ function updateEdgeIndicator() {
     indicatorEl.style.left = `${mapRect.left + x}px`;
     indicatorEl.style.top = `${mapRect.top + y}px`;
     indicatorEl.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
-    indicatorEl.classList.toggle("active", activeItem?.id === item.id);
+    indicatorEl.classList.remove("active");
 
     nextVisibleIds.add(item.id);
   });
@@ -168,8 +176,24 @@ function getSheetOffset() {
   const header = document.getElementById("header");
   const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
 
-  if (!sheet || !isMobileViewport) {
+  if (!sheet) {
     return [0, 0];
+  }
+
+  const sheetIsHidden = sheet.classList.contains("hidden");
+  if (sheetIsHidden) {
+    return [0, 0];
+  }
+
+  if (!isMobileViewport) {
+    const rect = sheet.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const visibleSheetWidth = Math.max(0, rect.right - rect.left);
+    const freeMapWidth = Math.max(0, viewportWidth - visibleSheetWidth);
+    const targetX = visibleSheetWidth + freeMapWidth * 0.42;
+    const viewportCenterX = viewportWidth / 2;
+    const offsetX = Math.round(targetX - viewportCenterX);
+    return [offsetX, 0];
   }
 
   const sheetRect = sheet.getBoundingClientRect();
@@ -226,6 +250,7 @@ function keepActiveMarkerVisible() {
     duration: 260,
     essential: true
   });
+
   setTimeout(updateEdgeIndicator, 300);
 }
 
@@ -259,6 +284,8 @@ function showPlaceSheet(item) {
   }
 
   setActiveMarkerState(item.id);
+  hideEdgeIndicators();
+  document.body.classList.add("marker-active");
 
   sheet.classList.remove("hidden");
   sheet.classList.remove("level-2");
@@ -430,6 +457,8 @@ function resetView() {
 
   setActiveMarkerState("");
   clearMarkerHoverStates();
+  document.body.classList.remove("marker-active");
+  hideEdgeIndicators();
   clearEdgeIndicators();
 
   map.flyTo({
@@ -548,6 +577,8 @@ function handleMarkerClick(item) {
 
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
+  hideEdgeIndicators();
+  document.body.classList.add("marker-active");
 
   showPlaceSheet(item);
   map.flyTo(getFlyToOptions(item));
@@ -616,6 +647,7 @@ function render() {
 
     markers.push(marker);
   });
+
   updateEdgeIndicator();
 }
 
@@ -633,6 +665,8 @@ function openMarkerFromHash() {
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
       activeItem = item;
+      hideEdgeIndicators();
+      document.body.classList.add("marker-active");
       showPlaceSheet(item);
       map.flyTo(getFlyToOptions(item));
       setTimeout(updateEdgeIndicator, 300);
