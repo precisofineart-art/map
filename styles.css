@@ -577,8 +577,8 @@ body {
 
 .edge-indicator {
   position: fixed;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
