@@ -6,7 +6,7 @@ mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 const FALLBACK_IMAGE = "https://picsum.photos/800";
-
+console.log("NEW APP.JS LOADED");
 /* =========================
    HOME VIEW
 ========================= */
@@ -56,6 +56,15 @@ function clearEdgeIndicators() {
 function updateEdgeIndicator() {
   if (!map || !listings.length) {
     clearEdgeIndicators();
+    return;
+  }
+
+  if (activeItem) {
+    edgeIndicatorEls.forEach((el) => {
+      el.style.display = "none";
+      el.classList.remove("active");
+      delete el.dataset.edge;
+    });
     return;
   }
 
