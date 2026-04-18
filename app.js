@@ -24,6 +24,10 @@ const REGION_VIEWS = {
     bounds: [[-168, 7], [-52, 72]],
     padding: { top: 120, right: 80, bottom: 80, left: 80 }
   },
+  caribbean: {
+    bounds: [[-89, 8], [-58, 29]],
+    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+  },
   europe: {
     bounds: [[-12, 35], [35, 72]],
     padding: { top: 120, right: 80, bottom: 80, left: 80 }
