@@ -51,6 +51,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   padding: 6px 12px;
   border-radius: 999px;
   background: rgb(12, 52, 122);
@@ -83,6 +84,7 @@ body {
 .region-pills {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 8px;
   max-width: min(92vw, 680px);
@@ -271,17 +273,16 @@ body {
 .sheet-media img {
   width: 100%;
   max-width: 100%;
-  height: auto;
-  max-height: min(52vh, 520px);
+  height: 400px;
   display: block;
   object-fit: contain;
   object-position: center;
-  border-radius: 18px;
+  border-radius: 0px;
 }
 
 #sheet-image-main {
   aspect-ratio: auto;
-  background: #f3f3f3;
+  background: #ffffff;
 }
 
 .sheet-media-stack {
@@ -416,7 +417,7 @@ body {
   }
 }
 
-@media (max-width: 979px) {
+@media (max-width: 600px) {
   .gm-topbar,
   .gm-fabs {
     display: none;
@@ -427,6 +428,8 @@ body {
   }
 
   .header-stack {
+    flex-direction: column;
+    align-items: center;
     gap: 6px;
   }
 
@@ -439,6 +442,8 @@ body {
   }
 
   .region-pills {
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 6px;
     max-width: calc(100vw - 24px);
   }
@@ -505,7 +510,7 @@ body {
   }
 
   .sheet-media img {
-    max-height: min(34vh, 300px);
+    height: 250px;
   }
 }
 

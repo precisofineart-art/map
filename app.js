@@ -35,10 +35,6 @@ const REGION_VIEWS = {
   asia: {
     bounds: [[25, -5], [150, 62]],
     padding: { top: 120, right: 80, bottom: 80, left: 80 }
-  },
-  oceania: {
-    bounds: [[110, -50], [180, 5]],
-    padding: { top: 120, right: 80, bottom: 80, left: 80 }
   }
 };
 
@@ -74,7 +70,7 @@ function setActiveMarkerState(itemId = "") {
     markerInner.classList.toggle("active", isActive);
 
     if (!isActive) {
-      markerInner.classList.remove("pop");
+      markerInner.classList.remove("hover", "pop");
     }
   });
 }
@@ -132,7 +128,7 @@ function focusRegion(regionKey) {
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    sheet.classList.remove("level-1", "level-2");
+    sheet.classList.remove("level-1", "level-2", "level-3");
   }
 
   if (window.location.hash) {
@@ -393,7 +389,7 @@ function showPlaceSheet(item) {
   setActiveMarkerState(item.id);
 
   sheet.classList.remove("hidden");
-  sheet.classList.remove("level-2");
+  sheet.classList.remove("level-2", "level-3");
   sheet.classList.add("level-1");
   closeButton?.focus({ preventScroll: true });
 }
@@ -557,7 +553,7 @@ function resetView() {
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    sheet.classList.remove("level-1", "level-2");
+    sheet.classList.remove("level-1", "level-2", "level-3");
   }
 
   setActiveMarkerState("");
