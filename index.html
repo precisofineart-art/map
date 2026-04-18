@@ -39,11 +39,20 @@
   </aside>
 
   <header id="header" class="app-header">
-    <div class="header-inner">
-      <span class="header-title"></span>
-      <a href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer" class="logo-link" aria-label="Open Preciso store">
-        <img src="logo.png" alt="Preciso" class="logo" draggable="false">
-      </a>
+    <div class="header-stack">
+      <div class="header-inner">
+        <a href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer" class="logo-link" aria-label="Open Preciso store">
+          <img src="logo.png" alt="Preciso" class="logo" draggable="false">
+        </a>
+      </div>
+
+      <div class="region-pills" aria-label="Map regions">
+        <button class="region-pill active" type="button" data-region="all">All</button>
+        <button class="region-pill" type="button" data-region="north-america">North America</button>
+        <button class="region-pill" type="button" data-region="europe">Europe</button>
+        <button class="region-pill" type="button" data-region="asia">Asia</button>
+        <button class="region-pill" type="button" data-region="oceania">Oceania</button>
+      </div>
     </div>
   </header>
 
@@ -56,6 +65,14 @@
       </div>
     </div>
   </div>
+
+  <footer id="footer" class="app-footer" aria-label="Site footer">
+    <div class="footer-inner">
+      <span>© Preciso</span>
+      <span class="footer-dot" aria-hidden="true">•</span>
+      <span>Explore prints worldwide</span>
+    </div>
+  </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <script src="app.js"></script>

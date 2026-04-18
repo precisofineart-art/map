@@ -15,6 +15,29 @@ const HOME_VIEW = {
   zoom: 4
 };
 
+const REGION_VIEWS = {
+  all: {
+    center: HOME_VIEW.center,
+    zoom: HOME_VIEW.zoom
+  },
+  northAmerica: {
+    bounds: [[-168, 7], [-52, 72]],
+    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+  },
+  europe: {
+    bounds: [[-12, 35], [35, 72]],
+    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+  },
+  asia: {
+    bounds: [[25, -5], [150, 62]],
+    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+  },
+  oceania: {
+    bounds: [[110, -50], [180, 5]],
+    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+  }
+};
+
 /* =========================
    STATE
 ========================= */
@@ -37,9 +60,38 @@ function clearMarkers() {
 }
 
 function setActiveMarkerState(itemId = "") {
-  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
-    markerEl.classList.toggle("active", markerEl.dataset.itemId === itemId);
+  document.querySelectorAll(".custom-marker-shell").forEach((markerShell) => {
+    const isActive = markerShell.dataset.itemId === itemId;
+    markerShell.classList.toggle("active", isActive);
+
+    const markerInner = markerShell.querySelector(".custom-marker");
+    if (!markerInner) return;
+
+    markerInner.classList.toggle("active", isActive);
+
+    if (!isActive) {
+      markerInner.classList.remove("pop");
+    }
   });
+}
+
+function triggerActiveMarkerPop(itemId) {
+  if (!itemId) return;
+
+  const markerShell = document.querySelector(`.custom-marker-shell[data-item-id="${CSS.escape(itemId)}"]`);
+  const markerEl = markerShell?.querySelector(".custom-marker");
+  if (!markerEl) return;
+
+  markerEl.classList.remove("pop");
+  void markerEl.offsetWidth;
+
+  requestAnimationFrame(() => {
+    markerEl.classList.add("pop");
+  });
+
+  window.setTimeout(() => {
+    markerEl.classList.remove("pop");
+  }, 520);
 }
 
 function clearMarkerHoverStates() {
@@ -53,39 +105,99 @@ function clearEdgeIndicators() {
   edgeIndicatorEls.clear();
 }
 
+function setActiveRegionChip(regionKey = "all") {
+  document.querySelectorAll("[data-region]").forEach((chip) => {
+    chip.classList.toggle("active", chip.dataset.region === regionKey);
+  });
+}
+
+function focusRegion(regionKey) {
+  const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+
+  activeItem = null;
+  setActiveMarkerState("");
+  clearMarkerHoverStates();
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.remove("pop");
+  });
+  document.querySelectorAll(".custom-marker-shell").forEach((markerShell) => {
+    markerShell.classList.remove("active");
+  });
+  clearEdgeIndicators();
+
+  const sheet = document.getElementById("place-sheet");
+  if (sheet) {
+    sheet.classList.add("hidden");
+    sheet.classList.remove("level-1", "level-2");
+  }
+
+  if (window.location.hash) {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+
+  setActiveRegionChip(regionKey);
+
+  if (region.bounds) {
+    map.fitBounds(region.bounds, {
+      padding: region.padding,
+      duration: 900,
+      essential: true
+    });
+    return;
+  }
+
+  map.flyTo({
+    center: region.center,
+    zoom: region.zoom,
+    speed: 0.6,
+    curve: 1.4,
+    essential: true
+  });
+}
+
+function bindHeaderRegionPills() {
+  document.querySelectorAll("[data-region]").forEach((chip) => {
+    if (chip.dataset.regionBound === "true") return;
+
+    chip.dataset.regionBound = "true";
+    chip.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const regionKey = chip.dataset.region || "all";
+      focusRegion(regionKey);
+    });
+  });
+
+  setActiveRegionChip("all");
+}
+
 function updateEdgeIndicator() {
   if (!map || !listings.length) {
     clearEdgeIndicators();
     return;
   }
 
-  if (activeItem) {
-    edgeIndicatorEls.forEach((el) => {
-      el.style.display = "none";
-      el.classList.remove("active");
-      delete el.dataset.edge;
-    });
-    return;
-  }
-
   const mapEl = document.getElementById("map");
   const sheet = document.getElementById("place-sheet");
   const header = document.getElementById("header");
+  const sheetIsOpen = sheet && !sheet.classList.contains("hidden");
+
+  if (activeItem || sheetIsOpen) {
+    clearEdgeIndicators();
+    return;
+  }
   if (!mapEl) {
     clearEdgeIndicators();
     return;
   }
 
   const mapRect = mapEl.getBoundingClientRect();
-  const sheetRect = sheet?.getBoundingClientRect();
   const headerRect = header?.getBoundingClientRect();
 
   const leftSafe = 18;
   const rightSafe = Math.max(leftSafe, mapRect.width - 18);
   const topSafe = Math.max(18, Math.round((headerRect?.bottom || 0) - mapRect.top + 12));
-  const bottomSafe = sheet && !sheet.classList.contains("hidden")
-    ? Math.round(sheetRect.top - mapRect.top - 18)
-    : mapRect.height - 18;
+  const bottomSafe = mapRect.height - 18;
 
   const nextVisibleIds = new Set();
 
@@ -168,8 +280,24 @@ function getSheetOffset() {
   const header = document.getElementById("header");
   const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
 
-  if (!sheet || !isMobileViewport) {
+  if (!sheet) {
     return [0, 0];
+  }
+
+  const sheetIsHidden = sheet.classList.contains("hidden");
+  if (sheetIsHidden) {
+    return [0, 0];
+  }
+
+  if (!isMobileViewport) {
+    const rect = sheet.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const visibleSheetWidth = Math.max(0, rect.right - rect.left);
+    const freeMapWidth = Math.max(0, viewportWidth - visibleSheetWidth);
+    const targetX = visibleSheetWidth + freeMapWidth * 0.45;
+    const viewportCenterX = viewportWidth / 2;
+    const offsetX = Math.round(targetX - viewportCenterX);
+    return [offsetX, 0];
   }
 
   const sheetRect = sheet.getBoundingClientRect();
@@ -430,6 +558,12 @@ function resetView() {
 
   setActiveMarkerState("");
   clearMarkerHoverStates();
+  document.querySelectorAll(".custom-marker").forEach((markerEl) => {
+    markerEl.classList.remove("pop");
+  });
+  document.querySelectorAll(".custom-marker-shell").forEach((markerShell) => {
+    markerShell.classList.remove("active");
+  });
   clearEdgeIndicators();
 
   map.flyTo({
@@ -548,9 +682,17 @@ function handleMarkerClick(item) {
 
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
+  setActiveRegionChip("all");
 
   showPlaceSheet(item);
   map.flyTo(getFlyToOptions(item));
+  map.once("moveend", () => {
+    if (activeItem?.id === item.id) {
+      window.setTimeout(() => {
+        triggerActiveMarkerPop(item.id);
+      }, 40);
+    }
+  });
   setTimeout(updateEdgeIndicator, 300);
 }
 
@@ -561,48 +703,53 @@ function render() {
   clearMarkers();
 
   listings.forEach((item) => {
+    const shell = document.createElement("div");
+    shell.className = "custom-marker-shell";
+    shell.dataset.itemId = item.id;
+    shell.setAttribute("role", "button");
+    shell.setAttribute("tabindex", "0");
+    shell.setAttribute("aria-label", item.title || "Map marker");
+
     const el = document.createElement("div");
     el.className = "custom-marker";
     el.style.backgroundImage = `url(${item.image})`;
-    el.dataset.itemId = item.id;
-    el.setAttribute("role", "button");
-    el.setAttribute("tabindex", "0");
-    el.setAttribute("aria-label", item.title || "Map marker");
 
-    el.addEventListener("pointerenter", () => {
+    shell.appendChild(el);
+
+    shell.addEventListener("pointerenter", () => {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
     });
 
-    el.addEventListener("pointerleave", () => {
+    shell.addEventListener("pointerleave", () => {
       el.classList.remove("hover");
     });
 
-    el.addEventListener("pointerdown", () => {
+    shell.addEventListener("pointerdown", () => {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
     });
 
-    el.addEventListener("pointerup", () => {
+    shell.addEventListener("pointerup", () => {
       if (activeItem?.id !== item.id) {
         el.classList.remove("hover");
       }
     });
 
-    el.addEventListener("pointercancel", () => {
+    shell.addEventListener("pointercancel", () => {
       el.classList.remove("hover");
     });
 
-    el.addEventListener("click", (e) => {
+    shell.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       el.classList.remove("hover");
       handleMarkerClick(item);
     });
 
-    el.addEventListener("keydown", (e) => {
+    shell.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         el.classList.remove("hover");
@@ -610,7 +757,7 @@ function render() {
       }
     });
 
-    const marker = new mapboxgl.Marker({ element: el })
+    const marker = new mapboxgl.Marker({ element: shell })
       .setLngLat([item.lng, item.lat])
       .addTo(map);
 
@@ -633,8 +780,16 @@ function openMarkerFromHash() {
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
       activeItem = item;
+      setActiveRegionChip("all");
       showPlaceSheet(item);
       map.flyTo(getFlyToOptions(item));
+      map.once("moveend", () => {
+        if (activeItem?.id === item.id) {
+          window.setTimeout(() => {
+            triggerActiveMarkerPop(item.id);
+          }, 40);
+        }
+      });
       setTimeout(updateEdgeIndicator, 300);
     }
   }, 200);
@@ -649,6 +804,7 @@ map.on("load", async () => {
 
   document.getElementById("place-sheet")?.classList.add("hidden");
 
+  bindHeaderRegionPills();
   openMarkerFromHash();
   initSheetDrag();
   map.on("move", updateEdgeIndicator);
@@ -674,7 +830,7 @@ window.addEventListener("resize", () => {
 
 map.on("click", (e) => {
   if (isResetting) return;
-  if (e.originalEvent?.target?.closest?.(".custom-marker")) return;
+  if (e.originalEvent?.target?.closest?.(".custom-marker-shell")) return;
   if (e.originalEvent?.target?.closest?.("#place-sheet")) return;
   resetView();
 });
