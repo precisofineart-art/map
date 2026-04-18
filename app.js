@@ -11,8 +11,8 @@ console.log("NEW APP.JS LOADED");
    HOME VIEW
 ========================= */
 const HOME_VIEW = {
-  center: [-83.04, 42.315],
-  zoom: 4
+  center: [-85.2, 43.2],
+  zoom: 5.55
 };
 
 const REGION_VIEWS = {
@@ -21,8 +21,8 @@ const REGION_VIEWS = {
     zoom: HOME_VIEW.zoom
   },
   northAmerica: {
-    bounds: [[-168, 7], [-52, 72]],
-    padding: { top: 120, right: 80, bottom: 80, left: 80 }
+    bounds: [[-135, 18], [-48, 61]],
+    padding: { top: 100, right: 70, bottom: 70, left: 70 }
   },
   caribbean: {
     bounds: [[-89, 8], [-58, 29]],
@@ -109,6 +109,31 @@ function setActiveRegionChip(regionKey = "all") {
   document.querySelectorAll("[data-region]").forEach((chip) => {
     chip.classList.toggle("active", chip.dataset.region === regionKey);
   });
+}
+
+function pointInBounds(lng, lat, bounds) {
+  if (!bounds || bounds.length !== 2) return false;
+  const [[minLng, minLat], [maxLng, maxLat]] = bounds;
+  return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+}
+
+function getRegionKeyForItem(item) {
+  if (!item) return "all";
+
+  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.caribbean?.bounds)) {
+    return "caribbean";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.europe?.bounds)) {
+    return "europe";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.asia?.bounds)) {
+    return "asia";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.northAmerica?.bounds)) {
+    return "northAmerica";
+  }
+
+  return "all";
 }
 
 function focusRegion(regionKey) {
@@ -544,6 +569,10 @@ function initSheetDrag() {
 
 function resetView() {
   isResetting = true;
+  const previousActiveItem = activeItem;
+  const targetRegionKey = previousActiveItem ? getRegionKeyForItem(previousActiveItem) : "all";
+  const targetRegion = REGION_VIEWS[targetRegionKey] || REGION_VIEWS.all;
+
   activeItem = null;
 
   if (window.location.hash) {
@@ -565,14 +594,23 @@ function resetView() {
     markerShell.classList.remove("active");
   });
   clearEdgeIndicators();
+  setActiveRegionChip(targetRegionKey);
 
-  map.flyTo({
-    center: HOME_VIEW.center,
-    zoom: HOME_VIEW.zoom,
-    speed: 0.38,
-    curve: 1.7,
-    essential: true
-  });
+  if (targetRegion.bounds) {
+    map.fitBounds(targetRegion.bounds, {
+      padding: targetRegion.padding,
+      duration: 900,
+      essential: true
+    });
+  } else {
+    map.flyTo({
+      center: targetRegion.center,
+      zoom: targetRegion.zoom,
+      speed: 0.38,
+      curve: 1.7,
+      essential: true
+    });
+  }
 
   window.setTimeout(() => {
     isResetting = false;
@@ -805,6 +843,12 @@ map.on("load", async () => {
   document.getElementById("place-sheet")?.classList.add("hidden");
 
   bindHeaderRegionPills();
+
+  // Reset to active region after load (default = "all" / Home)
+  requestAnimationFrame(() => {
+    focusRegion("all");
+  });
+
   openMarkerFromHash();
   initSheetDrag();
   map.on("move", updateEdgeIndicator);

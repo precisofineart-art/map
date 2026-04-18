@@ -52,7 +52,8 @@ body {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  padding: 6px 12px;
+  min-height: 52px;
+  padding: 10px 18px;
   border-radius: 999px;
   background: rgb(12, 52, 122);
   backdrop-filter: blur(10px);
@@ -72,7 +73,7 @@ body {
 
 .logo {
   pointer-events: auto;
-  height: 28px;
+  height: 32px;
   width: auto;
   object-fit: contain;
 }
@@ -434,11 +435,12 @@ body {
   }
 
   .header-inner {
-    padding: 6px 10px;
+    min-height: 46px;
+    padding: 8px 14px;
   }
 
   .logo {
-    height: 24px;
+    height: 26px;
   }
 
   .region-pills {
@@ -474,7 +476,7 @@ body {
   }
 
   .place-sheet.level-1 {
-    transform: translateY(68%);
+    transform: translateY(80%);
   }
 
   .place-sheet.level-2 {
