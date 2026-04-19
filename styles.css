@@ -96,7 +96,7 @@ body {
 
 .logo {
   pointer-events: auto;
-  height: 65px;
+  height: 50px;
   width: auto;
   object-fit: contain;
 }
@@ -114,20 +114,16 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: calc(50vw - 150px);
   max-width: 700px;
   min-width: 0;
-  padding-top: 4px;
-  padding-bottom: 4px;
   pointer-events: auto;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
   white-space: nowrap;
 }
 
@@ -140,18 +136,17 @@ body {
   position: sticky;
   right: 0;
   top: 0;
-  width: 36px;
+  width: 20px;
   height: 100%;
   flex: 0 0 auto;
-  margin-left: -36px;
+  margin-left: -20px;
   pointer-events: none;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.96));
 }
 
 .region-pill {
   flex: 0 0 auto;
-  scroll-snap-align: start;
-  border: 0;
+  border: 1px solid rgba(12, 52, 122, 0.08);
   border-radius: 999px;
   padding: 7px 12px;
   background: rgba(255, 255, 255, 0.96);
@@ -167,8 +162,8 @@ body {
 }
 
 .region-pill:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
+  transform: translateY(-0.5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
 .region-pill:active {
@@ -479,7 +474,7 @@ body {
   }
 }
 
-@media (max-width: 979px) {
+@media (max-width: 700px) {
   .gm-topbar,
   .gm-fabs {
     display: none;
@@ -508,7 +503,7 @@ body {
   }
 
   .logo {
-    height: 26px;
+    height: 50px;
   }
 
   .region-pill {
@@ -519,39 +514,24 @@ body {
   .region-pills {
     position: absolute;
     top: 50%;
-    left: calc(50% + 92px);
+    left: calc(50% + 68px);
     transform: translateY(-50%);
     flex-wrap: nowrap;
     justify-content: flex-start;
-    gap: 6px;
-    width: calc(50vw - 108px);
-    max-width: calc(50vw - 108px);
-    padding: 4px 0;
+    gap: 5px;
+    width: calc(50vw - 72px);
+    max-width: calc(50vw - 72px);
+    padding: 0;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
     scroll-behavior: smooth;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
     white-space: nowrap;
   }
 
   .region-pills::-webkit-scrollbar {
     display: none;
-  }
-
-  .region-pills::after {
-    content: "";
-    position: sticky;
-    right: 0;
-    top: 0;
-    width: 28px;
-    height: 100%;
-    flex: 0 0 auto;
-    margin-left: -28px;
-    pointer-events: none;
-    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
   }
 
   #footer {
