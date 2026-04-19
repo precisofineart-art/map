@@ -165,7 +165,7 @@ function focusRegion(regionKey) {
   if (region.bounds) {
     map.fitBounds(region.bounds, {
       padding: region.padding,
-      duration: 900,
+      duration: 1300,
       essential: true
     });
     return;
@@ -174,8 +174,8 @@ function focusRegion(regionKey) {
   map.flyTo({
     center: region.center,
     zoom: region.zoom,
-    speed: 0.6,
-    curve: 1.4,
+    speed: 0.22,
+    curve: 1.55,
     essential: true
   });
 }
@@ -435,7 +435,7 @@ function initSheetDrag() {
   let velocityY = 0;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
-  const LEVEL_1 = 68;
+  const LEVEL_1 = 80;
   const LEVEL_2 = 24;
 
   const getCurrentLevel = () => {
@@ -454,7 +454,7 @@ function initSheetDrag() {
   const setLevel = (level) => {
     sheet.style.transition = "";
     sheet.style.transform = "";
-    sheet.classList.remove("level-1", "level-2");
+    sheet.classList.remove("level-1", "level-2", "level-3");
     sheet.classList.add(`level-${level}`);
 
     requestAnimationFrame(() => {
@@ -599,22 +599,22 @@ function resetView() {
   if (targetRegion.bounds) {
     map.fitBounds(targetRegion.bounds, {
       padding: targetRegion.padding,
-      duration: 900,
+      duration: 1300,
       essential: true
     });
   } else {
     map.flyTo({
       center: targetRegion.center,
       zoom: targetRegion.zoom,
-      speed: 0.38,
-      curve: 1.7,
+      speed: 0.22,
+      curve: 1.55,
       essential: true
     });
   }
 
   window.setTimeout(() => {
     isResetting = false;
-  }, 450);
+  }, 1350);
 }
 
 /* =========================

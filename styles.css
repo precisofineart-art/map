@@ -23,6 +23,19 @@ body {
   touch-action: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  #map,
+  .mapboxgl-canvas,
+  .mapboxgl-canvas-container {
+    cursor: grab;
+  }
+
+  .mapboxgl-canvas-container:active,
+  .mapboxgl-canvas:active {
+    cursor: grabbing;
+  }
+}
+
 body {
   background: #ffffff;
 }
@@ -187,6 +200,7 @@ body {
   transition: transform 0.25s ease, opacity 0.25s ease, top 0.25s ease;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  z-index: 22;
 }
 
 .place-sheet::-webkit-scrollbar {
@@ -419,7 +433,7 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 979px) {
   .gm-topbar,
   .gm-fabs {
     display: none;
@@ -477,7 +491,7 @@ body {
   }
 
   .place-sheet.level-1 {
-    transform: translateY(85%);
+    transform: translateY(80%);
   }
 
   .place-sheet.level-2 {
