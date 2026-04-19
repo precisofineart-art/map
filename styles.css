@@ -151,10 +151,10 @@ body {
   scroll-snap-align: start;
   border: 0;
   border-radius: 999px;
-  padding: 9px 16px;
+  padding: 7px 12px;
   background: rgba(255, 255, 255, 0.96);
   color: #0c347a;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -507,6 +507,11 @@ body {
 
   .logo {
     height: 26px;
+  }
+
+  .region-pill {
+    padding: 6px 10px;
+    font-size: 10px;
   }
 
   .region-pills {
