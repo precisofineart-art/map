@@ -685,30 +685,24 @@ async function fetchProducts() {
 /* =========================
    MAP
 ========================= */
+const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/mapbox/satellite-streets-v12",
   center: HOME_VIEW.center,
-  zoom: HOME_VIEW.zoom
+  zoom: HOME_VIEW.zoom,
+  cooperativeGestures: isTouchDevice
 });
-
-const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 const mapContainer = map.getContainer();
 
-if (isTouchDevice) {
-  map.dragPan.enable();
-  map.touchZoomRotate.enable();
-  map.touchZoomRotate.disableRotation();
-  if (mapContainer) {
-    mapContainer.style.touchAction = "none";
-  }
-} else {
-  map.dragPan.enable();
-  map.touchZoomRotate.enable();
-  map.touchZoomRotate.disableRotation();
-}
-
+map.dragPan.enable();
+map.touchZoomRotate.enable();
+map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
+
+if (isTouchDevice && mapContainer) {
+  mapContainer.style.touchAction = "pan-y";
+}
 
 /* =========================
    MARKER CLICK
