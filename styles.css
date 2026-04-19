@@ -20,7 +20,11 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  touch-action: none;
+  touch-action: auto;
+}
+
+.mapboxgl-canvas-container {
+  touch-action: auto;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -488,6 +492,11 @@ body {
     overflow-y: auto;
     overscroll-behavior: contain;
     will-change: transform;
+  }
+
+  #map,
+  .mapboxgl-canvas-container {
+    touch-action: pan-y;
   }
 
   .place-sheet.level-1 {

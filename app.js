@@ -696,6 +696,7 @@ const map = new mapboxgl.Map({
 const mapContainer = map.getContainer();
 
 map.dragPan.enable();
+map.scrollZoom.enable({ around: "center" });
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
