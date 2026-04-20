@@ -495,15 +495,17 @@ body {
 
   .header-inner {
     position: absolute;
-    left: 50%;
+    left: 8px;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     min-height: 0;
     padding: 0;
+    justify-content: flex-start;
+    z-index: 4;
   }
 
   .logo {
-    height: 50px;
+    height: 32px;
   }
 
   .region-pill {
@@ -514,14 +516,14 @@ body {
   .region-pills {
     position: absolute;
     top: 50%;
-    left: calc(50% + 68px);
+    left: 86px;
     transform: translateY(-50%);
     flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 5px;
-    width: calc(50vw - 72px);
-    max-width: calc(50vw - 72px);
-    padding: 0;
+    width: calc(100vw - 108px);
+    max-width: calc(100vw - 108px);
+    padding: 0 8px 0 0;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
