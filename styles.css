@@ -473,7 +473,7 @@ body {
       0 8px 18px rgba(0, 0, 0, 0.2);
   }
 }
-
+ 
 @media (max-width: 700px) {
   .gm-topbar,
   .gm-fabs {
@@ -505,7 +505,7 @@ body {
   }
 
   .logo {
-    height: 32px;
+    height: 45px;
   }
 
   .region-pill {
@@ -516,7 +516,7 @@ body {
   .region-pills {
     position: absolute;
     top: 50%;
-    left: 86px;
+    left: 110px;
     transform: translateY(-50%);
     flex-wrap: nowrap;
     justify-content: flex-start;
