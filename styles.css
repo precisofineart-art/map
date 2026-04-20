@@ -597,10 +597,40 @@ body {
 
   .place-sheet.level-2 .sheet-cta {
     display: block !important;
+    position: absolute;
+    top: 65px;
+    right: 16px;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+    z-index: 3;
   }
 
   .place-sheet.level-2 .place-sheet-header {
+    display: block;
+    padding-right: 16px;
     padding-bottom: 14px;
+  }
+  .place-sheet.level-2 .sheet-icon-actions {
+    position: absolute;
+    top: 20px;
+    right: 16px;
+    display: flex;
+    gap: 0;
+    z-index: 4;
+  }
+  .sheet-icon-actions button {
+    width: 25px;
+    height: 25px;
+    font-size: 16px;
+  }
+  .place-sheet.level-2 .place-sheet-header > div:first-child {
+    display: block;
+    width: 100%;
+    padding-right: 0;
   }
 
   .place-sheet.level-2 .sheet-time,
@@ -613,6 +643,14 @@ body {
     opacity: 1;
   }
 
+  .sheet-product-link {
+    width: auto;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  }
   .sheet-media img {
     height: 420px;
     object-fit: cover;
