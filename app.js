@@ -365,7 +365,7 @@ function keepActiveMarkerVisible() {
   if (!activeItem) return;
 
   const sheet = document.getElementById("place-sheet");
-  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
   let zoom;
   if (isMobileViewport) {
@@ -688,7 +688,7 @@ async function fetchProducts() {
 const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 const map = new mapboxgl.Map({
   container: "map",
-  style: "mapbox://styles/mapbox/satellite-streets-v12",
+  style: "mapbox://styles/preciso/cmmr4qr4k000i01s300a1egdu",
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom,
   cooperativeGestures: isTouchDevice
