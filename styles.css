@@ -558,7 +558,7 @@ body {
 
   #map,
   .mapboxgl-canvas-container {
-    touch-action: pan-y;
+    touch-action: manipulation;
   }
 
   .place-sheet.level-1 {

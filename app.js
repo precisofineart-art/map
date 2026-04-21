@@ -702,7 +702,7 @@ map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
 
 if (isTouchDevice && mapContainer) {
-  mapContainer.style.touchAction = "pan-y";
+  mapContainer.style.touchAction = "manipulation";
 }
 
 /* =========================
