@@ -303,7 +303,7 @@ function updateEdgeIndicator() {
 function getSheetOffset() {
   const sheet = document.getElementById("place-sheet");
   const header = document.getElementById("header");
-  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
   if (!sheet) {
     return [0, 0];
@@ -343,7 +343,7 @@ function getSheetOffset() {
 
 function getFlyToOptions(item, zoom) {
   const sheet = document.getElementById("place-sheet");
-  const isMobileViewport = window.matchMedia("(max-width: 979px)").matches;
+  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
   let mobileZoom = 13.8;
 
@@ -434,7 +434,7 @@ function initSheetDrag() {
   let lastTime = 0;
   let velocityY = 0;
 
-  const isMobileViewport = () => window.matchMedia("(max-width: 979px)").matches;
+  const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
   const LEVEL_2 = 24;
 
@@ -701,9 +701,6 @@ map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
 
-if (isTouchDevice && mapContainer) {
-  mapContainer.style.touchAction = "manipulation";
-}
 
 /* =========================
    MARKER CLICK
