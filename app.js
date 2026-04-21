@@ -696,7 +696,13 @@ const map = new mapboxgl.Map({
 const mapContainer = map.getContainer();
 
 map.dragPan.enable();
-map.scrollZoom.disable();
+
+if (isTouchDevice) {
+  map.scrollZoom.disable();
+} else {
+  map.scrollZoom.enable();
+}
+
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
