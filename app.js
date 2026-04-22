@@ -43,9 +43,12 @@ const REGION_VIEWS = {
 ========================= */
 let listings = [];
 let markers = [];
+let clusterMarkers = new Map();
 let activeItem = null;
 let isResetting = false;
 let edgeIndicatorEls = new Map();
+
+const MARKER_SHOW_ZOOM = 13;
 
 /* =========================
    HELPERS
@@ -57,6 +60,155 @@ function getItemId(item) {
 function clearMarkers() {
   markers.forEach((marker) => marker.remove());
   markers = [];
+}
+
+function clearClusterMarkers() {
+  clusterMarkers.forEach((marker) => marker.remove());
+  clusterMarkers.clear();
+}
+
+function createClusterPreviewMarker(feature, previewImage) {
+  const clusterId = feature.properties.cluster_id;
+  const pointCount = feature.properties.point_count_abbreviated || feature.properties.point_count || "";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("aria-label", `Zoom into cluster of ${pointCount} locations`);
+  button.style.position = "relative";
+  button.style.width = "44px";
+  button.style.height = "44px";
+  button.style.padding = "0";
+  button.style.border = "0";
+  button.style.borderRadius = "999px";
+  button.style.background = "transparent";
+  button.style.cursor = "pointer";
+  button.style.boxShadow = "none";
+
+  const glow = document.createElement("span");
+  glow.style.position = "absolute";
+  glow.style.inset = "-6px";
+  glow.style.borderRadius = "999px";
+  glow.style.background = "rgba(12, 52, 122, 0.18)";
+  glow.style.filter = "blur(8px)";
+  glow.style.pointerEvents = "none";
+
+  const image = document.createElement("span");
+  image.style.position = "absolute";
+  image.style.inset = "0";
+  image.style.borderRadius = "999px";
+  image.style.backgroundImage = `url(${previewImage || FALLBACK_IMAGE})`;
+  image.style.backgroundSize = "cover";
+  image.style.backgroundPosition = "center";
+  image.style.border = "2px solid rgba(255,255,255,0.95)";
+  image.style.boxShadow = "0 8px 18px rgba(0, 0, 0, 0.18)";
+
+  const badge = document.createElement("span");
+  badge.textContent = `${pointCount}`;
+  badge.style.position = "absolute";
+  badge.style.right = "-4px";
+  badge.style.bottom = "-2px";
+  badge.style.minWidth = "20px";
+  badge.style.height = "20px";
+  badge.style.padding = "0 6px";
+  badge.style.display = "inline-flex";
+  badge.style.alignItems = "center";
+  badge.style.justifyContent = "center";
+  badge.style.borderRadius = "999px";
+  badge.style.background = "#0c347a";
+  badge.style.color = "#ffffff";
+  badge.style.fontSize = "10px";
+  badge.style.fontWeight = "700";
+  badge.style.lineHeight = "1";
+  badge.style.border = "1px solid rgba(255,255,255,0.92)";
+  badge.style.boxShadow = "0 4px 10px rgba(0,0,0,0.18)";
+  badge.style.pointerEvents = "none";
+
+  button.appendChild(glow);
+  button.appendChild(image);
+  button.appendChild(badge);
+
+  button.addEventListener("mouseenter", () => {
+    image.style.transform = "scale(1.04)";
+    image.style.transition = "transform 0.18s ease";
+  });
+
+  button.addEventListener("mouseleave", () => {
+    image.style.transform = "scale(1)";
+  });
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const source = map.getSource("listings-cluster");
+    if (!source) return;
+
+    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err) return;
+
+      map.easeTo({
+        center: feature.geometry.coordinates,
+        zoom,
+        duration: 700,
+        curve: 1.55,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
+        essential: true
+      });
+    });
+  });
+
+  return new mapboxgl.Marker({ element: button, anchor: "center" })
+    .setLngLat(feature.geometry.coordinates);
+}
+
+function updateClusterMarkers() {
+  if (!map) return;
+
+  const showClusters = map.getZoom() < MARKER_SHOW_ZOOM;
+  if (!showClusters) {
+    clearClusterMarkers();
+    return;
+  }
+
+  const source = map.getSource("listings-cluster");
+  if (!source || !map.getLayer("clusters-hit-area") || !map.isSourceLoaded("listings-cluster")) {
+    return;
+  }
+
+  const features = map
+    .querySourceFeatures("listings-cluster")
+    .filter((feature) => feature.properties && feature.properties.cluster);
+
+  const seenClusterIds = new Set();
+
+  features.forEach((feature) => {
+    const clusterId = feature.properties.cluster_id;
+    if (seenClusterIds.has(clusterId)) return;
+    seenClusterIds.add(clusterId);
+
+    const existingMarker = clusterMarkers.get(clusterId);
+    if (existingMarker) {
+      existingMarker.setLngLat(feature.geometry.coordinates);
+      return;
+    }
+
+    source.getClusterLeaves(clusterId, 1, 0, (err, leaves) => {
+      if (err || !leaves || !leaves.length) return;
+      if (map.getZoom() >= MARKER_SHOW_ZOOM) return;
+      if (clusterMarkers.has(clusterId)) return;
+
+      const previewImage = leaves[0].properties?.image || FALLBACK_IMAGE;
+      const marker = createClusterPreviewMarker(feature, previewImage).addTo(map);
+      clusterMarkers.set(clusterId, marker);
+    });
+  });
+
+  clusterMarkers.forEach((marker, clusterId) => {
+    if (!seenClusterIds.has(clusterId)) {
+      marker.remove();
+      clusterMarkers.delete(clusterId);
+    }
+  });
 }
 
 function setActiveMarkerState(itemId = "") {
@@ -196,8 +348,24 @@ function bindHeaderRegionPills() {
   setActiveRegionChip("all");
 }
 
+function setMarkerVisibilityByZoom() {
+  if (!map) return;
+
+  const showMarkers = map.getZoom() >= MARKER_SHOW_ZOOM;
+
+  markers.forEach((marker) => {
+    const markerEl = marker.getElement();
+    if (!markerEl) return;
+    markerEl.style.display = showMarkers ? "" : "none";
+  });
+
+  if (!showMarkers) {
+    clearEdgeIndicators();
+  }
+}
+
 function updateEdgeIndicator() {
-  if (!map || !listings.length) {
+  if (!map || !listings.length || map.getZoom() < 13) {
     clearEdgeIndicators();
     return;
   }
@@ -799,6 +967,9 @@ function render() {
 
     markers.push(marker);
   });
+
+  setMarkerVisibilityByZoom();
+  updateClusterMarkers();
   updateEdgeIndicator();
 }
 
@@ -836,7 +1007,45 @@ function openMarkerFromHash() {
 ========================= */
 map.on("load", async () => {
   listings = await fetchProducts();
+
+  const geojson = {
+    type: "FeatureCollection",
+    features: listings.map((item) => ({
+      type: "Feature",
+      properties: {
+        id: item.id,
+        title: item.title,
+        image: item.image || FALLBACK_IMAGE
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [item.lng, item.lat]
+      }
+    }))
+  };
+
+  map.addSource("listings-cluster", {
+    type: "geojson",
+    data: geojson,
+    cluster: true,
+    clusterMaxZoom: 13,
+    clusterRadius: 50
+  });
+
+  map.addLayer({
+    id: "clusters-hit-area",
+    type: "circle",
+    source: "listings-cluster",
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-radius": 1,
+      "circle-opacity": 0
+    }
+  });
+
   render();
+  setMarkerVisibilityByZoom();
+  updateClusterMarkers();
 
   document.getElementById("place-sheet")?.classList.add("hidden");
 
@@ -849,9 +1058,31 @@ map.on("load", async () => {
 
   openMarkerFromHash();
   initSheetDrag();
-  map.on("move", updateEdgeIndicator);
-  map.on("zoom", updateEdgeIndicator);
-  map.on("moveend", updateEdgeIndicator);
+  map.on("move", () => {
+    updateClusterMarkers();
+    updateEdgeIndicator();
+  });
+
+  map.on("zoom", () => {
+    setMarkerVisibilityByZoom();
+    updateClusterMarkers();
+    updateEdgeIndicator();
+  });
+
+  map.on("moveend", () => {
+    updateClusterMarkers();
+    updateEdgeIndicator();
+  });
+
+  map.on("idle", () => {
+    updateClusterMarkers();
+  });
+
+  map.on("sourcedata", (event) => {
+    if (event.sourceId === "listings-cluster" && event.isSourceLoaded) {
+      updateClusterMarkers();
+    }
+  });
 });
 
 window.addEventListener("hashchange", openMarkerFromHash);
