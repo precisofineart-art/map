@@ -6,7 +6,8 @@ mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 const FALLBACK_IMAGE = "https://picsum.photos/800";
-console.log("NEW APP.JS LOADED");
+console.log("NEW APP-NO-CLUSTER.JS LOADED");
+
 /* =========================
    HOME VIEW
 ========================= */
@@ -43,12 +44,12 @@ const REGION_VIEWS = {
 ========================= */
 let listings = [];
 let markers = [];
-let clusterMarkers = new Map();
 let activeItem = null;
+let activeRegionKey = "all";
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 
-const MARKER_SHOW_ZOOM = 13;
+const MARKER_SHOW_ZOOM = 0;
 
 /* =========================
    HELPERS
@@ -60,155 +61,6 @@ function getItemId(item) {
 function clearMarkers() {
   markers.forEach((marker) => marker.remove());
   markers = [];
-}
-
-function clearClusterMarkers() {
-  clusterMarkers.forEach((marker) => marker.remove());
-  clusterMarkers.clear();
-}
-
-function createClusterPreviewMarker(feature, previewImage) {
-  const clusterId = feature.properties.cluster_id;
-  const pointCount = feature.properties.point_count_abbreviated || feature.properties.point_count || "";
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.setAttribute("aria-label", `Zoom into cluster of ${pointCount} locations`);
-  button.style.position = "relative";
-  button.style.width = "44px";
-  button.style.height = "44px";
-  button.style.padding = "0";
-  button.style.border = "0";
-  button.style.borderRadius = "999px";
-  button.style.background = "transparent";
-  button.style.cursor = "pointer";
-  button.style.boxShadow = "none";
-
-  const glow = document.createElement("span");
-  glow.style.position = "absolute";
-  glow.style.inset = "-6px";
-  glow.style.borderRadius = "999px";
-  glow.style.background = "rgba(12, 52, 122, 0.18)";
-  glow.style.filter = "blur(8px)";
-  glow.style.pointerEvents = "none";
-
-  const image = document.createElement("span");
-  image.style.position = "absolute";
-  image.style.inset = "0";
-  image.style.borderRadius = "999px";
-  image.style.backgroundImage = `url(${previewImage || FALLBACK_IMAGE})`;
-  image.style.backgroundSize = "cover";
-  image.style.backgroundPosition = "center";
-  image.style.border = "2px solid rgba(255,255,255,0.95)";
-  image.style.boxShadow = "0 8px 18px rgba(0, 0, 0, 0.18)";
-
-  const badge = document.createElement("span");
-  badge.textContent = `${pointCount}`;
-  badge.style.position = "absolute";
-  badge.style.right = "-4px";
-  badge.style.bottom = "-2px";
-  badge.style.minWidth = "20px";
-  badge.style.height = "20px";
-  badge.style.padding = "0 6px";
-  badge.style.display = "inline-flex";
-  badge.style.alignItems = "center";
-  badge.style.justifyContent = "center";
-  badge.style.borderRadius = "999px";
-  badge.style.background = "#0c347a";
-  badge.style.color = "#ffffff";
-  badge.style.fontSize = "10px";
-  badge.style.fontWeight = "700";
-  badge.style.lineHeight = "1";
-  badge.style.border = "1px solid rgba(255,255,255,0.92)";
-  badge.style.boxShadow = "0 4px 10px rgba(0,0,0,0.18)";
-  badge.style.pointerEvents = "none";
-
-  button.appendChild(glow);
-  button.appendChild(image);
-  button.appendChild(badge);
-
-  button.addEventListener("mouseenter", () => {
-    image.style.transform = "scale(1.04)";
-    image.style.transition = "transform 0.18s ease";
-  });
-
-  button.addEventListener("mouseleave", () => {
-    image.style.transform = "scale(1)";
-  });
-
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const source = map.getSource("listings-cluster");
-    if (!source) return;
-
-    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-      if (err) return;
-
-      map.easeTo({
-        center: feature.geometry.coordinates,
-        zoom,
-        duration: 700,
-        curve: 1.55,
-        easing: (t) => 1 - Math.pow(1 - t, 3),
-        essential: true
-      });
-    });
-  });
-
-  return new mapboxgl.Marker({ element: button, anchor: "center" })
-    .setLngLat(feature.geometry.coordinates);
-}
-
-function updateClusterMarkers() {
-  if (!map) return;
-
-  const showClusters = map.getZoom() < MARKER_SHOW_ZOOM;
-  if (!showClusters) {
-    clearClusterMarkers();
-    return;
-  }
-
-  const source = map.getSource("listings-cluster");
-  if (!source || !map.getLayer("clusters-hit-area") || !map.isSourceLoaded("listings-cluster")) {
-    return;
-  }
-
-  const features = map
-    .querySourceFeatures("listings-cluster")
-    .filter((feature) => feature.properties && feature.properties.cluster);
-
-  const seenClusterIds = new Set();
-
-  features.forEach((feature) => {
-    const clusterId = feature.properties.cluster_id;
-    if (seenClusterIds.has(clusterId)) return;
-    seenClusterIds.add(clusterId);
-
-    const existingMarker = clusterMarkers.get(clusterId);
-    if (existingMarker) {
-      existingMarker.setLngLat(feature.geometry.coordinates);
-      return;
-    }
-
-    source.getClusterLeaves(clusterId, 1, 0, (err, leaves) => {
-      if (err || !leaves || !leaves.length) return;
-      if (map.getZoom() >= MARKER_SHOW_ZOOM) return;
-      if (clusterMarkers.has(clusterId)) return;
-
-      const previewImage = leaves[0].properties?.image || FALLBACK_IMAGE;
-      const marker = createClusterPreviewMarker(feature, previewImage).addTo(map);
-      clusterMarkers.set(clusterId, marker);
-    });
-  });
-
-  clusterMarkers.forEach((marker, clusterId) => {
-    if (!seenClusterIds.has(clusterId)) {
-      marker.remove();
-      clusterMarkers.delete(clusterId);
-    }
-  });
 }
 
 function setActiveMarkerState(itemId = "") {
@@ -288,8 +140,63 @@ function getRegionKeyForItem(item) {
   return "all";
 }
 
+function getItemsForRegion(regionKey = "all") {
+  const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+
+  if (!region.bounds) {
+    return listings.slice();
+  }
+
+  return listings.filter((item) => pointInBounds(item.lng, item.lat, region.bounds));
+}
+
+function getDistanceBetweenItems(itemA, itemB) {
+  if (!itemA || !itemB) return Number.POSITIVE_INFINITY;
+
+  const lat1 = itemA.lat * Math.PI / 180;
+  const lat2 = itemB.lat * Math.PI / 180;
+  const deltaLat = (itemB.lat - itemA.lat) * Math.PI / 180;
+  const deltaLng = (itemB.lng - itemA.lng) * Math.PI / 180;
+
+  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) *
+    Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getSortedRegionItemsFromActive() {
+  if (!activeItem) return [];
+
+  const regionKey = activeRegionKey || getRegionKeyForItem(activeItem) || "all";
+
+  return getItemsForRegion(regionKey)
+    .filter((item) => item.id !== activeItem.id)
+    .sort((itemA, itemB) => {
+      return getDistanceBetweenItems(activeItem, itemA) - getDistanceBetweenItems(activeItem, itemB);
+    });
+}
+
+function getSwipeTargetItem(direction = 1) {
+  if (!activeItem) return null;
+
+  const sortedItems = getSortedRegionItemsFromActive();
+  if (!sortedItems.length) return null;
+
+  const targetIndex = direction > 0 ? 0 : sortedItems.length - 1;
+  return sortedItems[targetIndex] || null;
+}
+
+function openSwipeTarget(direction = 1) {
+  const targetItem = getSwipeTargetItem(direction);
+  if (!targetItem) return;
+
+  handleMarkerClick(targetItem, { preserveRegion: true });
+}
+
 function focusRegion(regionKey) {
   const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+  activeRegionKey = regionKey || "all";
 
   activeItem = null;
   setActiveMarkerState("");
@@ -357,6 +264,7 @@ function setMarkerVisibilityByZoom() {
     const markerEl = marker.getElement();
     if (!markerEl) return;
     markerEl.style.display = showMarkers ? "" : "none";
+    markerEl.style.opacity = showMarkers ? "1" : "0";
   });
 
   if (!showMarkers) {
@@ -365,7 +273,7 @@ function setMarkerVisibilityByZoom() {
 }
 
 function updateEdgeIndicator() {
-  if (!map || !listings.length || map.getZoom() < 13) {
+  if (!map || !listings.length || map.getZoom() < MARKER_SHOW_ZOOM) {
     clearEdgeIndicators();
     return;
   }
@@ -513,10 +421,10 @@ function getFlyToOptions(item, zoom) {
   const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
-  let mobileZoom = 13.8;
+  let mobileZoom = 11.2;
 
   if (sheet?.classList.contains("level-2")) {
-    mobileZoom = 12.8;
+    mobileZoom = 10.9;
   }
 
   return {
@@ -537,7 +445,7 @@ function keepActiveMarkerVisible() {
 
   let zoom;
   if (isMobileViewport) {
-    zoom = sheet?.classList.contains("level-2") ? 12.8 : 13.8;
+    zoom = sheet?.classList.contains("level-2") ? 10.9 : 11.2;
   }
 
   map.easeTo({
@@ -593,13 +501,18 @@ function initSheetDrag() {
   const header = sheet?.querySelector(".place-sheet-header");
   if (!sheet || !handle) return;
 
+  let startX = 0;
   let startY = 0;
   let startTranslate = 0;
   let currentTranslate = 0;
+  let currentSwipeX = 0;
   let isDragging = false;
+  let isHorizontalSwipe = false;
   let activePointerId = null;
+  let lastX = 0;
   let lastY = 0;
   let lastTime = 0;
+  let velocityX = 0;
   let velocityY = 0;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
@@ -641,18 +554,32 @@ function initSheetDrag() {
     if (activePointerId !== null && ev.pointerId !== activePointerId) return;
 
     const now = performance.now();
+    const deltaX = ev.clientX - startX;
     const deltaY = ev.clientY - startY;
-    const viewportHeight = Math.max(window.innerHeight, 1);
-    const deltaPercent = (deltaY / viewportHeight) * 100;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
 
-    currentTranslate = clampTranslate(startTranslate + deltaPercent);
-    sheet.style.transform = `translateY(${currentTranslate}%)`;
+    if (!isHorizontalSwipe && absX > 18 && absX > absY * 1.35) {
+      isHorizontalSwipe = true;
+    }
 
     const dt = now - lastTime;
     if (dt > 0) {
+      velocityX = (ev.clientX - lastX) / dt;
       velocityY = (ev.clientY - lastY) / dt;
     }
 
+    if (isHorizontalSwipe) {
+      currentSwipeX = Math.max(-90, Math.min(90, deltaX));
+      sheet.style.transform = `translateX(${currentSwipeX}px) translateY(${startTranslate}%)`;
+    } else {
+      const viewportHeight = Math.max(window.innerHeight, 1);
+      const deltaPercent = (deltaY / viewportHeight) * 100;
+      currentTranslate = clampTranslate(startTranslate + deltaPercent);
+      sheet.style.transform = `translateY(${currentTranslate}%)`;
+    }
+
+    lastX = ev.clientX;
     lastY = ev.clientY;
     lastTime = now;
     ev.preventDefault();
@@ -672,11 +599,13 @@ function initSheetDrag() {
     const midpoint = (LEVEL_1 + LEVEL_2) / 2;
     const flickUp = velocityY < -0.35;
     const flickDown = velocityY > 0.35;
+    const swipeRight = isHorizontalSwipe && (currentSwipeX > 70 || velocityX > 0.45);
+    const swipeLeft = isHorizontalSwipe && (currentSwipeX < -70 || velocityX < -0.45);
 
     let targetLevel;
-    if (flickUp) {
+    if (flickUp && !isHorizontalSwipe) {
       targetLevel = 2;
-    } else if (flickDown) {
+    } else if (flickDown && !isHorizontalSwipe) {
       targetLevel = 1;
     } else {
       targetLevel = currentTranslate <= midpoint ? 2 : 1;
@@ -684,6 +613,7 @@ function initSheetDrag() {
 
     isDragging = false;
     activePointerId = null;
+    velocityX = 0;
     velocityY = 0;
     sheet.style.transition = "";
 
@@ -691,6 +621,17 @@ function initSheetDrag() {
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
 
+    if (swipeLeft || swipeRight) {
+      sheet.style.transform = "";
+      setLevel(getCurrentLevel());
+      openSwipeTarget(swipeLeft ? 1 : -1);
+      isHorizontalSwipe = false;
+      currentSwipeX = 0;
+      return;
+    }
+
+    isHorizontalSwipe = false;
+    currentSwipeX = 0;
     setLevel(targetLevel);
   };
 
@@ -706,13 +647,18 @@ function initSheetDrag() {
       if (e.clientY > rect.top + dragZoneHeight) return;
     }
 
+    startX = e.clientX;
     startY = e.clientY;
     startTranslate = getLevelTranslate(getCurrentLevel());
     currentTranslate = startTranslate;
+    currentSwipeX = 0;
+    isHorizontalSwipe = false;
     isDragging = true;
     activePointerId = e.pointerId;
+    lastX = e.clientX;
     lastY = e.clientY;
     lastTime = performance.now();
+    velocityX = 0;
     velocityY = 0;
 
     sheet.style.transition = "none";
@@ -740,6 +686,7 @@ function resetView() {
   const previousActiveItem = activeItem;
   const targetRegionKey = previousActiveItem ? getRegionKeyForItem(previousActiveItem) : "all";
   const targetRegion = REGION_VIEWS[targetRegionKey] || REGION_VIEWS.all;
+  activeRegionKey = targetRegionKey;
 
   activeItem = null;
 
@@ -861,7 +808,6 @@ const map = new mapboxgl.Map({
   zoom: HOME_VIEW.zoom,
   cooperativeGestures: isTouchDevice
 });
-const mapContainer = map.getContainer();
 
 map.dragPan.enable();
 
@@ -875,18 +821,20 @@ map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
 
-
 /* =========================
    MARKER CLICK
 ========================= */
-function handleMarkerClick(item) {
+function handleMarkerClick(item, options = {}) {
   if (activeItem?.id === item.id && !document.getElementById("place-sheet")?.classList.contains("hidden")) {
     return;
   }
 
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
-  setActiveRegionChip("all");
+  if (!options.preserveRegion) {
+    activeRegionKey = getRegionKeyForItem(item);
+  }
+  setActiveRegionChip(activeRegionKey || "all");
 
   showPlaceSheet(item);
   map.flyTo(getFlyToOptions(item));
@@ -969,7 +917,6 @@ function render() {
   });
 
   setMarkerVisibilityByZoom();
-  updateClusterMarkers();
   updateEdgeIndicator();
 }
 
@@ -987,7 +934,8 @@ function openMarkerFromHash() {
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
       activeItem = item;
-      setActiveRegionChip("all");
+      activeRegionKey = getRegionKeyForItem(item);
+      setActiveRegionChip(activeRegionKey || "all");
       showPlaceSheet(item);
       map.flyTo(getFlyToOptions(item));
       map.once("moveend", () => {
@@ -1008,80 +956,32 @@ function openMarkerFromHash() {
 map.on("load", async () => {
   listings = await fetchProducts();
 
-  const geojson = {
-    type: "FeatureCollection",
-    features: listings.map((item) => ({
-      type: "Feature",
-      properties: {
-        id: item.id,
-        title: item.title,
-        image: item.image || FALLBACK_IMAGE
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [item.lng, item.lat]
-      }
-    }))
-  };
-
-  map.addSource("listings-cluster", {
-    type: "geojson",
-    data: geojson,
-    cluster: true,
-    clusterMaxZoom: 13,
-    clusterRadius: 50
-  });
-
-  map.addLayer({
-    id: "clusters-hit-area",
-    type: "circle",
-    source: "listings-cluster",
-    filter: ["has", "point_count"],
-    paint: {
-      "circle-radius": 1,
-      "circle-opacity": 0
-    }
-  });
-
   render();
   setMarkerVisibilityByZoom();
-  updateClusterMarkers();
 
+  document.getElementById("skeletons")?.remove();
   document.getElementById("place-sheet")?.classList.add("hidden");
 
   bindHeaderRegionPills();
 
-  // Reset to active region after load (default = "all" / Home)
   requestAnimationFrame(() => {
     focusRegion("all");
   });
 
   openMarkerFromHash();
   initSheetDrag();
+
   map.on("move", () => {
-    updateClusterMarkers();
     updateEdgeIndicator();
   });
 
   map.on("zoom", () => {
     setMarkerVisibilityByZoom();
-    updateClusterMarkers();
     updateEdgeIndicator();
   });
 
   map.on("moveend", () => {
-    updateClusterMarkers();
     updateEdgeIndicator();
-  });
-
-  map.on("idle", () => {
-    updateClusterMarkers();
-  });
-
-  map.on("sourcedata", (event) => {
-    if (event.sourceId === "listings-cluster" && event.isSourceLoaded) {
-      updateClusterMarkers();
-    }
   });
 });
 
@@ -1099,6 +999,9 @@ window.addEventListener("resize", () => {
   if (isSheetOpen && activeItem) {
     keepActiveMarkerVisible();
   }
+
+  setMarkerVisibilityByZoom();
+  updateEdgeIndicator();
 });
 
 map.on("click", (e) => {
