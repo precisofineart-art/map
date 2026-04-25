@@ -387,7 +387,7 @@ function getSheetOffset() {
   const headerRect = header?.getBoundingClientRect();
 
   const topSafe = Math.round((headerRect?.bottom || 0) + 20);
-  const bottomSafe = Math.round(sheetRect.top - 28);
+  const bottomSafe = Math.round(sheetRect.top - 72);
 
   const desiredY = bottomSafe > topSafe
     ? Math.round((topSafe + bottomSafe) / 2)
@@ -397,6 +397,57 @@ function getSheetOffset() {
   const offsetY = desiredY - viewportCenterY;
 
   return [0, offsetY];
+}
+
+function nudgeActiveMarkerIntoView() {
+  if (!map || !activeItem) return;
+
+  const markerPoint = map.project([activeItem.lng, activeItem.lat]);
+  const sheet = document.getElementById("place-sheet");
+  const header = document.getElementById("header");
+  const mapEl = document.getElementById("map");
+  if (!mapEl) return;
+
+  const mapRect = mapEl.getBoundingClientRect();
+  const sheetRect = sheet && !sheet.classList.contains("hidden")
+    ? sheet.getBoundingClientRect()
+    : null;
+  const headerRect = header?.getBoundingClientRect();
+
+  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
+  const padding = 72;
+
+  const safeLeft = sheetRect && !isMobileViewport
+    ? sheetRect.right - mapRect.left + padding
+    : padding;
+
+  const safeRight = mapRect.width - padding;
+  const safeTop = Math.max(padding, Math.round((headerRect?.bottom || 0) - mapRect.top + 32));
+  const safeBottom = sheetRect && isMobileViewport
+    ? sheetRect.top - mapRect.top - padding
+    : mapRect.height - padding;
+
+  let panX = 0;
+  let panY = 0;
+
+  if (markerPoint.x < safeLeft) {
+    panX = markerPoint.x - safeLeft;
+  } else if (markerPoint.x > safeRight) {
+    panX = markerPoint.x - safeRight;
+  }
+
+  if (markerPoint.y < safeTop) {
+    panY = markerPoint.y - safeTop;
+  } else if (markerPoint.y > safeBottom) {
+    panY = markerPoint.y - safeBottom;
+  }
+
+  if (Math.abs(panX) > 1 || Math.abs(panY) > 1) {
+    map.panBy([panX, panY], {
+      duration: 220,
+      essential: true
+    });
+  }
 }
 
 function getFlyToOptions(item, zoom) {
@@ -427,7 +478,7 @@ function keepActiveMarkerVisible() {
 
   let zoom;
   if (isMobileViewport) {
-    zoom = sheet?.classList.contains("level-2") ? 10.9 : 11.2;
+    zoom = sheet?.classList.contains("level-2") ? 11.1 : 11.3;
   }
 
   map.easeTo({
@@ -483,7 +534,18 @@ function openSheetToLevel2() {
 
   sheet.classList.remove("hidden", "level-1", "level-3");
   sheet.classList.add("level-2");
-  keepActiveMarkerVisible();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      keepActiveMarkerVisible();
+      window.setTimeout(nudgeActiveMarkerIntoView, 280);
+    });
+  });
+
+  window.setTimeout(() => {
+    keepActiveMarkerVisible();
+    window.setTimeout(nudgeActiveMarkerIntoView, 280);
+  }, 360);
 }
 
 function initSheetDrag() {
@@ -830,7 +892,10 @@ function handleMarkerClick(item) {
       }, 40);
     }
   });
-  setTimeout(updateEdgeIndicator, 300);
+  setTimeout(() => {
+    updateEdgeIndicator();
+    nudgeActiveMarkerIntoView();
+  }, 300);
 }
 
 /* =========================
@@ -930,7 +995,10 @@ function openMarkerFromHash() {
           }, 40);
         }
       });
-      setTimeout(updateEdgeIndicator, 300);
+      setTimeout(() => {
+        updateEdgeIndicator();
+        nudgeActiveMarkerIntoView();
+      }, 300);
     }
   }, 200);
 }
