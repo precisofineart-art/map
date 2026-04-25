@@ -45,11 +45,10 @@ const REGION_VIEWS = {
 let listings = [];
 let markers = [];
 let activeItem = null;
-let activeRegionKey = "all";
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 
-const MARKER_SHOW_ZOOM = 0;
+const MARKER_SHOW_ZOOM = 4.5;
 
 /* =========================
    HELPERS
@@ -140,63 +139,44 @@ function getRegionKeyForItem(item) {
   return "all";
 }
 
-function getItemsForRegion(regionKey = "all") {
-  const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+function navigateToNearestHorizontalMarker(direction) {
+  if (!map || !listings.length) return;
 
-  if (!region.bounds) {
-    return listings.slice();
-  }
+  const currentLngLat = activeItem
+    ? [activeItem.lng, activeItem.lat]
+    : map.getCenter().toArray();
 
-  return listings.filter((item) => pointInBounds(item.lng, item.lat, region.bounds));
-}
+  const currentPoint = map.project(currentLngLat);
+  const currentId = activeItem?.id || "";
+  const minHorizontalDistance = 18;
 
-function getDistanceBetweenItems(itemA, itemB) {
-  if (!itemA || !itemB) return Number.POSITIVE_INFINITY;
+  const candidates = listings
+    .filter((item) => item.id !== currentId)
+    .map((item) => {
+      const point = map.project([item.lng, item.lat]);
+      const deltaX = point.x - currentPoint.x;
+      const deltaY = point.y - currentPoint.y;
 
-  const lat1 = itemA.lat * Math.PI / 180;
-  const lat2 = itemB.lat * Math.PI / 180;
-  const deltaLat = (itemB.lat - itemA.lat) * Math.PI / 180;
-  const deltaLng = (itemB.lng - itemA.lng) * Math.PI / 180;
+      return {
+        item,
+        deltaX,
+        score: Math.abs(deltaX) + Math.abs(deltaY) * 0.35
+      };
+    })
+    .filter(({ deltaX }) => {
+      if (direction === "right") return deltaX > minHorizontalDistance;
+      return deltaX < -minHorizontalDistance;
+    })
+    .sort((a, b) => a.score - b.score);
 
-  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) *
-    Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+  const nextItem = candidates[0]?.item;
+  if (!nextItem) return;
 
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function getSortedRegionItemsFromActive() {
-  if (!activeItem) return [];
-
-  const regionKey = activeRegionKey || getRegionKeyForItem(activeItem) || "all";
-
-  return getItemsForRegion(regionKey)
-    .filter((item) => item.id !== activeItem.id)
-    .sort((itemA, itemB) => {
-      return getDistanceBetweenItems(activeItem, itemA) - getDistanceBetweenItems(activeItem, itemB);
-    });
-}
-
-function getSwipeTargetItem(direction = 1) {
-  if (!activeItem) return null;
-
-  const sortedItems = getSortedRegionItemsFromActive();
-  if (!sortedItems.length) return null;
-
-  const targetIndex = direction > 0 ? 0 : sortedItems.length - 1;
-  return sortedItems[targetIndex] || null;
-}
-
-function openSwipeTarget(direction = 1) {
-  const targetItem = getSwipeTargetItem(direction);
-  if (!targetItem) return;
-
-  handleMarkerClick(targetItem, { preserveRegion: true });
+  handleMarkerClick(nextItem);
 }
 
 function focusRegion(regionKey) {
   const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
-  activeRegionKey = regionKey || "all";
 
   activeItem = null;
   setActiveMarkerState("");
@@ -258,16 +238,18 @@ function bindHeaderRegionPills() {
 function setMarkerVisibilityByZoom() {
   if (!map) return;
 
-  const showMarkers = map.getZoom() >= MARKER_SHOW_ZOOM;
+  const isFocusedZoom = map.getZoom() >= MARKER_SHOW_ZOOM;
 
   markers.forEach((marker) => {
     const markerEl = marker.getElement();
     if (!markerEl) return;
-    markerEl.style.display = showMarkers ? "" : "none";
-    markerEl.style.opacity = showMarkers ? "1" : "0";
+
+    markerEl.style.display = "";
+    markerEl.style.opacity = isFocusedZoom ? "1" : "0.25";
+    markerEl.style.pointerEvents = isFocusedZoom ? "auto" : "none";
   });
 
-  if (!showMarkers) {
+  if (!isFocusedZoom) {
     clearEdgeIndicators();
   }
 }
@@ -505,15 +487,12 @@ function initSheetDrag() {
   let startY = 0;
   let startTranslate = 0;
   let currentTranslate = 0;
-  let currentSwipeX = 0;
   let isDragging = false;
-  let isHorizontalSwipe = false;
   let activePointerId = null;
-  let lastX = 0;
   let lastY = 0;
   let lastTime = 0;
-  let velocityX = 0;
   let velocityY = 0;
+  let hasHorizontalIntent = false;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
@@ -556,22 +535,13 @@ function initSheetDrag() {
     const now = performance.now();
     const deltaX = ev.clientX - startX;
     const deltaY = ev.clientY - startY;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
 
-    if (!isHorizontalSwipe && absX > 18 && absX > absY * 1.35) {
-      isHorizontalSwipe = true;
+    if (!hasHorizontalIntent && Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      hasHorizontalIntent = true;
     }
 
-    const dt = now - lastTime;
-    if (dt > 0) {
-      velocityX = (ev.clientX - lastX) / dt;
-      velocityY = (ev.clientY - lastY) / dt;
-    }
-
-    if (isHorizontalSwipe) {
-      currentSwipeX = Math.max(-90, Math.min(90, deltaX));
-      sheet.style.transform = `translateX(${currentSwipeX}px) translateY(${startTranslate}%)`;
+    if (hasHorizontalIntent) {
+      sheet.style.transform = `translateX(${deltaX * 0.12}px) translateY(${startTranslate}%)`;
     } else {
       const viewportHeight = Math.max(window.innerHeight, 1);
       const deltaPercent = (deltaY / viewportHeight) * 100;
@@ -579,7 +549,11 @@ function initSheetDrag() {
       sheet.style.transform = `translateY(${currentTranslate}%)`;
     }
 
-    lastX = ev.clientX;
+    const dt = now - lastTime;
+    if (dt > 0) {
+      velocityY = (ev.clientY - lastY) / dt;
+    }
+
     lastY = ev.clientY;
     lastTime = now;
     ev.preventDefault();
@@ -596,24 +570,12 @@ function initSheetDrag() {
       sheet.releasePointerCapture?.(activePointerId);
     }
 
-    const midpoint = (LEVEL_1 + LEVEL_2) / 2;
-    const flickUp = velocityY < -0.35;
-    const flickDown = velocityY > 0.35;
-    const swipeRight = isHorizontalSwipe && (currentSwipeX > 70 || velocityX > 0.45);
-    const swipeLeft = isHorizontalSwipe && (currentSwipeX < -70 || velocityX < -0.45);
-
-    let targetLevel;
-    if (flickUp && !isHorizontalSwipe) {
-      targetLevel = 2;
-    } else if (flickDown && !isHorizontalSwipe) {
-      targetLevel = 1;
-    } else {
-      targetLevel = currentTranslate <= midpoint ? 2 : 1;
-    }
+    const deltaX = ev?.clientX != null ? ev.clientX - startX : 0;
+    const deltaY = ev?.clientY != null ? ev.clientY - startY : 0;
+    const didHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
 
     isDragging = false;
     activePointerId = null;
-    velocityX = 0;
     velocityY = 0;
     sheet.style.transition = "";
 
@@ -621,17 +583,26 @@ function initSheetDrag() {
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
 
-    if (swipeLeft || swipeRight) {
+    if (didHorizontalSwipe) {
       sheet.style.transform = "";
-      setLevel(getCurrentLevel());
-      openSwipeTarget(swipeLeft ? 1 : -1);
-      isHorizontalSwipe = false;
-      currentSwipeX = 0;
+      const direction = deltaX < 0 ? "right" : "left";
+      navigateToNearestHorizontalMarker(direction);
       return;
     }
 
-    isHorizontalSwipe = false;
-    currentSwipeX = 0;
+    const midpoint = (LEVEL_1 + LEVEL_2) / 2;
+    const flickUp = velocityY < -0.35;
+    const flickDown = velocityY > 0.35;
+
+    let targetLevel;
+    if (flickUp) {
+      targetLevel = 2;
+    } else if (flickDown) {
+      targetLevel = 1;
+    } else {
+      targetLevel = currentTranslate <= midpoint ? 2 : 1;
+    }
+
     setLevel(targetLevel);
   };
 
@@ -651,15 +622,12 @@ function initSheetDrag() {
     startY = e.clientY;
     startTranslate = getLevelTranslate(getCurrentLevel());
     currentTranslate = startTranslate;
-    currentSwipeX = 0;
-    isHorizontalSwipe = false;
     isDragging = true;
     activePointerId = e.pointerId;
-    lastX = e.clientX;
     lastY = e.clientY;
     lastTime = performance.now();
-    velocityX = 0;
     velocityY = 0;
+    hasHorizontalIntent = false;
 
     sheet.style.transition = "none";
 
@@ -686,7 +654,6 @@ function resetView() {
   const previousActiveItem = activeItem;
   const targetRegionKey = previousActiveItem ? getRegionKeyForItem(previousActiveItem) : "all";
   const targetRegion = REGION_VIEWS[targetRegionKey] || REGION_VIEWS.all;
-  activeRegionKey = targetRegionKey;
 
   activeItem = null;
 
@@ -824,17 +791,14 @@ map.doubleClickZoom.enable();
 /* =========================
    MARKER CLICK
 ========================= */
-function handleMarkerClick(item, options = {}) {
+function handleMarkerClick(item) {
   if (activeItem?.id === item.id && !document.getElementById("place-sheet")?.classList.contains("hidden")) {
     return;
   }
 
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
-  if (!options.preserveRegion) {
-    activeRegionKey = getRegionKeyForItem(item);
-  }
-  setActiveRegionChip(activeRegionKey || "all");
+  setActiveRegionChip("all");
 
   showPlaceSheet(item);
   map.flyTo(getFlyToOptions(item));
@@ -934,8 +898,7 @@ function openMarkerFromHash() {
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
       activeItem = item;
-      activeRegionKey = getRegionKeyForItem(item);
-      setActiveRegionChip(activeRegionKey || "all");
+      setActiveRegionChip("all");
       showPlaceSheet(item);
       map.flyTo(getFlyToOptions(item));
       map.once("moveend", () => {
