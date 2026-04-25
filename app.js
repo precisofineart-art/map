@@ -477,6 +477,15 @@ function showPlaceSheet(item) {
   closeButton?.focus({ preventScroll: true });
 }
 
+function openSheetToLevel2() {
+  const sheet = document.getElementById("place-sheet");
+  if (!sheet) return;
+
+  sheet.classList.remove("hidden", "level-1", "level-3");
+  sheet.classList.add("level-2");
+  keepActiveMarkerVisible();
+}
+
 function initSheetDrag() {
   const sheet = document.getElementById("place-sheet");
   const handle = sheet?.querySelector(".place-sheet-handle");
@@ -541,8 +550,12 @@ function initSheetDrag() {
     }
 
     if (hasHorizontalIntent) {
-      sheet.style.transform = `translateX(${deltaX * 0.12}px) translateY(${startTranslate}%)`;
-    } else {
+      if (isMobileViewport()) {
+        sheet.style.transform = `translateX(${deltaX * 0.12}px) translateY(${startTranslate}%)`;
+      } else {
+        sheet.style.transform = `translateX(${deltaX * 0.12}px) translateY(-50%)`;
+      }
+    } else if (isMobileViewport()) {
       const viewportHeight = Math.max(window.innerHeight, 1);
       const deltaPercent = (deltaY / viewportHeight) * 100;
       currentTranslate = clampTranslate(startTranslate + deltaPercent);
@@ -590,6 +603,11 @@ function initSheetDrag() {
       return;
     }
 
+    if (!isMobileViewport()) {
+      sheet.style.transform = "";
+      return;
+    }
+
     const midpoint = (LEVEL_1 + LEVEL_2) / 2;
     const flickUp = velocityY < -0.35;
     const flickDown = velocityY > 0.35;
@@ -607,20 +625,22 @@ function initSheetDrag() {
   };
 
   const onPointerDown = (e) => {
-    if (!isMobileViewport()) return;
+    // if (!isMobileViewport()) return;
     if (sheet.classList.contains("hidden")) return;
     if (e.target.closest("button, a")) return;
 
-    const isLevel1 = sheet.classList.contains("level-1");
-    if (!isLevel1) {
-      const rect = sheet.getBoundingClientRect();
-      const dragZoneHeight = 220;
-      if (e.clientY > rect.top + dragZoneHeight) return;
+    if (isMobileViewport()) {
+      const isLevel1 = sheet.classList.contains("level-1");
+      if (!isLevel1) {
+        const rect = sheet.getBoundingClientRect();
+        const dragZoneHeight = 220;
+        if (e.clientY > rect.top + dragZoneHeight) return;
+      }
     }
 
     startX = e.clientX;
     startY = e.clientY;
-    startTranslate = getLevelTranslate(getCurrentLevel());
+    startTranslate = isMobileViewport() ? getLevelTranslate(getCurrentLevel()) : 0;
     currentTranslate = startTranslate;
     isDragging = true;
     activePointerId = e.pointerId;
@@ -804,6 +824,7 @@ function handleMarkerClick(item) {
   map.flyTo(getFlyToOptions(item));
   map.once("moveend", () => {
     if (activeItem?.id === item.id) {
+      openSheetToLevel2();
       window.setTimeout(() => {
         triggerActiveMarkerPop(item.id);
       }, 40);
@@ -903,6 +924,7 @@ function openMarkerFromHash() {
       map.flyTo(getFlyToOptions(item));
       map.once("moveend", () => {
         if (activeItem?.id === item.id) {
+          openSheetToLevel2();
           window.setTimeout(() => {
             triggerActiveMarkerPop(item.id);
           }, 40);
