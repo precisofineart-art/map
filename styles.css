@@ -319,6 +319,120 @@ body {
   display: none;
 }
 
+.sheet-nearby {
+  padding: 12px 16px 8px;
+}
+
+.sheet-nearby.hidden {
+  display: none;
+}
+
+.sheet-nearby-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sheet-nearby-nav {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.sheet-nearby-nav button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #202124;
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sheet-nearby-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sheet-nearby-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sheet-nearby-list::-webkit-scrollbar {
+  display: none;
+}
+
+.nearby-print {
+  flex: 0 0 148px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  padding: 7px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #202124;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.nearby-print:active {
+  transform: scale(0.98);
+}
+
+.nearby-print-thumb {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
+}
+
+.nearby-print-details {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nearby-print-title {
+  overflow: hidden;
+  color: #202124;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nearby-print-meta {
+  color: #5f6368;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .sheet-media {
   display: flex;
   align-items: center;
@@ -408,8 +522,51 @@ body {
 }
 
 .custom-marker-shell {
+  --explode-x: 0px;
+  --explode-y: 0px;
   width: 40px;
   height: 40px;
+}
+
+.custom-marker-offset {
+  width: 40px;
+  height: 40px;
+  transform: translate(var(--explode-x), var(--explode-y));
+  transform-origin: center center;
+  transition: transform 0.26s cubic-bezier(0.22, 0.9, 0.24, 1), filter 0.2s ease;
+  will-change: transform;
+}
+
+.custom-marker-shell.exploded {
+  z-index: 9000 !important;
+}
+
+.custom-marker-shell.exploded .custom-marker-offset {
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.2));
+}
+
+.custom-marker-shell.explode-origin {
+  z-index: 9012 !important;
+}
+
+.custom-marker-shell.explode-origin::after {
+  content: attr(data-explode-count);
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #0c347a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
 }
 
 .custom-marker {
@@ -572,12 +729,13 @@ body {
   }
 
   .place-sheet.level-2 .sheet-media {
-    min-height: 360px;
+    min-height: 280px;
     padding-left: 0;
     padding-right: 0;
   }
 
   .place-sheet.level-1 .sheet-media,
+  .place-sheet.level-1 .sheet-nearby,
   .place-sheet.level-1 .sheet-cta {
     display: none !important;
   }
@@ -597,6 +755,21 @@ body {
 
   .place-sheet.level-2 .sheet-media {
     display: flex;
+  }
+
+  .place-sheet.level-2 .sheet-nearby {
+    display: block;
+    padding: 0 16px 10px;
+  }
+
+  .sheet-nearby-top {
+    margin-bottom: 7px;
+  }
+
+  .nearby-print {
+    flex-basis: 136px;
+    padding: 6px;
+    border-radius: 12px;
   }
 
   .place-sheet.level-2 .sheet-cta {
@@ -634,7 +807,7 @@ body {
   .place-sheet.level-2 .place-sheet-header > div:first-child {
     display: block;
     width: 100%;
-    padding-right: 0;
+    padding-right: 56px;
   }
 
   .place-sheet.level-2 .sheet-time,
@@ -649,14 +822,14 @@ body {
 
   .sheet-product-link {
     width: auto;
-    min-height: 38px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-size: 12px;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    font-size: 11px;
+    box-shadow: 0 7px 15px rgba(0, 0, 0, 0.13);
   }
   .sheet-media img {
-    height: 420px;
+    height: min(calc(100vw - 8px), calc(65vh - 218px));
     object-fit: contain;
     object-position: center;
     background: #ffffff;
@@ -855,5 +1028,9 @@ body {
 }
 
 body.marker-active .edge-indicator {
+  display: none !important;
+}
+
+body.markers-exploded .edge-indicator {
   display: none !important;
 }

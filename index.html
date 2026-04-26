@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preciso Print Map</title>
+  <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
@@ -25,6 +26,17 @@
         <button id="sheet-close" type="button" aria-label="Close place details">✕</button>
       </div>
     </div>
+
+    <section id="sheet-nearby" class="sheet-nearby hidden" aria-label="Nearby prints">
+      <div class="sheet-nearby-top">
+        <span>Nearby</span>
+        <div class="sheet-nearby-nav">
+          <button id="nearby-prev" type="button" aria-label="Previous nearby print">‹</button>
+          <button id="nearby-next" type="button" aria-label="Next nearby print">›</button>
+        </div>
+      </div>
+      <div id="sheet-nearby-list" class="sheet-nearby-list"></div>
+    </section>
 
     <div class="sheet-media">
       <img id="sheet-image-main" src="" alt="" loading="lazy" decoding="async" draggable="false">
