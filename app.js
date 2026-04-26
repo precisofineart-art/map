@@ -6,7 +6,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 const FALLBACK_IMAGE = "https://picsum.photos/800";
-console.log("NEW APP-NO-CLUSTER.JS LOADED");
 
 /* =========================
    HOME VIEW
@@ -48,8 +47,6 @@ let activeItem = null;
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 
-const MARKER_SHOW_ZOOM = 4.5;
-
 /* =========================
    HELPERS
 ========================= */
@@ -76,6 +73,34 @@ function setActiveMarkerState(itemId = "") {
       markerInner.classList.remove("hover", "pop");
     }
   });
+}
+
+function forceActiveMarkerVisible() {
+  if (!activeItem?.id) return;
+
+  const markerShell = document.querySelector(`.custom-marker-shell[data-item-id="${CSS.escape(activeItem.id)}"]`);
+  if (!markerShell) return;
+
+  const markerWrapper = markerShell.closest(".mapboxgl-marker");
+
+  markerShell.style.display = "";
+  markerShell.style.opacity = "1";
+  markerShell.style.pointerEvents = "auto";
+  markerShell.classList.add("active");
+
+  const markerInner = markerShell.querySelector(".custom-marker");
+  if (markerInner) {
+    markerInner.style.display = "";
+    markerInner.style.opacity = "1";
+    markerInner.classList.add("active");
+  }
+
+  if (markerWrapper) {
+    markerWrapper.style.display = "block";
+    markerWrapper.style.opacity = "1";
+    markerWrapper.style.pointerEvents = "auto";
+    markerWrapper.style.zIndex = "9999";
+  }
 }
 
 function triggerActiveMarkerPop(itemId) {
@@ -106,6 +131,10 @@ function clearMarkerHoverStates() {
 function clearEdgeIndicators() {
   edgeIndicatorEls.forEach((el) => el.remove());
   edgeIndicatorEls.clear();
+}
+
+function hasValidCoordinates(item) {
+  return Number.isFinite(item?.lng) && Number.isFinite(item?.lat);
 }
 
 function setActiveRegionChip(regionKey = "all") {
@@ -238,24 +267,18 @@ function bindHeaderRegionPills() {
 function setMarkerVisibilityByZoom() {
   if (!map) return;
 
-  const isFocusedZoom = map.getZoom() >= MARKER_SHOW_ZOOM;
-
   markers.forEach((marker) => {
     const markerEl = marker.getElement();
     if (!markerEl) return;
 
     markerEl.style.display = "";
-    markerEl.style.opacity = isFocusedZoom ? "1" : "0.25";
-    markerEl.style.pointerEvents = isFocusedZoom ? "auto" : "none";
+    markerEl.style.opacity = "1";
+    markerEl.style.pointerEvents = "auto";
   });
-
-  if (!isFocusedZoom) {
-    clearEdgeIndicators();
-  }
 }
 
 function updateEdgeIndicator() {
-  if (!map || !listings.length || map.getZoom() < MARKER_SHOW_ZOOM) {
+  if (!map || !listings.length) {
     clearEdgeIndicators();
     return;
   }
@@ -400,9 +423,11 @@ function getSheetOffset() {
 }
 
 function nudgeActiveMarkerIntoView() {
-  if (!map || !activeItem) return;
+  if (!map || !activeItem || !hasValidCoordinates(activeItem)) return;
 
   const markerPoint = map.project([activeItem.lng, activeItem.lat]);
+  if (!Number.isFinite(markerPoint.x) || !Number.isFinite(markerPoint.y)) return;
+
   const sheet = document.getElementById("place-sheet");
   const header = document.getElementById("header");
   const mapEl = document.getElementById("map");
@@ -442,6 +467,8 @@ function nudgeActiveMarkerIntoView() {
     panY = markerPoint.y - safeBottom;
   }
 
+  if (!Number.isFinite(panX) || !Number.isFinite(panY)) return;
+
   if (Math.abs(panX) > 1 || Math.abs(panY) > 1) {
     map.panBy([panX, panY], {
       duration: 220,
@@ -451,6 +478,8 @@ function nudgeActiveMarkerIntoView() {
 }
 
 function getFlyToOptions(item, zoom) {
+  if (!hasValidCoordinates(item)) return null;
+
   const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
@@ -471,24 +500,27 @@ function getFlyToOptions(item, zoom) {
 }
 
 function keepActiveMarkerVisible() {
-  if (!activeItem) return;
+  if (!map || !activeItem || !hasValidCoordinates(activeItem)) return;
 
   const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
-  let zoom;
-  if (isMobileViewport) {
-    zoom = sheet?.classList.contains("level-2") ? 11.1 : 11.3;
-  }
-
-  map.easeTo({
+  const easeOptions = {
     center: [activeItem.lng, activeItem.lat],
-    zoom,
     offset: getSheetOffset(),
     duration: 260,
     essential: true
-  });
-  setTimeout(updateEdgeIndicator, 300);
+  };
+
+  if (isMobileViewport) {
+    easeOptions.zoom = sheet?.classList.contains("level-2") ? 11.1 : 11.3;
+  }
+
+  map.easeTo(easeOptions);
+  setTimeout(() => {
+    updateEdgeIndicator();
+    forceActiveMarkerVisible();
+  }, 300);
 }
 
 function showPlaceSheet(item) {
@@ -521,6 +553,7 @@ function showPlaceSheet(item) {
   }
 
   setActiveMarkerState(item.id);
+  forceActiveMarkerVisible();
 
   sheet.classList.remove("hidden");
   sheet.classList.remove("level-2", "level-3");
@@ -874,6 +907,9 @@ map.doubleClickZoom.enable();
    MARKER CLICK
 ========================= */
 function handleMarkerClick(item) {
+  const flyToOptions = getFlyToOptions(item);
+  if (!flyToOptions) return;
+
   if (activeItem?.id === item.id && !document.getElementById("place-sheet")?.classList.contains("hidden")) {
     return;
   }
@@ -883,7 +919,7 @@ function handleMarkerClick(item) {
   setActiveRegionChip("all");
 
   showPlaceSheet(item);
-  map.flyTo(getFlyToOptions(item));
+  map.flyTo(flyToOptions);
   map.once("moveend", () => {
     if (activeItem?.id === item.id) {
       openSheetToLevel2();
@@ -983,10 +1019,13 @@ function openMarkerFromHash() {
 
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
+      const flyToOptions = getFlyToOptions(item);
+      if (!flyToOptions) return;
+
       activeItem = item;
       setActiveRegionChip("all");
       showPlaceSheet(item);
-      map.flyTo(getFlyToOptions(item));
+      map.flyTo(flyToOptions);
       map.once("moveend", () => {
         if (activeItem?.id === item.id) {
           openSheetToLevel2();
@@ -1028,14 +1067,17 @@ map.on("load", async () => {
     updateEdgeIndicator();
   });
 
-  map.on("zoom", () => {
-    setMarkerVisibilityByZoom();
-    updateEdgeIndicator();
-  });
+map.on("zoom", () => {
+  setMarkerVisibilityByZoom();
+  updateEdgeIndicator();
+  forceActiveMarkerVisible();
+});
 
-  map.on("moveend", () => {
-    updateEdgeIndicator();
-  });
+map.on("moveend", () => {
+  setMarkerVisibilityByZoom();
+  updateEdgeIndicator();
+  forceActiveMarkerVisible();
+});
 });
 
 window.addEventListener("hashchange", openMarkerFromHash);
