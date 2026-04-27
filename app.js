@@ -773,10 +773,11 @@ function keepActiveMarkerVisible() {
   }, 300);
 }
 
-function showPlaceSheet(item) {
+function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
+  const keepExpanded = options.keepExpanded && sheet.classList.contains("level-2");
   const title = document.getElementById("sheet-title");
   const time = document.getElementById("sheet-time");
   const subtitle = document.getElementById("sheet-subtitle");
@@ -807,9 +808,14 @@ function showPlaceSheet(item) {
   forceActiveMarkerVisible();
 
   sheet.classList.remove("hidden");
-  sheet.classList.remove("level-2", "level-3");
-  sheet.classList.add("level-1");
-  closeButton?.focus({ preventScroll: true });
+  if (keepExpanded) {
+    sheet.classList.remove("level-1", "level-3");
+    sheet.classList.add("level-2");
+  } else {
+    sheet.classList.remove("level-2", "level-3");
+    sheet.classList.add("level-1");
+    closeButton?.focus({ preventScroll: true });
+  }
 }
 
 function openSheetToLevel2() {
@@ -1162,6 +1168,15 @@ map.doubleClickZoom.enable();
 function handleMarkerClick(item, options = {}) {
   const flyToOptions = getFlyToOptions(item);
   if (!flyToOptions) return;
+  const sheet = document.getElementById("place-sheet");
+  const keepSheetExpanded = Boolean(
+    sheet &&
+    window.matchMedia("(max-width: 700px)").matches &&
+    !sheet.classList.contains("hidden") &&
+    sheet.classList.contains("level-2") &&
+    activeItem &&
+    activeItem.id !== item.id
+  );
 
   const shouldOpenExplodedMarker = explodedMarkerGroup?.itemIds?.has(item.id);
   const canExplode = !options.skipExplosion && !activeItem && !isPlaceSheetOpen() && !shouldOpenExplodedMarker;
@@ -1178,7 +1193,7 @@ function handleMarkerClick(item, options = {}) {
   activeItem = item;
   setActiveRegionChip("all");
 
-  showPlaceSheet(item);
+  showPlaceSheet(item, { keepExpanded: keepSheetExpanded });
   map.flyTo(flyToOptions);
   map.once("moveend", () => {
     if (activeItem?.id === item.id) {
