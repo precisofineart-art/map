@@ -46,13 +46,20 @@ body {
 
 #header {
   position: fixed;
-  top: 10px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
   pointer-events: none;
   width: calc(100vw - 32px);
-  max-width: 1400px;
+  max-width: 760px;
+}
+
+@media (min-width: 701px) {
+  body.marker-active #header {
+    left: calc(50% + 203px);
+    max-width: min(680px, calc(100vw - 440px));
+  }
 }
 
 .app-header {
@@ -60,16 +67,15 @@ body {
 }
 
 .header-stack {
-  position: relative;
-  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
   width: 100%;
 }
 
 .header-inner {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,18 +112,20 @@ body {
 }
 
 .region-pills {
-  position: absolute;
-  top: 50%;
-  left: calc(50% + 118px);
-  transform: translateY(-50%);
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
-  width: calc(50vw - 150px);
-  max-width: 700px;
+  gap: 5px;
+  width: max-content;
+  max-width: min(100%, 680px);
   min-width: 0;
+  padding: 4px;
+  border: 1px solid rgba(12, 52, 122, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(12px);
   pointer-events: auto;
   overflow-x: auto;
   overflow-y: hidden;
@@ -136,34 +144,36 @@ body {
   position: sticky;
   right: 0;
   top: 0;
-  width: 20px;
+  width: 18px;
   height: 100%;
   flex: 0 0 auto;
-  margin-left: -20px;
+  margin-left: -18px;
   pointer-events: none;
-  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.96));
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.72));
 }
 
 .region-pill {
   flex: 0 0 auto;
-  border: 1px solid rgba(12, 52, 122, 0.08);
+  min-height: 30px;
+  border: 1px solid rgba(12, 52, 122, 0.1);
   border-radius: 999px;
-  padding: 7px 12px;
-  background: rgba(255, 255, 255, 0.96);
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.68);
   color: #0c347a;
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(10px);
+  box-shadow: none;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
 .region-pill:hover {
   transform: translateY(-0.5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
 }
 
 .region-pill:active {
@@ -172,7 +182,9 @@ body {
 
 .region-pill.active {
   background: rgb(12, 52, 122);
+  border-color: rgb(12, 52, 122);
   color: #fff;
+  box-shadow: 0 7px 16px rgba(12, 52, 122, 0.22);
 }
 
 #footer {
@@ -639,59 +651,53 @@ body {
   }
 
   #header {
-    top: 12px;
-    width: auto;
+    top: 8px;
+    width: calc(100vw - 18px);
     max-width: none;
   }
 
   .header-stack {
-    position: relative;
-    display: block;
-    width: calc(100vw - 24px);
-    min-height: 46px;
+    width: 100%;
+    gap: 4px;
   }
 
   .header-inner {
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
     min-height: 0;
     padding: 0;
-    justify-content: flex-start;
+    justify-content: center;
     z-index: 4;
   }
 
   .logo {
-    height: 45px;
+    height: 38px;
   }
 
   .region-pill {
-    padding: 6px 10px;
+    min-height: 30px;
+    padding: 0 10px;
     font-size: 10px;
   }
 
   .region-pills {
-    position: absolute;
-    top: 50%;
-    left: 110px;
-    transform: translateY(-50%);
     flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 5px;
-    width: calc(100vw - 108px);
-    max-width: calc(100vw - 108px);
-    padding: 0 8px 0 0;
+    width: min(100%, 360px);
+    max-width: calc(100vw - 18px);
+    padding: 4px;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    scroll-behavior: smooth;
     white-space: nowrap;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.54);
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
   }
 
-  .region-pills::-webkit-scrollbar {
-    display: none;
+  .region-pills::after {
+    display: block;
+    width: 16px;
+    margin-left: -16px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.54));
   }
 
   #footer {

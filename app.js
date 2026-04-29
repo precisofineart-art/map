@@ -807,6 +807,7 @@ function showPlaceSheet(item, options = {}) {
   setActiveMarkerState(item.id);
   forceActiveMarkerVisible();
 
+  document.body.classList.add("marker-active");
   sheet.classList.remove("hidden");
   if (keepExpanded) {
     sheet.classList.remove("level-1", "level-3");
@@ -1039,6 +1040,7 @@ function resetView() {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3");
   }
+  document.body.classList.remove("marker-active");
   hideNearbyPrints();
 
   setActiveMarkerState("");
@@ -1331,6 +1333,7 @@ map.on("load", async () => {
 
   document.getElementById("skeletons")?.remove();
   document.getElementById("place-sheet")?.classList.add("hidden");
+  document.body.classList.remove("marker-active");
 
   bindHeaderRegionPills();
 
