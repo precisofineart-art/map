@@ -250,6 +250,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
   transition: transform 0.25s ease, opacity 0.25s ease, top 0.25s ease;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -281,6 +282,9 @@ body {
 }
 
 .place-sheet-header {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 3;
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -289,19 +293,29 @@ body {
 
 .place-sheet-header h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 13px;
   line-height: 1.1;
   color: #202124;
 }
 
 .sheet-subtitle {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #5f6368;
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.18;
+  color: #202124;
+}
+
+.sheet-location-2 {
+  margin-top: 3px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #3c4043;
 }
 
 .sheet-time {
-  margin-top: 4px;
+  margin-top: 7px;
   font-size: 12px;
   font-weight: 600;
   color: #000;
@@ -332,7 +346,11 @@ body {
 }
 
 .sheet-nearby {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   padding: 12px 16px 8px;
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .sheet-nearby.hidden {
@@ -379,6 +397,7 @@ body {
 
 .sheet-nearby-list {
   display: flex;
+  align-items: stretch;
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -446,6 +465,9 @@ body {
 }
 
 .sheet-media {
+  flex: 1 1 auto;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -456,7 +478,7 @@ body {
 .sheet-media img {
   width: 98%;
   max-width: 98%;
-  height: 360px;
+  height: min(360px, 100%);
   display: block;
   object-fit: contain;
   object-position: center;
@@ -765,6 +787,8 @@ body {
 
   .place-sheet.level-2 .sheet-nearby {
     display: block;
+    position: relative;
+    z-index: 2;
     padding: 0 16px 10px;
   }
 

@@ -781,13 +781,15 @@ function showPlaceSheet(item, options = {}) {
   const title = document.getElementById("sheet-title");
   const time = document.getElementById("sheet-time");
   const subtitle = document.getElementById("sheet-subtitle");
+  const location2 = document.getElementById("sheet-location-2");
   const image = document.getElementById("sheet-image-main");
   const productLink = document.getElementById("sheet-product-link");
   const closeButton = document.getElementById("sheet-close");
 
-  if (title) title.textContent = item.title || "";
+  if (title) title.textContent = item.moment || "Explore";
+  if (subtitle) subtitle.textContent = item.location1 || "";
+  if (location2) location2.textContent = item.location2 || "";
   if (time) time.textContent = item.time || "Any time";
-  if (subtitle) subtitle.textContent = item.moment || "Explore";
 
   if (image) {
     image.src = item.image || FALLBACK_IMAGE;
@@ -1101,6 +1103,8 @@ async function fetchProducts() {
                 lng: metafield(namespace: "custom", key: "lng") { value }
                 moment: metafield(namespace: "custom", key: "moment") { value }
                 time: metafield(namespace: "custom", key: "time") { value }
+                location1: metafield(namespace: "custom", key: "location_1") { value }
+                location2: metafield(namespace: "custom", key: "location_2") { value }
               }
             }
           }
@@ -1121,8 +1125,15 @@ async function fetchProducts() {
         const lng = parseFloat(node.lng?.value);
         if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
+        const location1 = node.location1?.value?.trim();
+        const location2 = node.location2?.value?.trim();
+        const sheetTitle = [location2, location1].filter(Boolean).join(" • ") || node.title;
+
         const item = {
           title: node.title,
+          sheetTitle,
+          location1,
+          location2,
           lat,
           lng,
           image: node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE,
