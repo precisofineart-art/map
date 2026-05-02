@@ -1154,16 +1154,21 @@ async function fetchProducts() {
 /* =========================
    MAP
 ========================= */
+const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/preciso/cmmr4qr4k000i01s300a1egdu",
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom,
-  cooperativeGestures: true
+  cooperativeGestures: false
 });
 
 map.dragPan.enable();
-map.scrollZoom.disable();
+if (isTouchDevice) {
+  map.scrollZoom.disable();
+} else {
+  map.scrollZoom.enable();
+}
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
 map.doubleClickZoom.enable();
