@@ -860,7 +860,7 @@ function initSheetDrag() {
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
-  const LEVEL_2 = 24;
+  const LEVEL_2 = 0;
 
   const getCurrentLevel = () => {
     if (sheet.classList.contains("level-2")) return 2;

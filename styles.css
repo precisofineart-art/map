@@ -734,11 +734,14 @@ body {
     width: 100%;
     max-width: 100%;
     height: 78vh;
-    max-height: 90vh;
+    height: min(74dvh, calc(100dvh - 124px));
+    max-height: calc(100vh - 124px);
+    max-height: calc(100dvh - 124px);
     min-height: 0;
     border-radius: 20px 20px 0 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     will-change: transform;
   }
 
@@ -753,11 +756,12 @@ body {
   }
 
   .place-sheet.level-2 {
-    transform: translateY(16%);
+    transform: translateY(0);
   }
 
   .place-sheet.level-2 .sheet-media {
-    min-height: 280px;
+    min-height: 220px;
+    min-height: clamp(150px, calc(100dvh - 470px), 250px);
     padding-left: 0;
     padding-right: 0;
   }
@@ -860,6 +864,7 @@ body {
   }
   .sheet-media img {
     height: min(calc(100vw - 8px), calc(65vh - 218px));
+    height: clamp(145px, calc(100dvh - 470px), min(calc(100vw - 8px), 330px));
     object-fit: contain;
     object-position: center;
     background: #ffffff;
