@@ -1172,26 +1172,91 @@ map.keyboard.disable();
 map.boxZoom.disable();
 map.touchPitch?.disable();
 
+const MAP_GESTURE_IGNORED_SELECTOR = [
+  "a",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  ".mapboxgl-marker",
+  ".mapboxgl-control-container",
+  ".place-sheet",
+  "#carousel",
+  "#header"
+].join(",");
+
+const shouldKeepGestureInMap = (target) =>
+  target instanceof Element && Boolean(target.closest(MAP_GESTURE_IGNORED_SELECTOR));
+
+function zoomMapAtPoint(clientX, clientY, nextZoom) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const x = clientX - mapRect.left;
+  const y = clientY - mapRect.top;
+  const minZoom = map.getMinZoom?.() ?? 0;
+  const maxZoom = map.getMaxZoom?.() ?? 22;
+  const clampedZoom = Math.max(minZoom, Math.min(maxZoom, nextZoom));
+
+  map.zoomTo(clampedZoom, {
+    around: map.unproject([x, y]),
+    duration: 0
+  });
+}
+
+function installTrackpadPinchZoom() {
+  let gestureStartZoom = null;
+
+  window.addEventListener(
+    "wheel",
+    (event) => {
+      if (!event.ctrlKey || shouldKeepGestureInMap(event.target)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
+      const zoomDelta = Math.max(-0.45, Math.min(0.45, -normalizedDelta * 0.01));
+      zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDelta);
+    },
+    { capture: true, passive: false }
+  );
+
+  window.addEventListener(
+    "gesturestart",
+    (event) => {
+      if (shouldKeepGestureInMap(event.target)) return;
+
+      event.preventDefault();
+      gestureStartZoom = map.getZoom();
+    },
+    { capture: true, passive: false }
+  );
+
+  window.addEventListener(
+    "gesturechange",
+    (event) => {
+      if (gestureStartZoom === null || shouldKeepGestureInMap(event.target)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * 2);
+    },
+    { capture: true, passive: false }
+  );
+
+  window.addEventListener(
+    "gestureend",
+    () => {
+      gestureStartZoom = null;
+    },
+    { capture: true, passive: true }
+  );
+}
+
 function installEmbeddedScrollBridge() {
   if (window.parent === window) return;
 
-  const ignoredSelector = [
-    "a",
-    "button",
-    "input",
-    "select",
-    "textarea",
-    ".mapboxgl-marker",
-    ".mapboxgl-control-container",
-    ".place-sheet",
-    "#carousel",
-    "#header"
-  ].join(",");
   let lastTouchPoint = null;
   let isVerticalPageScroll = false;
-
-  const shouldKeepGestureInMap = (target) =>
-    target instanceof Element && Boolean(target.closest(ignoredSelector));
 
   const scrollParentPage = (deltaX, deltaY) => {
     window.parent.postMessage(
@@ -1207,6 +1272,7 @@ function installEmbeddedScrollBridge() {
   window.addEventListener(
     "wheel",
     (event) => {
+      if (event.ctrlKey) return;
       if (shouldKeepGestureInMap(event.target)) return;
       scrollParentPage(event.deltaX, event.deltaY);
     },
@@ -1261,6 +1327,7 @@ function installEmbeddedScrollBridge() {
   );
 }
 
+installTrackpadPinchZoom();
 installEmbeddedScrollBridge();
 
 /* =========================
