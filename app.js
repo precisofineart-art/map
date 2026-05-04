@@ -1154,7 +1154,6 @@ async function fetchProducts() {
 /* =========================
    MAP
 ========================= */
-const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/preciso/cmmr4qr4k000i01s300a1egdu",
@@ -1164,14 +1163,14 @@ const map = new mapboxgl.Map({
 });
 
 map.dragPan.enable();
-if (isTouchDevice) {
-  map.scrollZoom.disable();
-} else {
-  map.scrollZoom.enable();
-}
+map.scrollZoom.disable();
 map.touchZoomRotate.enable();
 map.touchZoomRotate.disableRotation();
-map.doubleClickZoom.enable();
+map.doubleClickZoom.disable();
+map.dragRotate.disable();
+map.keyboard.disable();
+map.boxZoom.disable();
+map.touchPitch?.disable();
 
 /* =========================
    MARKER CLICK
