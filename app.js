@@ -1172,6 +1172,97 @@ map.keyboard.disable();
 map.boxZoom.disable();
 map.touchPitch?.disable();
 
+function installEmbeddedScrollBridge() {
+  if (window.parent === window) return;
+
+  const ignoredSelector = [
+    "a",
+    "button",
+    "input",
+    "select",
+    "textarea",
+    ".mapboxgl-marker",
+    ".mapboxgl-control-container",
+    ".place-sheet",
+    "#carousel",
+    "#header"
+  ].join(",");
+  let lastTouchPoint = null;
+  let isVerticalPageScroll = false;
+
+  const shouldKeepGestureInMap = (target) =>
+    target instanceof Element && Boolean(target.closest(ignoredSelector));
+
+  const scrollParentPage = (deltaX, deltaY) => {
+    window.parent.postMessage(
+      {
+        type: "preciso-map-scroll",
+        deltaX,
+        deltaY
+      },
+      "*"
+    );
+  };
+
+  window.addEventListener(
+    "wheel",
+    (event) => {
+      if (shouldKeepGestureInMap(event.target)) return;
+      scrollParentPage(event.deltaX, event.deltaY);
+    },
+    { capture: true, passive: true }
+  );
+
+  window.addEventListener(
+    "touchstart",
+    (event) => {
+      isVerticalPageScroll = false;
+      if (event.touches.length !== 1 || shouldKeepGestureInMap(event.target)) {
+        lastTouchPoint = null;
+        return;
+      }
+
+      const touch = event.touches[0];
+      lastTouchPoint = { x: touch.clientX, y: touch.clientY };
+    },
+    { capture: true, passive: true }
+  );
+
+  window.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!lastTouchPoint || event.touches.length !== 1 || shouldKeepGestureInMap(event.target)) return;
+
+      const touch = event.touches[0];
+      const deltaX = lastTouchPoint.x - touch.clientX;
+      const deltaY = lastTouchPoint.y - touch.clientY;
+      lastTouchPoint = { x: touch.clientX, y: touch.clientY };
+
+      if (!isVerticalPageScroll) {
+        isVerticalPageScroll = Math.abs(deltaY) > 6 && Math.abs(deltaY) > Math.abs(deltaX) * 1.15;
+      }
+
+      if (!isVerticalPageScroll) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      scrollParentPage(0, deltaY);
+    },
+    { capture: true, passive: false }
+  );
+
+  window.addEventListener(
+    "touchend",
+    () => {
+      lastTouchPoint = null;
+      isVerticalPageScroll = false;
+    },
+    { capture: true, passive: true }
+  );
+}
+
+installEmbeddedScrollBridge();
+
 /* =========================
    MARKER CLICK
 ========================= */
