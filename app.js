@@ -1257,6 +1257,7 @@ function installEmbeddedScrollBridge() {
 
   let lastTouchPoint = null;
   let isVerticalPageScroll = false;
+  let dragPanPausedForScroll = false;
 
   const scrollParentPage = (deltaX, deltaY) => {
     window.parent.postMessage(
@@ -1310,6 +1311,11 @@ function installEmbeddedScrollBridge() {
 
       if (!isVerticalPageScroll) return;
 
+      if (!dragPanPausedForScroll) {
+        map.dragPan.disable();
+        dragPanPausedForScroll = true;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       scrollParentPage(0, deltaY);
@@ -1320,8 +1326,27 @@ function installEmbeddedScrollBridge() {
   window.addEventListener(
     "touchend",
     () => {
+      if (dragPanPausedForScroll) {
+        map.dragPan.enable();
+      }
+
       lastTouchPoint = null;
       isVerticalPageScroll = false;
+      dragPanPausedForScroll = false;
+    },
+    { capture: true, passive: true }
+  );
+
+  window.addEventListener(
+    "touchcancel",
+    () => {
+      if (dragPanPausedForScroll) {
+        map.dragPan.enable();
+      }
+
+      lastTouchPoint = null;
+      isVerticalPageScroll = false;
+      dragPanPausedForScroll = false;
     },
     { capture: true, passive: true }
   );
