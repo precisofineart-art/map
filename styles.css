@@ -761,9 +761,10 @@ body {
 
   .place-sheet.level-2 .sheet-media {
     order: 2;
-    flex: 1 1 auto;
-    min-height: clamp(330px, 52dvh, 560px);
-    padding: 8px 6px 4px;
+    flex: 0 0 clamp(330px, 46dvh, 460px);
+    height: clamp(330px, 46dvh, 460px);
+    min-height: 0;
+    padding: 0 6px 3px;
     overflow: hidden;
   }
 
@@ -788,6 +789,8 @@ body {
 
   .place-sheet.level-2 .sheet-media {
     display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .place-sheet.level-2 .sheet-nearby {
@@ -931,7 +934,7 @@ body {
   .sheet-media img {
     width: calc(100% + 18px);
     max-width: none;
-    height: calc(100% + 76px);
+    height: calc(100% + 118px);
     max-height: none;
     object-fit: cover;
     object-position: center;
