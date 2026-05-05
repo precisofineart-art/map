@@ -764,6 +764,7 @@ body {
     flex: 1 1 auto;
     min-height: clamp(330px, 52dvh, 560px);
     padding: 8px 6px 4px;
+    overflow: hidden;
   }
 
   .place-sheet.level-1 .sheet-media,
@@ -839,7 +840,7 @@ body {
   .place-sheet.level-2 .sheet-cta {
     display: block !important;
     position: absolute;
-    top: 49px;
+    top: 66px;
     right: 14px;
     left: auto;
     bottom: auto;
@@ -853,7 +854,7 @@ body {
   .place-sheet.level-2 .place-sheet-header {
     order: 1;
     display: block;
-    padding: 8px 18px 4px;
+    padding: 8px 18px 10px;
   }
   .place-sheet.level-2 .sheet-icon-actions {
     position: absolute;
@@ -872,26 +873,46 @@ body {
   .place-sheet.level-2 .place-sheet-header > div:first-child {
     display: block;
     width: 100%;
-    padding-right: 44px;
+    padding-right: 122px;
   }
 
   .place-sheet.level-2 .place-sheet-header h2 {
-    display: none;
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: rgba(32, 33, 36, 0.7);
   }
 
   .place-sheet.level-2 .sheet-time,
   .place-sheet.level-2 .sheet-location-2 {
-    display: none;
+    display: block;
   }
 
   .place-sheet.level-2 .sheet-subtitle {
     display: block;
-    margin-top: 0;
+    margin-top: 5px;
     font-size: clamp(22px, 6.6vw, 30px);
-    line-height: 1.03;
-    white-space: nowrap;
+    line-height: 1.05;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .place-sheet.level-2 .sheet-location-2 {
+    margin-top: 3px;
+    font-size: clamp(15px, 4.8vw, 20px);
+    font-weight: 650;
+    line-height: 1.12;
+    color: rgba(32, 33, 36, 0.76);
+  }
+
+  .place-sheet.level-2 .sheet-time {
+    margin-top: 5px;
+    font-size: 11.5px;
+    font-weight: 750;
+    line-height: 1.1;
+    color: rgba(0, 0, 0, 0.82);
   }
 
   .place-sheet.hidden {
@@ -908,11 +929,11 @@ body {
     box-shadow: 0 7px 15px rgba(0, 0, 0, 0.13);
   }
   .sheet-media img {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: min(58dvh, 560px);
-    object-fit: contain;
+    width: calc(100% + 18px);
+    max-width: none;
+    height: calc(100% + 76px);
+    max-height: none;
+    object-fit: cover;
     object-position: center;
     background: #ffffff;
   }
