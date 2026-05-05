@@ -353,6 +353,12 @@ body {
   background: rgba(255, 255, 255, 0.98);
 }
 
+.sheet-nearby.is-updating .sheet-nearby-list {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
 .sheet-nearby.hidden {
   display: none;
 }
@@ -404,6 +410,9 @@ body {
   padding: 0 0 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 150ms ease, transform 180ms ease;
 }
 
 .sheet-nearby-list::-webkit-scrollbar {

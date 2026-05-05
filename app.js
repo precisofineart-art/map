@@ -47,11 +47,13 @@ let activeItem = null;
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 let explodedMarkerGroup = null;
+let nearbyRenderToken = 0;
 
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
 const NEARBY_PRINT_LIMIT = 6;
+const NEARBY_TRANSITION_MS = 150;
 
 /* =========================
    HELPERS
@@ -353,7 +355,7 @@ function navigateToNearestHorizontalMarker(direction) {
   const nextItem = candidates[0]?.item;
   if (!nextItem) return;
 
-  handleMarkerClick(nextItem, { skipExplosion: true });
+  handleMarkerClick(nextItem, { skipExplosion: true, smoothNearbyTransition: true });
 }
 
 function navigateToNearbyMarker(direction = "next") {
@@ -367,17 +369,11 @@ function navigateToNearbyMarker(direction = "next") {
     : nearbyItems[0]?.item;
 
   if (target) {
-    handleMarkerClick(target, { skipExplosion: true });
+    handleMarkerClick(target, { skipExplosion: true, smoothNearbyTransition: true });
   }
 }
 
-function renderNearbyPrints(item) {
-  const nearbySection = document.getElementById("sheet-nearby");
-  const nearbyList = document.getElementById("sheet-nearby-list");
-  const prevButton = document.getElementById("nearby-prev");
-  const nextButton = document.getElementById("nearby-next");
-  if (!nearbySection || !nearbyList) return;
-
+function populateNearbyPrints(item, nearbyList, prevButton, nextButton, nearbySection) {
   const nearbyItems = getNearbyItems(item);
   nearbyList.replaceChildren();
 
@@ -412,15 +408,46 @@ function renderNearbyPrints(item) {
     details.append(title, meta);
     button.append(thumbnail, details);
     button.addEventListener("click", () => {
-      handleMarkerClick(nearbyItem, { skipExplosion: true });
+      handleMarkerClick(nearbyItem, { skipExplosion: true, smoothNearbyTransition: true });
     });
 
     nearbyList.appendChild(button);
   });
 
+  nearbyList.scrollTo?.({ left: 0, behavior: "smooth" });
   nearbySection.classList.remove("hidden");
   if (prevButton) prevButton.disabled = nearbyItems.length < 2;
   if (nextButton) nextButton.disabled = false;
+}
+
+function renderNearbyPrints(item, options = {}) {
+  const nearbySection = document.getElementById("sheet-nearby");
+  const nearbyList = document.getElementById("sheet-nearby-list");
+  const prevButton = document.getElementById("nearby-prev");
+  const nextButton = document.getElementById("nearby-next");
+  if (!nearbySection || !nearbyList) return;
+
+  const renderToken = ++nearbyRenderToken;
+
+  if (!options.animate || nearbySection.classList.contains("hidden") || !nearbyList.children.length) {
+    nearbySection.classList.remove("is-updating");
+    populateNearbyPrints(item, nearbyList, prevButton, nextButton, nearbySection);
+    return;
+  }
+
+  nearbySection.classList.add("is-updating");
+  if (prevButton) prevButton.disabled = true;
+  if (nextButton) nextButton.disabled = true;
+
+  window.setTimeout(() => {
+    if (renderToken !== nearbyRenderToken) return;
+    populateNearbyPrints(item, nearbyList, prevButton, nextButton, nearbySection);
+    requestAnimationFrame(() => {
+      if (renderToken === nearbyRenderToken) {
+        nearbySection.classList.remove("is-updating");
+      }
+    });
+  }, NEARBY_TRANSITION_MS);
 }
 
 function hideNearbyPrints() {
@@ -805,7 +832,7 @@ function showPlaceSheet(item, options = {}) {
     productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
   }
 
-  renderNearbyPrints(item);
+  renderNearbyPrints(item, { animate: options.animateNearby });
   setActiveMarkerState(item.id);
   forceActiveMarkerVisible();
 
@@ -1381,12 +1408,21 @@ function handleMarkerClick(item, options = {}) {
     return;
   }
 
+  if (options.smoothNearbyTransition) {
+    flyToOptions.duration = 780;
+    flyToOptions.curve = 1.22;
+    delete flyToOptions.speed;
+  }
+
   resetExplodedMarkers();
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
   setActiveRegionChip("all");
 
-  showPlaceSheet(item, { keepExpanded: keepSheetExpanded });
+  showPlaceSheet(item, {
+    keepExpanded: keepSheetExpanded,
+    animateNearby: options.smoothNearbyTransition
+  });
   map.flyTo(flyToOptions);
   map.once("moveend", () => {
     if (activeItem?.id === item.id) {
