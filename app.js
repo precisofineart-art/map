@@ -54,6 +54,7 @@ const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
 const NEARBY_PRINT_LIMIT = 6;
 const NEARBY_TRANSITION_MS = 150;
+const SHEET_MARKER_TRANSITION_MS = 1250;
 
 /* =========================
    HELPERS
@@ -1397,6 +1398,12 @@ function handleMarkerClick(item, options = {}) {
     activeItem &&
     activeItem.id !== item.id
   );
+  const switchingOpenSheet = Boolean(
+    sheet &&
+    !sheet.classList.contains("hidden") &&
+    activeItem &&
+    activeItem.id !== item.id
+  );
 
   const shouldOpenExplodedMarker = explodedMarkerGroup?.itemIds?.has(item.id);
   const canExplode = !options.skipExplosion && !activeItem && !isPlaceSheetOpen() && !shouldOpenExplodedMarker;
@@ -1408,9 +1415,9 @@ function handleMarkerClick(item, options = {}) {
     return;
   }
 
-  if (options.smoothNearbyTransition) {
-    flyToOptions.duration = 780;
-    flyToOptions.curve = 1.22;
+  if (options.smoothNearbyTransition || switchingOpenSheet) {
+    flyToOptions.duration = SHEET_MARKER_TRANSITION_MS;
+    flyToOptions.curve = 1.12;
     delete flyToOptions.speed;
   }
 
@@ -1421,7 +1428,7 @@ function handleMarkerClick(item, options = {}) {
 
   showPlaceSheet(item, {
     keepExpanded: keepSheetExpanded,
-    animateNearby: options.smoothNearbyTransition
+    animateNearby: options.smoothNearbyTransition || switchingOpenSheet
   });
   map.flyTo(flyToOptions);
   map.once("moveend", () => {
