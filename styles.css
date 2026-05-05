@@ -761,10 +761,10 @@ body {
 
   .place-sheet.level-2 .sheet-media {
     order: 2;
-    flex: 0 0 clamp(330px, 46dvh, 460px);
-    height: clamp(330px, 46dvh, 460px);
+    flex: 0 0 clamp(315px, 44dvh, 440px);
+    height: clamp(315px, 44dvh, 440px);
     min-height: 0;
-    padding: 0 18px 3px;
+    padding: 0 10px 3px;
     overflow: hidden;
   }
 
@@ -934,9 +934,9 @@ body {
   .sheet-media img {
     width: 100%;
     max-width: none;
-    height: calc(100% + 118px);
-    max-height: none;
-    object-fit: cover;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
     object-position: center;
     background: #ffffff;
   }
