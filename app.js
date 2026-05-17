@@ -55,6 +55,7 @@ const MARKER_EXPLODE_MAX_ITEMS = 12;
 const NEARBY_PRINT_LIMIT = 6;
 const NEARBY_TRANSITION_MS = 150;
 const SHEET_MARKER_TRANSITION_MS = 1250;
+const REGION_TRANSITION_MS = 750;
 
 /* =========================
    HELPERS
@@ -506,7 +507,7 @@ function focusRegion(regionKey) {
   if (region.bounds) {
     map.fitBounds(region.bounds, {
       padding: region.padding,
-      duration: 1300,
+      duration: REGION_TRANSITION_MS,
       essential: true
     });
     return;
@@ -515,8 +516,8 @@ function focusRegion(regionKey) {
   map.flyTo({
     center: region.center,
     zoom: region.zoom,
-    speed: 0.22,
-    curve: 1.55,
+    duration: REGION_TRANSITION_MS,
+    curve: 1.35,
     essential: true
   });
 }
@@ -1087,22 +1088,22 @@ function resetView() {
   if (targetRegion.bounds) {
     map.fitBounds(targetRegion.bounds, {
       padding: targetRegion.padding,
-      duration: 1300,
+      duration: REGION_TRANSITION_MS,
       essential: true
     });
   } else {
     map.flyTo({
       center: targetRegion.center,
       zoom: targetRegion.zoom,
-      speed: 0.22,
-      curve: 1.55,
+      duration: REGION_TRANSITION_MS,
+      curve: 1.35,
       essential: true
     });
   }
 
   window.setTimeout(() => {
     isResetting = false;
-  }, 1350);
+  }, REGION_TRANSITION_MS + 50);
 }
 
 /* =========================

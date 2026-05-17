@@ -189,31 +189,47 @@ body {
 
 #footer {
   position: fixed;
-  bottom: 10px;
+  bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .app-footer {
   width: max-content;
 }
 
-.footer-inner {
-  display: flex;
+.footer-site-link {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.74);
+  background: rgba(0, 0, 0, 0.78);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(12px);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.footer-dot {
-  opacity: 0.6;
+.footer-site-link:hover {
+  background: rgba(0, 0, 0, 0.88);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  transform: translateY(-1px);
+}
+
+.footer-site-link:active {
+  transform: scale(0.98);
+}
+
+body.marker-active #footer {
+  display: none;
 }
 
 #google-ui {
