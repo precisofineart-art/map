@@ -688,8 +688,8 @@ function getSheetOffset() {
   const sheetRect = sheet.getBoundingClientRect();
   const headerRect = header?.getBoundingClientRect();
 
-  const topSafe = Math.round((headerRect?.bottom || 0) + 20);
-  const bottomSafe = Math.round(sheetRect.top - 72);
+  const topSafe = Math.round((headerRect?.bottom || 0) + (isMobileViewport ? 36 : 20));
+  const bottomSafe = Math.round(sheetRect.top - (isMobileViewport ? 102 : 72));
 
   const desiredY = bottomSafe > topSafe
     ? Math.round((topSafe + bottomSafe) / 2)
@@ -726,9 +726,9 @@ function nudgeActiveMarkerIntoView() {
     : padding;
 
   const safeRight = mapRect.width - padding;
-  const safeTop = Math.max(padding, Math.round((headerRect?.bottom || 0) - mapRect.top + 32));
+  const safeTop = Math.max(padding, Math.round((headerRect?.bottom || 0) - mapRect.top + (isMobileViewport ? 42 : 32)));
   const safeBottom = sheetRect && isMobileViewport
-    ? sheetRect.top - mapRect.top - padding
+    ? sheetRect.top - mapRect.top - 102
     : mapRect.height - padding;
 
   let panX = 0;

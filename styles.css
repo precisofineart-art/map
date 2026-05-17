@@ -749,6 +749,22 @@ body {
     background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.54));
   }
 
+  body.marker-active #header {
+    top: 6px;
+  }
+
+  body.marker-active .header-stack {
+    gap: 0;
+  }
+
+  body.marker-active .logo {
+    height: 32px;
+  }
+
+  body.marker-active .region-pills {
+    display: none;
+  }
+
   #footer {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
