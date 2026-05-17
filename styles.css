@@ -228,8 +228,10 @@ body {
   transform: scale(0.98);
 }
 
-body.marker-active #footer {
-  display: none;
+@media (min-width: 701px) {
+  body.marker-active #footer {
+    left: calc(50% + 203px);
+  }
 }
 
 #google-ui {
@@ -749,6 +751,10 @@ body.marker-active #footer {
 
   #footer {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  body.marker-active #footer {
+    display: none;
   }
 
   .place-sheet {
