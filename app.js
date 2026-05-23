@@ -806,7 +806,7 @@ function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
-  const keepExpanded = options.keepExpanded && sheet.classList.contains("level-2");
+  const keepExpanded = options.keepExpanded && (sheet.classList.contains("level-2") || sheet.classList.contains("level-3"));
   const title = document.getElementById("sheet-title");
   const time = document.getElementById("sheet-time");
   const subtitle = document.getElementById("sheet-subtitle");
@@ -841,8 +841,9 @@ function showPlaceSheet(item, options = {}) {
   document.body.classList.add("marker-active");
   sheet.classList.remove("hidden");
   if (keepExpanded) {
-    sheet.classList.remove("level-1", "level-3");
-    sheet.classList.add("level-2");
+    const nextLevel = sheet.classList.contains("level-3") ? "level-3" : "level-2";
+    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.add(nextLevel);
   } else {
     sheet.classList.remove("level-2", "level-3");
     sheet.classList.add("level-1");
@@ -889,19 +890,23 @@ function initSheetDrag() {
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
-  const LEVEL_2 = 0;
+  const LEVEL_2 = 42;
+  const LEVEL_3 = 0;
 
   const getCurrentLevel = () => {
+    if (sheet.classList.contains("level-3")) return 3;
     if (sheet.classList.contains("level-2")) return 2;
     return 1;
   };
 
   const getLevelTranslate = (level) => {
-    return level === 2 ? LEVEL_2 : LEVEL_1;
+    if (level === 3) return LEVEL_3;
+    if (level === 2) return LEVEL_2;
+    return LEVEL_1;
   };
 
   const clampTranslate = (value) => {
-    return Math.min(LEVEL_1, Math.max(LEVEL_2, value));
+    return Math.min(LEVEL_1, Math.max(LEVEL_3, value));
   };
 
   const setLevel = (level) => {
@@ -970,6 +975,7 @@ function initSheetDrag() {
     const deltaX = ev?.clientX != null ? ev.clientX - startX : 0;
     const deltaY = ev?.clientY != null ? ev.clientY - startY : 0;
     const didHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+    const didTapHandle = ev?.target?.closest?.(".place-sheet-handle") && Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8;
 
     isDragging = false;
     activePointerId = null;
@@ -992,17 +998,26 @@ function initSheetDrag() {
       return;
     }
 
-    const midpoint = (LEVEL_1 + LEVEL_2) / 2;
+    if (didTapHandle) {
+      setLevel(Math.min(3, getCurrentLevel() + 1));
+      return;
+    }
+
     const flickUp = velocityY < -0.35;
     const flickDown = velocityY > 0.35;
+    const currentLevel = getCurrentLevel();
 
     let targetLevel;
     if (flickUp) {
-      targetLevel = 2;
+      targetLevel = Math.min(3, currentLevel + 1);
     } else if (flickDown) {
-      targetLevel = 1;
+      targetLevel = Math.max(1, currentLevel - 1);
+    } else if (currentTranslate <= (LEVEL_3 + LEVEL_2) / 2) {
+      targetLevel = 3;
+    } else if (currentTranslate <= (LEVEL_2 + LEVEL_1) / 2) {
+      targetLevel = 2;
     } else {
-      targetLevel = currentTranslate <= midpoint ? 2 : 1;
+      targetLevel = 1;
     }
 
     setLevel(targetLevel);

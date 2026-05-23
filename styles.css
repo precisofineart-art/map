@@ -803,10 +803,23 @@ body {
   }
 
   .place-sheet.level-2 {
+    transform: translateY(42%);
+  }
+
+  .place-sheet.level-3 {
     transform: translateY(0);
   }
 
   .place-sheet.level-2 .sheet-media {
+    order: 2;
+    flex: 0 0 clamp(315px, 44dvh, 440px);
+    height: clamp(315px, 44dvh, 440px);
+    min-height: 0;
+    padding: 0 10px 3px;
+    overflow: hidden;
+  }
+
+  .place-sheet.level-3 .sheet-media {
     order: 2;
     flex: 0 0 clamp(315px, 44dvh, 440px);
     height: clamp(315px, 44dvh, 440px);
@@ -834,13 +847,18 @@ body {
     margin-top: 10px;
   }
 
-  .place-sheet.level-2 .sheet-media {
+  .place-sheet.level-2 .sheet-media,
+  .place-sheet.level-3 .sheet-media {
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .place-sheet.level-2 .sheet-nearby {
+    display: none !important;
+  }
+
+  .place-sheet.level-3 .sheet-nearby {
     order: 3;
     display: block;
     position: relative;
@@ -887,7 +905,8 @@ body {
     font-size: 9px;
   }
 
-  .place-sheet.level-2 .sheet-cta {
+  .place-sheet.level-2 .sheet-cta,
+  .place-sheet.level-3 .sheet-cta {
     display: block !important;
     position: absolute;
     top: 66px;
@@ -901,12 +920,14 @@ body {
     z-index: 3;
   }
 
-  .place-sheet.level-2 .place-sheet-header {
+  .place-sheet.level-2 .place-sheet-header,
+  .place-sheet.level-3 .place-sheet-header {
     order: 1;
     display: block;
     padding: 8px 18px 10px;
   }
-  .place-sheet.level-2 .sheet-icon-actions {
+  .place-sheet.level-2 .sheet-icon-actions,
+  .place-sheet.level-3 .sheet-icon-actions {
     position: absolute;
     top: 8px;
     right: 14px;
@@ -920,13 +941,15 @@ body {
     font-size: 19px;
     background: rgba(0, 0, 0, 0.045);
   }
-  .place-sheet.level-2 .place-sheet-header > div:first-child {
+  .place-sheet.level-2 .place-sheet-header > div:first-child,
+  .place-sheet.level-3 .place-sheet-header > div:first-child {
     display: block;
     width: 100%;
     padding-right: 122px;
   }
 
-  .place-sheet.level-2 .place-sheet-header h2 {
+  .place-sheet.level-2 .place-sheet-header h2,
+  .place-sheet.level-3 .place-sheet-header h2 {
     display: block;
     font-size: 12px;
     font-weight: 800;
@@ -935,11 +958,14 @@ body {
   }
 
   .place-sheet.level-2 .sheet-time,
-  .place-sheet.level-2 .sheet-location-2 {
+  .place-sheet.level-2 .sheet-location-2,
+  .place-sheet.level-3 .sheet-time,
+  .place-sheet.level-3 .sheet-location-2 {
     display: block;
   }
 
-  .place-sheet.level-2 .sheet-subtitle {
+  .place-sheet.level-2 .sheet-subtitle,
+  .place-sheet.level-3 .sheet-subtitle {
     display: block;
     margin-top: 5px;
     font-size: clamp(22px, 6.6vw, 30px);
@@ -949,7 +975,8 @@ body {
     text-overflow: ellipsis;
   }
 
-  .place-sheet.level-2 .sheet-location-2 {
+  .place-sheet.level-2 .sheet-location-2,
+  .place-sheet.level-3 .sheet-location-2 {
     margin-top: 3px;
     font-size: clamp(15px, 4.8vw, 20px);
     font-weight: 650;
@@ -957,7 +984,8 @@ body {
     color: rgba(32, 33, 36, 0.76);
   }
 
-  .place-sheet.level-2 .sheet-time {
+  .place-sheet.level-2 .sheet-time,
+  .place-sheet.level-3 .sheet-time {
     margin-top: 5px;
     font-size: 11.5px;
     font-weight: 750;
