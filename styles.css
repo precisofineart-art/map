@@ -437,6 +437,31 @@ body {
   display: none;
 }
 
+.sheet-region-menu {
+  display: none;
+}
+
+.sheet-region-pill {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 1px solid rgba(12, 52, 122, 0.1);
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0c347a;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sheet-region-pill.active {
+  background: rgb(12, 52, 122);
+  border-color: rgb(12, 52, 122);
+  color: #fff;
+}
+
 .nearby-print {
   flex: 0 0 148px;
   min-width: 0;
@@ -803,7 +828,7 @@ body {
   }
 
   .place-sheet.level-2 {
-    transform: translateY(42%);
+    transform: translateY(34%);
   }
 
   .place-sheet.level-3 {
@@ -863,8 +888,27 @@ body {
     display: block;
     position: relative;
     z-index: 2;
-    padding: 4px 14px 10px;
+    padding: 4px 14px 6px;
     background: transparent;
+  }
+
+  .place-sheet.level-3 .sheet-region-menu {
+    order: 4;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 14px 10px;
+    padding: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .place-sheet.level-3 .sheet-region-menu::-webkit-scrollbar {
+    display: none;
   }
 
   .sheet-nearby-top {

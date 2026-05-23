@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260523-2" />
+  <link rel="stylesheet" href="styles.css?v=20260523-4" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -38,6 +38,14 @@
       </div>
       <div id="sheet-nearby-list" class="sheet-nearby-list"></div>
     </section>
+
+    <div class="sheet-region-menu" aria-label="Map regions">
+      <button class="sheet-region-pill active" type="button" data-region="all">My Home</button>
+      <button class="sheet-region-pill" type="button" data-region="northAmerica">North America</button>
+      <button class="sheet-region-pill" type="button" data-region="caribbean">Caribbean</button>
+      <button class="sheet-region-pill" type="button" data-region="europe">Europe</button>
+      <button class="sheet-region-pill" type="button" data-region="asia">Asia</button>
+    </div>
 
     <div class="sheet-media">
       <img id="sheet-image-main" src="" alt="" loading="lazy" decoding="async" draggable="false">
@@ -85,6 +93,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260523-1"></script>
+  <script src="app.js?v=20260523-4"></script>
 </body>
 </html>

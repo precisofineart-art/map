@@ -496,6 +496,7 @@ function focusRegion(regionKey) {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3");
   }
+  document.body.classList.remove("marker-active");
   hideNearbyPrints();
 
   if (window.location.hash) {
@@ -762,15 +763,15 @@ function getFlyToOptions(item, zoom) {
   const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
-  let mobileZoom = 11.2;
+  let mobileZoom = 15.6;
 
   if (sheet?.classList.contains("level-2")) {
-    mobileZoom = 10.9;
+    mobileZoom = 15.2;
   }
 
   return {
     center: [item.lng, item.lat],
-    zoom: zoom ?? (isMobileViewport ? mobileZoom : 15),
+    zoom: zoom ?? (isMobileViewport ? mobileZoom : 16.5),
     offset: getSheetOffset(),
     speed: 0.55,
     curve: 1.42,
@@ -792,7 +793,7 @@ function keepActiveMarkerVisible() {
   };
 
   if (isMobileViewport) {
-    easeOptions.zoom = sheet?.classList.contains("level-2") ? 11.1 : 11.3;
+    easeOptions.zoom = sheet?.classList.contains("level-2") ? 15.2 : 15.6;
   }
 
   map.easeTo(easeOptions);
@@ -890,7 +891,7 @@ function initSheetDrag() {
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
-  const LEVEL_2 = 42;
+  const LEVEL_2 = 34;
   const LEVEL_3 = 0;
 
   const getCurrentLevel = () => {
