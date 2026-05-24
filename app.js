@@ -1436,11 +1436,25 @@ async function fetchProducts() {
 
 let resizeMapForViewport = () => {};
 
+function getMobileBrowserBottomReserve() {
+  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
+  const isPortrait = window.innerHeight >= window.innerWidth;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (
+    navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1
+  );
+  const hasBottomToolbar = /CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent);
+
+  return isMobileViewport && isPortrait && isIOS && hasBottomToolbar ? 86 : 0;
+}
+
 function syncAppViewport() {
   const viewport = window.visualViewport;
-  const height = Math.round(viewport?.height || window.innerHeight);
+  const measuredHeight = Math.round(viewport?.height || window.innerHeight);
   const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
-  const bottom = Math.max(0, Math.round(window.innerHeight - height - top));
+  const measuredBottom = Math.max(0, Math.round(window.innerHeight - measuredHeight - top));
+  const browserBottomReserve = getMobileBrowserBottomReserve();
+  const height = Math.max(320, measuredHeight - browserBottomReserve);
+  const bottom = measuredBottom + browserBottomReserve;
   const root = document.documentElement;
 
   root.style.setProperty("--app-height", `${height}px`);
