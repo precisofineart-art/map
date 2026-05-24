@@ -565,7 +565,7 @@ function focusRegion(regionKey) {
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
   }
   document.body.classList.remove("marker-active");
   hideNearbyPrints();
@@ -1032,7 +1032,11 @@ function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
-  const keepExpanded = options.keepExpanded && (sheet.classList.contains("level-2") || sheet.classList.contains("level-3"));
+  const keepExpanded = options.keepExpanded && (
+    sheet.classList.contains("level-2") ||
+    sheet.classList.contains("level-3") ||
+    sheet.classList.contains("level-4")
+  );
   const title = document.getElementById("sheet-title");
   const time = document.getElementById("sheet-time");
   const subtitle = document.getElementById("sheet-subtitle");
@@ -1067,11 +1071,15 @@ function showPlaceSheet(item, options = {}) {
   document.body.classList.add("marker-active");
   sheet.classList.remove("hidden");
   if (keepExpanded) {
-    const nextLevel = sheet.classList.contains("level-3") ? "level-3" : "level-2";
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    const nextLevel = sheet.classList.contains("level-4")
+      ? "level-4"
+      : sheet.classList.contains("level-3")
+        ? "level-3"
+        : "level-2";
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
     sheet.classList.add(nextLevel);
   } else {
-    sheet.classList.remove("level-2", "level-3");
+    sheet.classList.remove("level-2", "level-3", "level-4");
     sheet.classList.add("level-1");
     closeButton?.focus({ preventScroll: true });
   }
@@ -1081,7 +1089,7 @@ function openSheetToLevel2() {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
-  sheet.classList.remove("hidden", "level-1", "level-3");
+  sheet.classList.remove("hidden", "level-1", "level-3", "level-4");
   sheet.classList.add("level-2");
 
   requestAnimationFrame(() => {
@@ -1117,28 +1125,31 @@ function initSheetDrag() {
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
   const LEVEL_1 = 80;
   const LEVEL_2 = 34;
-  const LEVEL_3 = 0;
+  const LEVEL_3 = 9;
+  const LEVEL_4 = 0;
 
   const getCurrentLevel = () => {
+    if (sheet.classList.contains("level-4")) return 4;
     if (sheet.classList.contains("level-3")) return 3;
     if (sheet.classList.contains("level-2")) return 2;
     return 1;
   };
 
   const getLevelTranslate = (level) => {
+    if (level === 4) return LEVEL_4;
     if (level === 3) return LEVEL_3;
     if (level === 2) return LEVEL_2;
     return LEVEL_1;
   };
 
   const clampTranslate = (value) => {
-    return Math.min(LEVEL_1, Math.max(LEVEL_3, value));
+    return Math.min(LEVEL_1, Math.max(LEVEL_4, value));
   };
 
   const setLevel = (level) => {
     sheet.style.transition = "";
     sheet.style.transform = "";
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
     sheet.classList.add(`level-${level}`);
 
     requestAnimationFrame(() => {
@@ -1225,7 +1236,7 @@ function initSheetDrag() {
     }
 
     if (didTapHandle) {
-      setLevel(Math.min(3, getCurrentLevel() + 1));
+      setLevel(Math.min(4, getCurrentLevel() + 1));
       return;
     }
 
@@ -1235,9 +1246,11 @@ function initSheetDrag() {
 
     let targetLevel;
     if (flickUp) {
-      targetLevel = Math.min(3, currentLevel + 1);
+      targetLevel = Math.min(4, currentLevel + 1);
     } else if (flickDown) {
       targetLevel = Math.max(1, currentLevel - 1);
+    } else if (currentTranslate <= (LEVEL_4 + LEVEL_3) / 2) {
+      targetLevel = 4;
     } else if (currentTranslate <= (LEVEL_3 + LEVEL_2) / 2) {
       targetLevel = 3;
     } else if (currentTranslate <= (LEVEL_2 + LEVEL_1) / 2) {
@@ -1310,7 +1323,7 @@ function resetView() {
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    sheet.classList.remove("level-1", "level-2", "level-3");
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
   }
   document.body.classList.remove("marker-active");
   hideNearbyPrints();
@@ -1636,7 +1649,11 @@ function handleMarkerClick(item, options = {}) {
     sheet &&
     window.matchMedia("(max-width: 700px)").matches &&
     !sheet.classList.contains("hidden") &&
-    sheet.classList.contains("level-2") &&
+    (
+      sheet.classList.contains("level-2") ||
+      sheet.classList.contains("level-3") ||
+      sheet.classList.contains("level-4")
+    ) &&
     activeItem &&
     activeItem.id !== item.id
   );
