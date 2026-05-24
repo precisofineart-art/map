@@ -1434,6 +1434,33 @@ async function fetchProducts() {
   }
 }
 
+let resizeMapForViewport = () => {};
+
+function syncAppViewport() {
+  const viewport = window.visualViewport;
+  const height = Math.round(viewport?.height || window.innerHeight);
+  const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
+  const bottom = Math.max(0, Math.round(window.innerHeight - height - top));
+  const root = document.documentElement;
+
+  root.style.setProperty("--app-height", `${height}px`);
+  root.style.setProperty("--app-top", `${top}px`);
+  root.style.setProperty("--app-bottom", `${bottom}px`);
+  resizeMapForViewport();
+}
+
+function installAppViewportSync() {
+  syncAppViewport();
+
+  window.visualViewport?.addEventListener("resize", syncAppViewport, { passive: true });
+  window.visualViewport?.addEventListener("scroll", syncAppViewport, { passive: true });
+  window.addEventListener("resize", syncAppViewport, { passive: true });
+  window.addEventListener("orientationchange", () => window.setTimeout(syncAppViewport, 250), { passive: true });
+  window.addEventListener("pageshow", syncAppViewport, { passive: true });
+}
+
+installAppViewportSync();
+
 /* =========================
    MAP
 ========================= */
@@ -1444,6 +1471,13 @@ const map = new mapboxgl.Map({
   zoom: HOME_VIEW.zoom,
   cooperativeGestures: false
 });
+
+resizeMapForViewport = () => {
+  requestAnimationFrame(() => {
+    map.resize();
+  });
+};
+syncAppViewport();
 
 map.dragPan.enable();
 map.scrollZoom.disable();
