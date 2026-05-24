@@ -83,6 +83,7 @@ const MARKER_EXPLODE_MAX_ITEMS = 12;
 const NEARBY_PRINT_LIMIT = 6;
 const NEARBY_TRANSITION_MS = 150;
 const SHEET_MARKER_TRANSITION_MS = 1250;
+const REGION_MARKER_TRANSITION_MS = 1900;
 const REGION_TRANSITION_MS = 750;
 
 /* =========================
@@ -1079,8 +1080,8 @@ function showPlaceSheet(item, options = {}) {
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
     sheet.classList.add(nextLevel);
   } else {
-    sheet.classList.remove("level-2", "level-3", "level-4");
-    sheet.classList.add("level-1");
+    sheet.classList.remove("level-1", "level-3", "level-4");
+    sheet.classList.add("level-2");
     closeButton?.focus({ preventScroll: true });
   }
 }
@@ -1123,7 +1124,6 @@ function initSheetDrag() {
   let hasHorizontalIntent = false;
 
   const isMobileViewport = () => window.matchMedia("(max-width: 700px)").matches;
-  const LEVEL_1 = 80;
   const LEVEL_2 = 34;
   const LEVEL_3 = 9;
   const LEVEL_4 = 0;
@@ -1131,19 +1131,17 @@ function initSheetDrag() {
   const getCurrentLevel = () => {
     if (sheet.classList.contains("level-4")) return 4;
     if (sheet.classList.contains("level-3")) return 3;
-    if (sheet.classList.contains("level-2")) return 2;
-    return 1;
+    return 2;
   };
 
   const getLevelTranslate = (level) => {
     if (level === 4) return LEVEL_4;
     if (level === 3) return LEVEL_3;
-    if (level === 2) return LEVEL_2;
-    return LEVEL_1;
+    return LEVEL_2;
   };
 
   const clampTranslate = (value) => {
-    return Math.min(LEVEL_1, Math.max(LEVEL_4, value));
+    return Math.min(LEVEL_2, Math.max(LEVEL_4, value));
   };
 
   const setLevel = (level) => {
@@ -1248,15 +1246,13 @@ function initSheetDrag() {
     if (flickUp) {
       targetLevel = Math.min(4, currentLevel + 1);
     } else if (flickDown) {
-      targetLevel = Math.max(1, currentLevel - 1);
+      targetLevel = Math.max(2, currentLevel - 1);
     } else if (currentTranslate <= (LEVEL_4 + LEVEL_3) / 2) {
       targetLevel = 4;
     } else if (currentTranslate <= (LEVEL_3 + LEVEL_2) / 2) {
       targetLevel = 3;
-    } else if (currentTranslate <= (LEVEL_2 + LEVEL_1) / 2) {
-      targetLevel = 2;
     } else {
-      targetLevel = 1;
+      targetLevel = 2;
     }
 
     setLevel(targetLevel);
@@ -1268,12 +1264,9 @@ function initSheetDrag() {
     if (e.target.closest("button, a")) return;
 
     if (isMobileViewport()) {
-      const isLevel1 = sheet.classList.contains("level-1");
-      if (!isLevel1) {
-        const rect = sheet.getBoundingClientRect();
-        const dragZoneHeight = 220;
-        if (e.clientY > rect.top + dragZoneHeight) return;
-      }
+      const rect = sheet.getBoundingClientRect();
+      const dragZoneHeight = 220;
+      if (e.clientY > rect.top + dragZoneHeight) return;
     }
 
     startX = e.clientX;
@@ -1733,6 +1726,12 @@ function handleMarkerClick(item, options = {}) {
     activeItem &&
     activeItem.id !== item.id
   );
+  const shouldDelaySheetUntilZoom = Boolean(
+    sheet &&
+    sheet.classList.contains("hidden") &&
+    !switchingOpenSheet &&
+    !options.smoothNearbyTransition
+  );
 
   const shouldOpenExplodedMarker = explodedMarkerGroup?.itemIds?.has(item.id);
   const canExplode = !options.skipExplosion && !activeItem && !isPlaceSheetOpen() && !shouldOpenExplodedMarker;
@@ -1748,6 +1747,10 @@ function handleMarkerClick(item, options = {}) {
     flyToOptions.duration = SHEET_MARKER_TRANSITION_MS;
     flyToOptions.curve = 1.12;
     delete flyToOptions.speed;
+  } else if (shouldDelaySheetUntilZoom) {
+    flyToOptions.duration = REGION_MARKER_TRANSITION_MS;
+    flyToOptions.curve = 1.18;
+    delete flyToOptions.speed;
   }
 
   resetExplodedMarkers();
@@ -1755,23 +1758,57 @@ function handleMarkerClick(item, options = {}) {
   activeItem = item;
   setActiveRegionChip("all");
 
-  showPlaceSheet(item, {
-    keepExpanded: keepSheetExpanded,
-    animateNearby: options.smoothNearbyTransition || switchingOpenSheet
-  });
+  if (shouldDelaySheetUntilZoom) {
+    sheet.classList.add("hidden");
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+    document.body.classList.remove("marker-active");
+    hideNearbyPrints();
+    setActiveMarkerState(item.id);
+    forceActiveMarkerVisible();
+  } else {
+    showPlaceSheet(item, {
+      keepExpanded: keepSheetExpanded,
+      animateNearby: options.smoothNearbyTransition || switchingOpenSheet
+    });
+  }
+
   map.flyTo(flyToOptions);
+  let didRevealSheet = false;
+  const revealSheet = () => {
+    if (didRevealSheet || activeItem?.id !== item.id) return;
+
+    didRevealSheet = true;
+    showPlaceSheet(item, {
+      keepExpanded: keepSheetExpanded,
+      animateNearby: false
+    });
+    openSheetToLevel2();
+    window.setTimeout(() => {
+      triggerActiveMarkerPop(item.id);
+    }, 40);
+  };
+
   map.once("moveend", () => {
     if (activeItem?.id === item.id) {
-      openSheetToLevel2();
-      window.setTimeout(() => {
-        triggerActiveMarkerPop(item.id);
-      }, 40);
+      if (shouldDelaySheetUntilZoom) {
+        revealSheet();
+      } else {
+        openSheetToLevel2();
+        window.setTimeout(() => {
+          triggerActiveMarkerPop(item.id);
+        }, 40);
+      }
     }
   });
+  if (shouldDelaySheetUntilZoom) {
+    window.setTimeout(revealSheet, REGION_MARKER_TRANSITION_MS + 450);
+  }
   setTimeout(() => {
     updateEdgeIndicator();
-    nudgeActiveMarkerIntoView();
-  }, 300);
+    if (!shouldDelaySheetUntilZoom) {
+      nudgeActiveMarkerIntoView();
+    }
+  }, shouldDelaySheetUntilZoom ? REGION_MARKER_TRANSITION_MS + 120 : 300);
 }
 
 /* =========================

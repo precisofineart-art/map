@@ -897,10 +897,6 @@ body {
     touch-action: none;
   }
 
-  .place-sheet.level-1 {
-    transform: translateY(80%);
-  }
-
   .place-sheet.level-2 {
     transform: translateY(34%);
   }
@@ -930,25 +926,6 @@ body {
     min-height: 0;
     padding: 0 10px 3px;
     overflow: hidden;
-  }
-
-  .place-sheet.level-1 .sheet-media,
-  .place-sheet.level-1 .sheet-nearby,
-  .place-sheet.level-1 .sheet-cta {
-    display: none !important;
-  }
-
-  .place-sheet.level-1 .place-sheet-header {
-    padding-bottom: 18px;
-  }
-
-  .place-sheet.level-1 .sheet-time,
-  .place-sheet.level-1 .sheet-subtitle {
-    display: block;
-  }
-
-  .place-sheet.level-1 .sheet-subtitle {
-    margin-top: 10px;
   }
 
   .place-sheet.level-2 .sheet-media,
