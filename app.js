@@ -654,6 +654,10 @@ function scheduleCloseRegionMenus() {
   }, 160);
 }
 
+function canUseHoverRegionMenu() {
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 function closeRegionMenus(exceptGroup = null) {
   if (!exceptGroup) {
     window.clearTimeout(regionMenuCloseTimer);
@@ -693,29 +697,45 @@ function bindHeaderRegionPills() {
       }
     });
 
-    group?.addEventListener("pointerenter", () => openRegionMenu(group));
-    group?.addEventListener("pointerleave", scheduleCloseRegionMenus);
-    group?.addEventListener("mouseenter", () => openRegionMenu(group));
-    group?.addEventListener("mouseleave", scheduleCloseRegionMenus);
-    group?.addEventListener("mouseover", () => openRegionMenu(group));
+    group?.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") openRegionMenu(group);
+    });
+    group?.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse") scheduleCloseRegionMenus();
+    });
+    group?.addEventListener("mouseenter", () => {
+      if (canUseHoverRegionMenu()) openRegionMenu(group);
+    });
+    group?.addEventListener("mouseleave", () => {
+      if (canUseHoverRegionMenu()) scheduleCloseRegionMenus();
+    });
+    group?.addEventListener("mouseover", () => {
+      if (canUseHoverRegionMenu()) openRegionMenu(group);
+    });
     group?.addEventListener("mouseout", (e) => {
+      if (!canUseHoverRegionMenu()) return;
       if (group.contains(e.relatedTarget) || submenu?.contains(e.relatedTarget)) return;
       scheduleCloseRegionMenus();
     });
     toggle.addEventListener("focus", () => openRegionMenu(group));
 
-    submenu?.addEventListener("pointerenter", () => {
-      window.clearTimeout(regionMenuCloseTimer);
+    submenu?.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") window.clearTimeout(regionMenuCloseTimer);
     });
-    submenu?.addEventListener("pointerleave", scheduleCloseRegionMenus);
+    submenu?.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse") scheduleCloseRegionMenus();
+    });
     submenu?.addEventListener("mouseenter", () => {
-      window.clearTimeout(regionMenuCloseTimer);
+      if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
     });
-    submenu?.addEventListener("mouseleave", scheduleCloseRegionMenus);
+    submenu?.addEventListener("mouseleave", () => {
+      if (canUseHoverRegionMenu()) scheduleCloseRegionMenus();
+    });
     submenu?.addEventListener("mouseover", () => {
-      window.clearTimeout(regionMenuCloseTimer);
+      if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
     });
     submenu?.addEventListener("mouseout", (e) => {
+      if (!canUseHoverRegionMenu()) return;
       if (submenu.contains(e.relatedTarget) || group?.contains(e.relatedTarget)) return;
       scheduleCloseRegionMenus();
     });
