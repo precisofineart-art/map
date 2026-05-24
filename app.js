@@ -1635,8 +1635,44 @@ function installEmbeddedScrollBridge() {
   );
 }
 
+function installMobileDoubleTapZoomGuard() {
+  let lastTapTime = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+
+  window.addEventListener(
+    "touchend",
+    (event) => {
+      if (!window.matchMedia("(max-width: 700px)").matches) return;
+      if (event.touches.length > 0 || event.changedTouches.length !== 1) return;
+      if (shouldKeepGestureInMap(event.target)) return;
+
+      const touch = event.changedTouches[0];
+      const now = Date.now();
+      const deltaTime = now - lastTapTime;
+      const deltaX = touch.clientX - lastTapX;
+      const deltaY = touch.clientY - lastTapY;
+      const isDoubleTap = deltaTime > 0 && deltaTime < 320 && Math.hypot(deltaX, deltaY) < 28;
+
+      if (isDoubleTap) {
+        event.preventDefault();
+        event.stopPropagation();
+        zoomMapAtPoint(touch.clientX, touch.clientY, map.getZoom() + 1);
+        lastTapTime = 0;
+        return;
+      }
+
+      lastTapTime = now;
+      lastTapX = touch.clientX;
+      lastTapY = touch.clientY;
+    },
+    { capture: true, passive: false }
+  );
+}
+
 installTrackpadPinchZoom();
 installEmbeddedScrollBridge();
+installMobileDoubleTapZoomGuard();
 
 /* =========================
    MARKER CLICK
