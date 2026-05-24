@@ -20,9 +20,25 @@ const REGION_VIEWS = {
     center: HOME_VIEW.center,
     zoom: HOME_VIEW.zoom
   },
+  west: {
+    center: [-119, 40],
+    zoom: 4.05
+  },
   northAmerica: {
     center: [-102, 37],
     zoom: 2.15
+  },
+  south: {
+    center: [-91, 31],
+    zoom: 4.05
+  },
+  east: {
+    center: [-74, 41],
+    zoom: 4.65
+  },
+  midwest: {
+    center: [-91, 43],
+    zoom: 4.45
   },
   caribbean: {
     center: [-81.5, 19.8],
@@ -38,6 +54,17 @@ const REGION_VIEWS = {
   }
 };
 
+const REGION_MATCH_BOUNDS = {
+  northAmerica: [[-170, 15], [-52, 72]],
+  west: [[-170, 15], [-104, 72]],
+  south: [[-106, 15], [-75, 37.5]],
+  east: [[-82, 24], [-52, 56]],
+  midwest: [[-104, 36], [-80, 56]],
+  caribbean: [[-89, 9], [-58, 26.5]],
+  europe: [[-25, 34], [45, 72]],
+  asia: [[45, -12], [180, 60]]
+};
+
 /* =========================
    STATE
 ========================= */
@@ -48,6 +75,7 @@ let isResetting = false;
 let edgeIndicatorEls = new Map();
 let explodedMarkerGroup = null;
 let nearbyRenderToken = 0;
+let regionMenuCloseTimer = null;
 
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
@@ -70,10 +98,32 @@ function clearMarkers() {
   markers = [];
 }
 
+function setMarkerStack(markerShell, isActive) {
+  const markerWrapper = markerShell.closest(".mapboxgl-marker");
+
+  if (isActive) {
+    markerShell.style.setProperty("z-index", "10000", "important");
+
+    if (markerWrapper) {
+      markerWrapper.style.setProperty("z-index", "10000", "important");
+      markerWrapper.style.pointerEvents = "auto";
+      markerWrapper.parentElement?.appendChild(markerWrapper);
+    }
+
+    return;
+  }
+
+  markerShell.style.removeProperty("z-index");
+  if (markerWrapper) {
+    markerWrapper.style.removeProperty("z-index");
+  }
+}
+
 function setActiveMarkerState(itemId = "") {
   document.querySelectorAll(".custom-marker-shell").forEach((markerShell) => {
     const isActive = markerShell.dataset.itemId === itemId;
     markerShell.classList.toggle("active", isActive);
+    setMarkerStack(markerShell, isActive);
 
     const markerInner = markerShell.querySelector(".custom-marker");
     if (!markerInner) return;
@@ -97,6 +147,7 @@ function forceActiveMarkerVisible() {
   markerShell.style.display = "";
   markerShell.style.opacity = "1";
   markerShell.style.pointerEvents = "auto";
+  markerShell.style.setProperty("z-index", "10000", "important");
   markerShell.classList.add("active");
 
   const markerInner = markerShell.querySelector(".custom-marker");
@@ -110,7 +161,8 @@ function forceActiveMarkerVisible() {
     markerWrapper.style.display = "block";
     markerWrapper.style.opacity = "1";
     markerWrapper.style.pointerEvents = "auto";
-    markerWrapper.style.zIndex = "9999";
+    markerWrapper.style.setProperty("z-index", "10000", "important");
+    markerWrapper.parentElement?.appendChild(markerWrapper);
   }
 }
 
@@ -294,8 +346,12 @@ function explodeMarkersForItem(item) {
 }
 
 function setActiveRegionChip(regionKey = "all") {
+  const usaRegionKeys = new Set(["west", "south", "east", "midwest"]);
+
   document.querySelectorAll("[data-region]").forEach((chip) => {
-    chip.classList.toggle("active", chip.dataset.region === regionKey);
+    const chipRegion = chip.dataset.region;
+    const isActive = chipRegion === regionKey || (chipRegion === "northAmerica" && usaRegionKeys.has(regionKey));
+    chip.classList.toggle("active", isActive);
   });
 }
 
@@ -305,20 +361,35 @@ function pointInBounds(lng, lat, bounds) {
   return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
 }
 
+function isCaribbeanCoordinate(lng, lat) {
+  const inCaribbeanBounds = pointInBounds(lng, lat, REGION_MATCH_BOUNDS.caribbean);
+  const isFloridaCoast = lng < -80 && lat > 24.8;
+  return inCaribbeanBounds && !isFloridaCoast;
+}
+
 function getRegionKeyForItem(item) {
   if (!item) return "all";
 
-  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.caribbean?.bounds)) {
+  if (isCaribbeanCoordinate(item.lng, item.lat)) {
     return "caribbean";
   }
-  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.europe?.bounds)) {
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.europe)) {
     return "europe";
   }
-  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.asia?.bounds)) {
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.asia)) {
     return "asia";
   }
-  if (pointInBounds(item.lng, item.lat, REGION_VIEWS.northAmerica?.bounds)) {
-    return "northAmerica";
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.south)) {
+    return "south";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.midwest)) {
+    return "midwest";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.east)) {
+    return "east";
+  }
+  if (pointInBounds(item.lng, item.lat, REGION_MATCH_BOUNDS.west)) {
+    return "west";
   }
 
   return "all";
@@ -523,9 +594,136 @@ function focusRegion(regionKey) {
   });
 }
 
+function positionRegionSubmenu(group) {
+  const toggle = group.querySelector("[data-region-menu-toggle]");
+  const submenuId = toggle?.getAttribute("aria-controls");
+  const submenu = submenuId ? document.getElementById(submenuId) : null;
+  if (!toggle || !submenu) return;
+
+  const rect = toggle.getBoundingClientRect();
+  const maxLeft = window.innerWidth - 94;
+  const left = Math.max(94, Math.min(maxLeft, rect.left + rect.width / 2));
+
+  submenu.style.setProperty("--region-submenu-left", `${Math.round(left)}px`);
+  submenu.style.setProperty("--region-submenu-top", `${Math.round(rect.bottom + 7)}px`);
+  document.body.appendChild(submenu);
+}
+
+function getRegionSubmenuForGroup(group) {
+  const toggle = group?.querySelector("[data-region-menu-toggle]");
+  const submenuId = toggle?.getAttribute("aria-controls");
+  return submenuId ? document.getElementById(submenuId) : null;
+}
+
+function ensureRegionGroupId(group) {
+  const toggle = group?.querySelector("[data-region-menu-toggle]");
+  if (!group || !toggle) return "";
+
+  if (!group.dataset.regionGroup) {
+    group.dataset.regionGroup = toggle.getAttribute("aria-controls") || `region-menu-${Date.now()}`;
+  }
+
+  return group.dataset.regionGroup;
+}
+
+function openRegionMenu(group) {
+  if (!group) return;
+
+  window.clearTimeout(regionMenuCloseTimer);
+  closeRegionMenus(group);
+
+  const groupId = ensureRegionGroupId(group);
+  const toggle = group.querySelector("[data-region-menu-toggle]");
+  const submenu = getRegionSubmenuForGroup(group);
+
+  group.classList.add("open");
+  toggle?.setAttribute("aria-expanded", "true");
+
+  if (submenu) {
+    submenu.dataset.ownerGroup = groupId;
+    submenu.classList.add("open");
+  }
+
+  positionRegionSubmenu(group);
+}
+
+function scheduleCloseRegionMenus() {
+  window.clearTimeout(regionMenuCloseTimer);
+  regionMenuCloseTimer = window.setTimeout(() => {
+    closeRegionMenus();
+  }, 160);
+}
+
+function closeRegionMenus(exceptGroup = null) {
+  if (!exceptGroup) {
+    window.clearTimeout(regionMenuCloseTimer);
+  }
+
+  document.querySelectorAll(".region-menu-group.open").forEach((group) => {
+    if (group === exceptGroup) return;
+
+    group.classList.remove("open");
+    group.querySelector("[data-region-menu-toggle]")?.setAttribute("aria-expanded", "false");
+  });
+
+  document.querySelectorAll(".region-submenu.open").forEach((submenu) => {
+    const ownerGroup = submenu.dataset.ownerGroup ? document.querySelector(`[data-region-group="${submenu.dataset.ownerGroup}"]`) : null;
+    if (ownerGroup === exceptGroup) return;
+    submenu.classList.remove("open");
+  });
+}
+
 function bindHeaderRegionPills() {
+  document.querySelectorAll("[data-region-menu-toggle]").forEach((toggle) => {
+    if (toggle.dataset.regionMenuBound === "true") return;
+
+    toggle.dataset.regionMenuBound = "true";
+    const group = toggle.closest(".region-menu-group");
+    const submenu = getRegionSubmenuForGroup(group);
+
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const shouldOpen = !group?.classList.contains("open");
+      if (shouldOpen) {
+        openRegionMenu(group);
+      } else {
+        closeRegionMenus();
+      }
+    });
+
+    group?.addEventListener("pointerenter", () => openRegionMenu(group));
+    group?.addEventListener("pointerleave", scheduleCloseRegionMenus);
+    group?.addEventListener("mouseenter", () => openRegionMenu(group));
+    group?.addEventListener("mouseleave", scheduleCloseRegionMenus);
+    group?.addEventListener("mouseover", () => openRegionMenu(group));
+    group?.addEventListener("mouseout", (e) => {
+      if (group.contains(e.relatedTarget) || submenu?.contains(e.relatedTarget)) return;
+      scheduleCloseRegionMenus();
+    });
+    toggle.addEventListener("focus", () => openRegionMenu(group));
+
+    submenu?.addEventListener("pointerenter", () => {
+      window.clearTimeout(regionMenuCloseTimer);
+    });
+    submenu?.addEventListener("pointerleave", scheduleCloseRegionMenus);
+    submenu?.addEventListener("mouseenter", () => {
+      window.clearTimeout(regionMenuCloseTimer);
+    });
+    submenu?.addEventListener("mouseleave", scheduleCloseRegionMenus);
+    submenu?.addEventListener("mouseover", () => {
+      window.clearTimeout(regionMenuCloseTimer);
+    });
+    submenu?.addEventListener("mouseout", (e) => {
+      if (submenu.contains(e.relatedTarget) || group?.contains(e.relatedTarget)) return;
+      scheduleCloseRegionMenus();
+    });
+  });
+
   document.querySelectorAll("[data-region]").forEach((chip) => {
     if (chip.dataset.regionBound === "true") return;
+    if (chip.matches("[data-region-menu-toggle]")) return;
 
     chip.dataset.regionBound = "true";
     chip.addEventListener("click", (e) => {
@@ -533,9 +731,16 @@ function bindHeaderRegionPills() {
       e.stopPropagation();
       const regionKey = chip.dataset.region || "all";
       focusRegion(regionKey);
+      closeRegionMenus();
     });
   });
 
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".region-menu-group")) return;
+    closeRegionMenus();
+  });
+
+  window.addEventListener("resize", () => closeRegionMenus());
   setActiveRegionChip("all");
 }
 

@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260523-4" />
+  <link rel="stylesheet" href="styles.css?v=20260523-6" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -41,7 +41,17 @@
 
     <div class="sheet-region-menu" aria-label="Map regions">
       <button class="sheet-region-pill active" type="button" data-region="all">My Home</button>
-      <button class="sheet-region-pill" type="button" data-region="northAmerica">North America</button>
+      <div class="region-menu-group">
+        <button class="sheet-region-pill region-parent-pill" type="button" data-region="northAmerica" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="sheet-usa-region-menu">
+          North America <span class="region-pill-caret" aria-hidden="true">v</span>
+        </button>
+        <div id="sheet-usa-region-menu" class="region-submenu" aria-label="USA regions">
+          <button class="region-submenu-item" type="button" data-region="west">West</button>
+          <button class="region-submenu-item" type="button" data-region="south">South</button>
+          <button class="region-submenu-item" type="button" data-region="east">East</button>
+          <button class="region-submenu-item" type="button" data-region="midwest">Midwest</button>
+        </div>
+      </div>
       <button class="sheet-region-pill" type="button" data-region="caribbean">Caribbean</button>
       <button class="sheet-region-pill" type="button" data-region="europe">Europe</button>
       <button class="sheet-region-pill" type="button" data-region="asia">Asia</button>
@@ -68,7 +78,17 @@
 
       <div class="region-pills" aria-label="Map regions">
         <button class="region-pill active" type="button" data-region="all">My Home</button>
-        <button class="region-pill" type="button" data-region="northAmerica">North America</button>
+        <div class="region-menu-group">
+        <button class="region-pill region-parent-pill" type="button" data-region="northAmerica" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="header-usa-region-menu">
+            North America <span class="region-pill-caret" aria-hidden="true">v</span>
+          </button>
+          <div id="header-usa-region-menu" class="region-submenu" aria-label="USA regions">
+            <button class="region-submenu-item" type="button" data-region="west">West</button>
+            <button class="region-submenu-item" type="button" data-region="south">South</button>
+            <button class="region-submenu-item" type="button" data-region="east">East</button>
+            <button class="region-submenu-item" type="button" data-region="midwest">Midwest</button>
+          </div>
+        </div>
         <button class="region-pill" type="button" data-region="caribbean">Caribbean</button>
         <button class="region-pill" type="button" data-region="europe">Europe</button>
         <button class="region-pill" type="button" data-region="asia">Asia</button>
@@ -93,6 +113,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260523-4"></script>
+  <script src="app.js?v=20260524-3"></script>
 </body>
 </html>
