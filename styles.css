@@ -887,7 +887,7 @@ body {
     border-radius: 20px 20px 0 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
     will-change: transform;
   }
 
@@ -1080,7 +1080,7 @@ body {
   .place-sheet.level-4 .sheet-subtitle {
     display: block;
     margin-top: 5px;
-    font-size: clamp(22px, 6.6vw, 30px);
+    font-size: clamp(18px, 5.2vw, 24px);
     line-height: 1.05;
     white-space: normal;
     overflow: hidden;
@@ -1105,6 +1105,22 @@ body {
     font-weight: 750;
     line-height: 1.1;
     color: rgba(0, 0, 0, 0.82);
+  }
+
+  .place-sheet.level-2 .place-sheet-header h2 {
+    font-size: 11px;
+  }
+
+  .place-sheet.level-2 .sheet-subtitle {
+    font-size: clamp(16px, 4.6vw, 21px);
+  }
+
+  .place-sheet.level-2 .sheet-location-2 {
+    font-size: clamp(13px, 4vw, 17px);
+  }
+
+  .place-sheet.level-2 .sheet-time {
+    font-size: 10.5px;
   }
 
   .place-sheet.hidden {
