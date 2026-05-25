@@ -82,9 +82,11 @@ const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
 const NEARBY_PRINT_LIMIT = 6;
 const NEARBY_TRANSITION_MS = 150;
-const SHEET_MARKER_TRANSITION_MS = 1250;
-const REGION_MARKER_TRANSITION_MS = 1900;
-const REGION_TRANSITION_MS = 750;
+const SHEET_MARKER_TRANSITION_MS = 1650;
+const REGION_MARKER_TRANSITION_MS = 2700;
+const REGION_TRANSITION_MS = 1450;
+const GESTURE_ZOOM_TRANSITION_MS = 140;
+const DOUBLE_TAP_ZOOM_TRANSITION_MS = 420;
 
 /* =========================
    HELPERS
@@ -1498,7 +1500,7 @@ const MAP_GESTURE_IGNORED_SELECTOR = [
 const shouldKeepGestureInMap = (target) =>
   target instanceof Element && Boolean(target.closest(MAP_GESTURE_IGNORED_SELECTOR));
 
-function zoomMapAtPoint(clientX, clientY, nextZoom) {
+function zoomMapAtPoint(clientX, clientY, nextZoom, options = {}) {
   const mapRect = map.getContainer().getBoundingClientRect();
   const x = clientX - mapRect.left;
   const y = clientY - mapRect.top;
@@ -1508,7 +1510,9 @@ function zoomMapAtPoint(clientX, clientY, nextZoom) {
 
   map.zoomTo(clampedZoom, {
     around: map.unproject([x, y]),
-    duration: 0
+    duration: options.duration ?? GESTURE_ZOOM_TRANSITION_MS,
+    easing: (t) => 1 - Math.pow(1 - t, 3),
+    essential: true
   });
 }
 
@@ -1525,7 +1529,9 @@ function installTrackpadPinchZoom() {
 
       const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
       const zoomDelta = Math.max(-0.45, Math.min(0.45, -normalizedDelta * 0.01));
-      zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDelta);
+      zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDelta, {
+        duration: GESTURE_ZOOM_TRANSITION_MS
+      });
     },
     { capture: true, passive: false }
   );
@@ -1548,7 +1554,9 @@ function installTrackpadPinchZoom() {
 
       event.preventDefault();
       event.stopPropagation();
-      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * 2);
+      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * 2, {
+        duration: GESTURE_ZOOM_TRANSITION_MS
+      });
     },
     { capture: true, passive: false }
   );
@@ -1684,7 +1692,9 @@ function installMobileDoubleTapZoomGuard() {
       if (isDoubleTap) {
         event.preventDefault();
         event.stopPropagation();
-        zoomMapAtPoint(touch.clientX, touch.clientY, map.getZoom() + 1);
+        zoomMapAtPoint(touch.clientX, touch.clientY, map.getZoom() + 1, {
+          duration: DOUBLE_TAP_ZOOM_TRANSITION_MS
+        });
         lastTapTime = 0;
         return;
       }
@@ -1901,6 +1911,9 @@ function openMarkerFromHash() {
     if (!activeItem || activeItem.id !== item.id) {
       const flyToOptions = getFlyToOptions(item);
       if (!flyToOptions) return;
+      flyToOptions.duration = REGION_MARKER_TRANSITION_MS;
+      flyToOptions.curve = 1.18;
+      delete flyToOptions.speed;
 
       activeItem = item;
       setActiveRegionChip("all");
