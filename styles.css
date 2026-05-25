@@ -887,7 +887,7 @@ body {
     border-radius: 20px 20px 0 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     will-change: transform;
   }
 

@@ -1429,37 +1429,16 @@ async function fetchProducts() {
 
 let resizeMapForViewport = () => {};
 
-function getMobileBrowserBottomReserve(rawHeight, measuredBottom, top) {
-  const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
-  const isPortrait = window.innerHeight >= window.innerWidth;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (
-    navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1
-  );
-  const hasBottomToolbar = /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
-  const isStandalone = window.navigator.standalone === true ||
-    window.matchMedia("(display-mode: standalone)").matches;
-
-  if (!isMobileViewport || !isPortrait || !isIOS || !hasBottomToolbar || isStandalone) return 0;
-  if (top > 0 || measuredBottom > 24) return 0;
-
-  const shortSide = Math.min(window.innerWidth, window.innerHeight);
-  return Math.round(Math.min(118, Math.max(96, shortSide * 0.25)));
-}
-
 function syncAppViewport() {
   const viewport = window.visualViewport;
-  const rawHeight = Math.round(viewport?.height || window.innerHeight);
+  const height = Math.round(viewport?.height || window.innerHeight);
   const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
-  const measuredBottom = Math.max(0, Math.round(window.innerHeight - rawHeight - top));
-  const browserBottomReserve = getMobileBrowserBottomReserve(rawHeight, measuredBottom, top);
-  const height = Math.max(320, rawHeight - browserBottomReserve);
-  const bottom = measuredBottom + browserBottomReserve;
+  const bottom = Math.max(0, Math.round(window.innerHeight - height - top));
   const root = document.documentElement;
 
   root.style.setProperty("--app-height", `${height}px`);
   root.style.setProperty("--app-top", `${top}px`);
   root.style.setProperty("--app-bottom", `${bottom}px`);
-  root.style.setProperty("--app-browser-bottom-reserve", `${browserBottomReserve}px`);
   resizeMapForViewport();
 }
 
