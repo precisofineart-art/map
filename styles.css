@@ -748,8 +748,11 @@ body {
 
 .custom-marker:hover,
 .custom-marker.hover {
-  transform: scale(1.12) translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transform: scale(1.55) translateY(-12px);
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.32),
+    0 10px 20px rgba(0, 0, 0, 0.2);
+  filter: saturate(1.08);
 }
 
 .custom-marker.active {
