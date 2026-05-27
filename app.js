@@ -65,11 +65,127 @@ const REGION_MATCH_BOUNDS = {
   asia: [[45, -12], [180, 60]]
 };
 
+const USA_FILTER_KEY = "country:usa";
+const USA_COORDINATE_BOUNDS = [[-125, 24], [-66, 50]];
+const LOCATION_FILTER_PADDING = {
+  top: 145,
+  bottom: 150,
+  left: 80,
+  right: 80
+};
+
+const US_STATE_LABELS = {
+  al: "Alabama",
+  alabama: "Alabama",
+  ak: "Alaska",
+  alaska: "Alaska",
+  az: "Arizona",
+  arizona: "Arizona",
+  ar: "Arkansas",
+  arkansas: "Arkansas",
+  ca: "California",
+  california: "California",
+  co: "Colorado",
+  colorado: "Colorado",
+  ct: "Connecticut",
+  connecticut: "Connecticut",
+  de: "Delaware",
+  delaware: "Delaware",
+  dc: "Washington, DC",
+  "washington dc": "Washington, DC",
+  "district of columbia": "Washington, DC",
+  fl: "Florida",
+  florida: "Florida",
+  ga: "Georgia",
+  georgia: "Georgia",
+  hi: "Hawaii",
+  hawaii: "Hawaii",
+  id: "Idaho",
+  idaho: "Idaho",
+  il: "Illinois",
+  illinois: "Illinois",
+  in: "Indiana",
+  indiana: "Indiana",
+  ia: "Iowa",
+  iowa: "Iowa",
+  ks: "Kansas",
+  kansas: "Kansas",
+  ky: "Kentucky",
+  kentucky: "Kentucky",
+  la: "Louisiana",
+  louisiana: "Louisiana",
+  me: "Maine",
+  maine: "Maine",
+  md: "Maryland",
+  maryland: "Maryland",
+  ma: "Massachusetts",
+  massachusetts: "Massachusetts",
+  mi: "Michigan",
+  michigan: "Michigan",
+  mn: "Minnesota",
+  minnesota: "Minnesota",
+  ms: "Mississippi",
+  mississippi: "Mississippi",
+  mo: "Missouri",
+  missouri: "Missouri",
+  mt: "Montana",
+  montana: "Montana",
+  ne: "Nebraska",
+  nebraska: "Nebraska",
+  nv: "Nevada",
+  nevada: "Nevada",
+  nh: "New Hampshire",
+  "new hampshire": "New Hampshire",
+  nj: "New Jersey",
+  "new jersey": "New Jersey",
+  nm: "New Mexico",
+  "new mexico": "New Mexico",
+  ny: "New York",
+  "new york": "New York",
+  nc: "North Carolina",
+  "north carolina": "North Carolina",
+  nd: "North Dakota",
+  "north dakota": "North Dakota",
+  oh: "Ohio",
+  ohio: "Ohio",
+  ok: "Oklahoma",
+  oklahoma: "Oklahoma",
+  or: "Oregon",
+  oregon: "Oregon",
+  pa: "Pennsylvania",
+  pennsylvania: "Pennsylvania",
+  ri: "Rhode Island",
+  "rhode island": "Rhode Island",
+  sc: "South Carolina",
+  "south carolina": "South Carolina",
+  sd: "South Dakota",
+  "south dakota": "South Dakota",
+  tn: "Tennessee",
+  tennessee: "Tennessee",
+  tx: "Texas",
+  texas: "Texas",
+  ut: "Utah",
+  utah: "Utah",
+  vt: "Vermont",
+  vermont: "Vermont",
+  va: "Virginia",
+  virginia: "Virginia",
+  wa: "Washington",
+  washington: "Washington",
+  wv: "West Virginia",
+  "west virginia": "West Virginia",
+  wi: "Wisconsin",
+  wisconsin: "Wisconsin",
+  wy: "Wyoming",
+  wyoming: "Wyoming"
+};
+
 /* =========================
    STATE
 ========================= */
 let listings = [];
 let markers = [];
+let locationFilters = new Map();
 let activeItem = null;
 let isResetting = false;
 let edgeIndicatorEls = new Map();
@@ -348,12 +464,225 @@ function explodeMarkersForItem(item) {
   return true;
 }
 
-function setActiveRegionChip(regionKey = "all") {
-  const usaRegionKeys = new Set(["west", "south", "east", "midwest"]);
+function normalizeLocationToken(value = "") {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .toLowerCase();
+}
 
+function slugifyLocationLabel(value = "") {
+  return normalizeLocationToken(value).replace(/\s+/g, "-");
+}
+
+function titleCaseLocation(value = "") {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getLocationCandidates(item) {
+  return [item?.location2, item?.location1, item?.title]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function getTrailingLocationToken(candidate = "") {
+  const parts = candidate
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return parts.length > 1 ? parts.at(-1) : "";
+}
+
+function getUsStateLabelForItem(item) {
+  for (const candidate of getLocationCandidates(item)) {
+    const token = getTrailingLocationToken(candidate);
+    const stateLabel = US_STATE_LABELS[normalizeLocationToken(token)];
+    if (stateLabel) return stateLabel;
+  }
+
+  return "";
+}
+
+function getCountryLabelForItem(item) {
+  const stateLabel = getUsStateLabelForItem(item);
+  if (stateLabel || pointInBounds(item.lng, item.lat, USA_COORDINATE_BOUNDS)) {
+    return "USA";
+  }
+
+  for (const candidate of getLocationCandidates(item)) {
+    const token = getTrailingLocationToken(candidate);
+    if (token && !US_STATE_LABELS[normalizeLocationToken(token)]) {
+      return titleCaseLocation(token);
+    }
+  }
+
+  return "Other";
+}
+
+function buildViewForItems(items, zoom = 5.8) {
+  const validItems = items.filter(hasValidCoordinates);
+  if (!validItems.length) return REGION_VIEWS.all;
+
+  const lngs = validItems.map((item) => item.lng);
+  const lats = validItems.map((item) => item.lat);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const center = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+
+  if (Math.abs(maxLng - minLng) < 0.08 && Math.abs(maxLat - minLat) < 0.08) {
+    return { center, zoom };
+  }
+
+  return {
+    bounds: [[minLng, minLat], [maxLng, maxLat]],
+    padding: LOCATION_FILTER_PADDING
+  };
+}
+
+function buildLocationFilters() {
+  const nextFilters = new Map();
+  const usaItems = [];
+  const stateBuckets = new Map();
+  const countryBuckets = new Map();
+
+  listings.forEach((item) => {
+    const countryLabel = getCountryLabelForItem(item);
+    const countryKey = countryLabel === "USA"
+      ? USA_FILTER_KEY
+      : `country:${slugifyLocationLabel(countryLabel) || "other"}`;
+
+    item.countryLabel = countryLabel;
+    item.countryKey = countryKey;
+
+    if (countryLabel === "USA") {
+      usaItems.push(item);
+      const stateLabel = getUsStateLabelForItem(item) || "Other USA";
+      const stateKey = `state:${slugifyLocationLabel(stateLabel) || "other-usa"}`;
+      item.stateLabel = stateLabel;
+      item.stateKey = stateKey;
+
+      if (!stateBuckets.has(stateKey)) {
+        stateBuckets.set(stateKey, {
+          key: stateKey,
+          label: stateLabel,
+          parentKey: USA_FILTER_KEY,
+          type: "state",
+          items: []
+        });
+      }
+
+      stateBuckets.get(stateKey).items.push(item);
+      return;
+    }
+
+    if (!countryBuckets.has(countryKey)) {
+      countryBuckets.set(countryKey, {
+        key: countryKey,
+        label: countryLabel,
+        type: "country",
+        items: []
+      });
+    }
+
+    countryBuckets.get(countryKey).items.push(item);
+  });
+
+  if (usaItems.length) {
+    nextFilters.set(USA_FILTER_KEY, {
+      key: USA_FILTER_KEY,
+      label: "USA",
+      type: "country",
+      items: usaItems,
+      view: buildViewForItems(usaItems, 4.8)
+    });
+  }
+
+  [...stateBuckets.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .forEach((filter) => {
+      nextFilters.set(filter.key, {
+        ...filter,
+        view: buildViewForItems(filter.items, 6.8)
+      });
+    });
+
+  [...countryBuckets.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .forEach((filter) => {
+      nextFilters.set(filter.key, {
+        ...filter,
+        view: buildViewForItems(filter.items, 5.7)
+      });
+    });
+
+  locationFilters = nextFilters;
+}
+
+function getLocationFilterView(regionKey) {
+  return locationFilters.get(regionKey)?.view || REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+}
+
+function makeLocationMenuButton(className, filter) {
+  const button = document.createElement("button");
+  button.className = className;
+  button.type = "button";
+  button.dataset.region = filter.key;
+  button.textContent = filter.label;
+  return button;
+}
+
+function renderLocationMenus() {
+  const stateFilters = [...locationFilters.values()].filter((filter) => filter.parentKey === USA_FILTER_KEY);
+  const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
+
+  document.querySelectorAll("[data-location-menu]").forEach((menu) => {
+    const buttonClass = menu.classList.contains("sheet-region-menu") ? "sheet-region-pill" : "region-pill";
+    const usaGroup = menu.querySelector("[data-country-group='usa']");
+    const usaSubmenu = menu.querySelector("[data-country-submenu='usa']");
+    const usaToggle = menu.querySelector("[data-country-toggle='usa']");
+
+    menu.querySelectorAll("[data-country-filter='true']").forEach((button) => button.remove());
+
+    if (usaToggle) {
+      usaToggle.dataset.region = USA_FILTER_KEY;
+      usaToggle.hidden = !locationFilters.has(USA_FILTER_KEY);
+    }
+
+    if (usaGroup) {
+      usaGroup.hidden = !locationFilters.has(USA_FILTER_KEY);
+    }
+
+    if (usaSubmenu) {
+      usaSubmenu.replaceChildren();
+      stateFilters.forEach((filter) => {
+        usaSubmenu.appendChild(makeLocationMenuButton("region-submenu-item", filter));
+      });
+    }
+
+    countryFilters.forEach((filter) => {
+      const button = makeLocationMenuButton(buttonClass, filter);
+      button.dataset.countryFilter = "true";
+      menu.appendChild(button);
+    });
+  });
+}
+
+function setActiveRegionChip(regionKey = "all") {
   document.querySelectorAll("[data-region]").forEach((chip) => {
     const chipRegion = chip.dataset.region;
-    const isActive = chipRegion === regionKey || (chipRegion === "northAmerica" && usaRegionKeys.has(regionKey));
+    const activeFilter = locationFilters.get(regionKey);
+    const isActive = chipRegion === regionKey || (chipRegion === activeFilter?.parentKey);
     chip.classList.toggle("active", isActive);
   });
 }
@@ -372,6 +701,14 @@ function isCaribbeanCoordinate(lng, lat) {
 
 function getRegionKeyForItem(item) {
   if (!item) return "all";
+
+  if (item.stateKey) {
+    return item.stateKey;
+  }
+
+  if (item.countryKey) {
+    return item.countryKey;
+  }
 
   if (isCaribbeanCoordinate(item.lng, item.lat)) {
     return "caribbean";
@@ -551,7 +888,7 @@ function initNearbyControls() {
 }
 
 function focusRegion(regionKey) {
-  const region = REGION_VIEWS[regionKey] || REGION_VIEWS.all;
+  const region = getLocationFilterView(regionKey);
 
   activeItem = null;
   resetExplodedMarkers();
@@ -657,6 +994,10 @@ function scheduleCloseRegionMenus() {
   }, 160);
 }
 
+function isRegionMenuPinned(group) {
+  return group?.dataset.regionClickOpen === "true";
+}
+
 function canUseHoverRegionMenu() {
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
@@ -670,6 +1011,7 @@ function closeRegionMenus(exceptGroup = null) {
     if (group === exceptGroup) return;
 
     group.classList.remove("open");
+    delete group.dataset.regionClickOpen;
     group.querySelector("[data-region-menu-toggle]")?.setAttribute("aria-expanded", "false");
   });
 
@@ -695,6 +1037,7 @@ function bindHeaderRegionPills() {
       const shouldOpen = !group?.classList.contains("open");
       if (shouldOpen) {
         openRegionMenu(group);
+        if (group) group.dataset.regionClickOpen = "true";
       } else {
         closeRegionMenus();
       }
@@ -704,13 +1047,13 @@ function bindHeaderRegionPills() {
       if (e.pointerType === "mouse") openRegionMenu(group);
     });
     group?.addEventListener("pointerleave", (e) => {
-      if (e.pointerType === "mouse") scheduleCloseRegionMenus();
+      if (e.pointerType === "mouse" && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseenter", () => {
       if (canUseHoverRegionMenu()) openRegionMenu(group);
     });
     group?.addEventListener("mouseleave", () => {
-      if (canUseHoverRegionMenu()) scheduleCloseRegionMenus();
+      if (canUseHoverRegionMenu() && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseover", () => {
       if (canUseHoverRegionMenu()) openRegionMenu(group);
@@ -718,6 +1061,7 @@ function bindHeaderRegionPills() {
     group?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
       if (group.contains(e.relatedTarget) || submenu?.contains(e.relatedTarget)) return;
+      if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
     });
     toggle.addEventListener("focus", () => openRegionMenu(group));
@@ -726,13 +1070,13 @@ function bindHeaderRegionPills() {
       if (e.pointerType === "mouse") window.clearTimeout(regionMenuCloseTimer);
     });
     submenu?.addEventListener("pointerleave", (e) => {
-      if (e.pointerType === "mouse") scheduleCloseRegionMenus();
+      if (e.pointerType === "mouse" && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     submenu?.addEventListener("mouseenter", () => {
       if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
     });
     submenu?.addEventListener("mouseleave", () => {
-      if (canUseHoverRegionMenu()) scheduleCloseRegionMenus();
+      if (canUseHoverRegionMenu() && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     submenu?.addEventListener("mouseover", () => {
       if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
@@ -740,6 +1084,7 @@ function bindHeaderRegionPills() {
     submenu?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
       if (submenu.contains(e.relatedTarget) || group?.contains(e.relatedTarget)) return;
+      if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
     });
   });
@@ -1306,7 +1651,7 @@ function resetView() {
   isResetting = true;
   const previousActiveItem = activeItem;
   const targetRegionKey = previousActiveItem ? getRegionKeyForItem(previousActiveItem) : "all";
-  const targetRegion = REGION_VIEWS[targetRegionKey] || REGION_VIEWS.all;
+  const targetRegion = getLocationFilterView(targetRegionKey);
 
   activeItem = null;
   resetExplodedMarkers();
@@ -1940,6 +2285,8 @@ function openMarkerFromHash() {
 ========================= */
 map.on("load", async () => {
   listings = await fetchProducts();
+  buildLocationFilters();
+  renderLocationMenus();
 
   render();
   setMarkerVisibilityByZoom();

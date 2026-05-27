@@ -39,22 +39,14 @@
       <div id="sheet-nearby-list" class="sheet-nearby-list"></div>
     </section>
 
-    <div class="sheet-region-menu" aria-label="Map regions">
+    <div class="sheet-region-menu" aria-label="Map countries" data-location-menu>
       <button class="sheet-region-pill active" type="button" data-region="all">My Home</button>
-      <div class="region-menu-group">
-        <button class="sheet-region-pill region-parent-pill" type="button" data-region="northAmerica" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="sheet-usa-region-menu">
-          North America <span class="region-pill-caret" aria-hidden="true">v</span>
+      <div class="region-menu-group" data-country-group="usa">
+        <button class="sheet-region-pill region-parent-pill" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="sheet-usa-region-menu">
+          USA <span class="region-pill-caret" aria-hidden="true">v</span>
         </button>
-        <div id="sheet-usa-region-menu" class="region-submenu" aria-label="USA regions">
-          <button class="region-submenu-item" type="button" data-region="west">West</button>
-          <button class="region-submenu-item" type="button" data-region="south">South</button>
-          <button class="region-submenu-item" type="button" data-region="east">East</button>
-          <button class="region-submenu-item" type="button" data-region="midwest">Midwest</button>
-        </div>
+        <div id="sheet-usa-region-menu" class="region-submenu" aria-label="USA states" data-country-submenu="usa"></div>
       </div>
-      <button class="sheet-region-pill" type="button" data-region="caribbean">Caribbean</button>
-      <button class="sheet-region-pill" type="button" data-region="europe">Europe</button>
-      <button class="sheet-region-pill" type="button" data-region="asia">Asia</button>
     </div>
 
     <div class="sheet-media">
@@ -76,22 +68,14 @@
         </a>
       </div>
 
-      <div class="region-pills" aria-label="Map regions">
+      <div class="region-pills" aria-label="Map countries" data-location-menu>
         <button class="region-pill active" type="button" data-region="all">My Home</button>
-        <div class="region-menu-group">
-        <button class="region-pill region-parent-pill" type="button" data-region="northAmerica" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="header-usa-region-menu">
-            North America <span class="region-pill-caret" aria-hidden="true">v</span>
+        <div class="region-menu-group" data-country-group="usa">
+          <button class="region-pill region-parent-pill" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="header-usa-region-menu">
+            USA <span class="region-pill-caret" aria-hidden="true">v</span>
           </button>
-          <div id="header-usa-region-menu" class="region-submenu" aria-label="USA regions">
-            <button class="region-submenu-item" type="button" data-region="west">West</button>
-            <button class="region-submenu-item" type="button" data-region="south">South</button>
-            <button class="region-submenu-item" type="button" data-region="east">East</button>
-            <button class="region-submenu-item" type="button" data-region="midwest">Midwest</button>
-          </div>
+          <div id="header-usa-region-menu" class="region-submenu" aria-label="USA states" data-country-submenu="usa"></div>
         </div>
-        <button class="region-pill" type="button" data-region="caribbean">Caribbean</button>
-        <button class="region-pill" type="button" data-region="europe">Europe</button>
-        <button class="region-pill" type="button" data-region="asia">Asia</button>
       </div>
     </div>
   </header>
@@ -113,6 +97,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260525-1"></script>
+  <script src="app.js?v=20260526-1"></script>
 </body>
 </html>
