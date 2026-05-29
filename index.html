@@ -7,10 +7,19 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260527-1" />
+  <link rel="stylesheet" href="styles.css?v=20260529-2" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
+
+  <div id="google-ui" aria-label="Map controls">
+    <div class="gm-zoom-control" role="group" aria-label="Zoom controls">
+      <button id="gm-zoom-in" class="gm-zoom-button" type="button" aria-label="Zoom in">+</button>
+      <div class="gm-zoom-divider" aria-hidden="true"></div>
+      <button id="gm-zoom-out" class="gm-zoom-button" type="button" aria-label="Zoom out">-</button>
+    </div>
+    <button id="gm-reset" class="gm-reset-button" type="button" aria-label="Reset map view">⌂</button>
+  </div>
 
   <aside id="place-sheet" class="place-sheet hidden" aria-label="Place details" aria-labelledby="sheet-title" aria-describedby="sheet-subtitle" aria-live="polite">
     <div class="place-sheet-handle"></div>
@@ -97,6 +106,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260529-1"></script>
+  <script src="app.js?v=20260529-5"></script>
 </body>
 </html>

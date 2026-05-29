@@ -313,8 +313,85 @@ body {
 #google-ui {
   position: fixed;
   inset: 0;
-  z-index: 18;
+  z-index: 30;
   pointer-events: none;
+}
+
+.gm-zoom-control {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 84px);
+  display: flex;
+  flex-direction: column;
+  width: 34px;
+  overflow: hidden;
+  border: 1px solid rgba(60, 64, 67, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.24);
+  pointer-events: auto;
+}
+
+.gm-zoom-button,
+.gm-reset-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: #fff;
+  color: #3c4043;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  line-height: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gm-zoom-button {
+  width: 34px;
+  height: 34px;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.gm-zoom-divider {
+  height: 1px;
+  margin: 0 8px;
+  background: #e0e0e0;
+}
+
+.gm-reset-button {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 44px);
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(60, 64, 67, 0.18);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.24);
+  font-size: 17px;
+  pointer-events: auto;
+}
+
+.gm-zoom-button:hover,
+.gm-reset-button:hover {
+  background: #f8f9fa;
+}
+
+.gm-zoom-button:active,
+.gm-reset-button:active {
+  background: #f1f3f4;
+}
+
+.gm-zoom-button:disabled {
+  color: #bdc1c6;
+  cursor: default;
+}
+
+.gm-zoom-button:focus-visible,
+.gm-reset-button:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
 }
 
 .gm-topbar {
@@ -801,6 +878,16 @@ body {
   .gm-topbar,
   .gm-fabs {
     display: none;
+  }
+
+  .gm-zoom-control {
+    right: 9px;
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 74px);
+  }
+
+  .gm-reset-button {
+    right: 9px;
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 34px);
   }
 
   #header {
@@ -1305,10 +1392,6 @@ body {
 
 .popup-close-btn:active {
   transform: scale(0.96);
-}
-
-#gm-reset {
-  display: none;
 }
 
 .edge-indicator {

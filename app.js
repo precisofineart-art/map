@@ -204,9 +204,10 @@ const REGION_MARKER_TRANSITION_MS = 2700;
 const REGION_TRANSITION_MS = 1450;
 const GESTURE_ZOOM_TRANSITION_MS = 140;
 const DOUBLE_TAP_ZOOM_TRANSITION_MS = 420;
-const TRACKPAD_PINCH_ZOOM_RATE = 0.01;
-const TRACKPAD_PINCH_MAX_DELTA = 0.5;
-const SAFARI_GESTURE_ZOOM_RATE = 2.15;
+const TRACKPAD_PINCH_ZOOM_RATE = 0.018;
+const TRACKPAD_PINCH_MAX_DELTA = 0.72;
+const SAFARI_GESTURE_ZOOM_RATE = 2.65;
+const MAP_CONTROL_ZOOM_STEP = 1;
 
 /* =========================
    HELPERS
@@ -637,6 +638,25 @@ function getLocationFilterView(regionKey) {
   return locationFilters.get(regionKey)?.view || REGION_VIEWS[regionKey] || REGION_VIEWS.all;
 }
 
+function setActiveRegionKey(regionKey = "all") {
+  activeRegionKey = regionKey;
+  setActiveRegionChip(regionKey);
+}
+
+function getResetRegionKey(item = activeItem) {
+  if (activeRegionKey && activeRegionKey !== "all") {
+    return activeRegionKey;
+  }
+
+  return item ? getRegionKeyForItem(item) : "all";
+}
+
+function setActiveItemRegion(item) {
+  const regionKey = item ? getRegionKeyForItem(item) : "all";
+  activeRegionKey = regionKey;
+  setActiveRegionChip(regionKey);
+}
+
 function makeLocationMenuButton(className, filter) {
   const button = document.createElement("button");
   button.className = className;
@@ -894,7 +914,6 @@ function initNearbyControls() {
 function focusRegion(regionKey) {
   const region = getLocationFilterView(regionKey);
 
-  activeRegionKey = regionKey;
   activeItem = null;
   resetExplodedMarkers();
   setActiveMarkerState("");
@@ -919,7 +938,7 @@ function focusRegion(regionKey) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }
 
-  setActiveRegionChip(regionKey);
+  setActiveRegionKey(regionKey);
 
   if (region.bounds) {
     map.fitBounds(region.bounds, {
@@ -1041,6 +1060,8 @@ function bindHeaderRegionPills() {
 
       const shouldOpen = !group?.classList.contains("open");
       if (shouldOpen) {
+        const regionKey = toggle.dataset.region || "all";
+        setActiveRegionKey(regionKey);
         openRegionMenu(group);
         if (group) group.dataset.regionClickOpen = "true";
       } else {
@@ -1654,7 +1675,7 @@ function initSheetDrag() {
 
 function resetView() {
   isResetting = true;
-  const targetRegionKey = activeRegionKey || "all";
+  const targetRegionKey = getResetRegionKey();
   const targetRegion = getLocationFilterView(targetRegionKey);
 
   activeItem = null;
@@ -1681,7 +1702,7 @@ function resetView() {
     markerShell.classList.remove("active");
   });
   clearEdgeIndicators();
-  setActiveRegionChip(targetRegionKey);
+  setActiveRegionKey(targetRegionKey);
 
   if (targetRegion.bounds) {
     map.fitBounds(targetRegion.bounds, {
@@ -1864,7 +1885,13 @@ const shouldKeepGestureInMap = (target) =>
 const shouldSkipTrackpadPinch = (target) =>
   target instanceof Element && Boolean(target.closest(MAP_PINCH_IGNORED_SELECTOR));
 
+function hasValidClientPoint(clientX, clientY) {
+  return Number.isFinite(clientX) && Number.isFinite(clientY);
+}
+
 function isPointInsideMap(clientX, clientY) {
+  if (!hasValidClientPoint(clientX, clientY)) return false;
+
   const mapRect = map.getContainer().getBoundingClientRect();
   return (
     clientX >= mapRect.left &&
@@ -1872,6 +1899,21 @@ function isPointInsideMap(clientX, clientY) {
     clientY >= mapRect.top &&
     clientY <= mapRect.bottom
   );
+}
+
+function getGestureClientPoint(event) {
+  if (hasValidClientPoint(event.clientX, event.clientY)) {
+    return {
+      clientX: event.clientX,
+      clientY: event.clientY
+    };
+  }
+
+  const mapRect = map.getContainer().getBoundingClientRect();
+  return {
+    clientX: mapRect.left + mapRect.width / 2,
+    clientY: mapRect.top + mapRect.height / 2
+  };
 }
 
 function zoomMapAtPoint(clientX, clientY, nextZoom, options = {}) {
@@ -1890,66 +1932,134 @@ function zoomMapAtPoint(clientX, clientY, nextZoom, options = {}) {
   });
 }
 
+function zoomMapFromControl(delta) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  zoomMapAtPoint(
+    mapRect.left + mapRect.width / 2,
+    mapRect.top + mapRect.height / 2,
+    map.getZoom() + delta,
+    { duration: 220 }
+  );
+}
+
+function updateMapControlState() {
+  const zoomInButton = document.getElementById("gm-zoom-in");
+  const zoomOutButton = document.getElementById("gm-zoom-out");
+  if (!zoomInButton || !zoomOutButton) return;
+
+  const zoom = map.getZoom();
+  const minZoom = map.getMinZoom?.() ?? 0;
+  const maxZoom = map.getMaxZoom?.() ?? 22;
+
+  zoomInButton.disabled = zoom >= maxZoom - 0.01;
+  zoomOutButton.disabled = zoom <= minZoom + 0.01;
+}
+
+function initMapControls() {
+  const zoomInButton = document.getElementById("gm-zoom-in");
+  const zoomOutButton = document.getElementById("gm-zoom-out");
+  const resetButton = document.getElementById("gm-reset");
+
+  const stopMapControlGesture = (event) => {
+    event.stopPropagation();
+  };
+
+  [zoomInButton, zoomOutButton, resetButton].forEach((button) => {
+    button?.addEventListener("pointerdown", stopMapControlGesture);
+    button?.addEventListener("wheel", (event) => {
+      event.stopPropagation();
+    }, { passive: true });
+  });
+
+  zoomInButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    zoomMapFromControl(MAP_CONTROL_ZOOM_STEP);
+  });
+
+  zoomOutButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    zoomMapFromControl(-MAP_CONTROL_ZOOM_STEP);
+  });
+
+  resetButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    resetView();
+  });
+
+  updateMapControlState();
+}
+
 function installTrackpadPinchZoom() {
   let gestureStartZoom = null;
+  const mapContainer = map.getContainer();
+  const mapCanvas = map.getCanvas();
+  const mapCanvasContainer = map.getCanvasContainer?.();
 
   const shouldHandleMapPinch = (event) => {
     if (shouldSkipTrackpadPinch(event.target)) return false;
+    if (event.target instanceof Node && mapContainer.contains(event.target)) return true;
+    if (!hasValidClientPoint(event.clientX, event.clientY)) return false;
     return isPointInsideMap(event.clientX, event.clientY);
   };
 
-  window.addEventListener(
-    "wheel",
-    (event) => {
-      if (!event.ctrlKey || !shouldHandleMapPinch(event)) return;
+  const handlePinchWheel = (event) => {
+    const isPinchWheel = event.ctrlKey || event.metaKey || Math.abs(event.deltaZ || 0) > 0;
+    if (!isPinchWheel || !shouldHandleMapPinch(event)) return;
 
-      event.preventDefault();
-      event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
 
-      const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
-      const zoomDelta = Math.max(
-        -TRACKPAD_PINCH_MAX_DELTA,
-        Math.min(TRACKPAD_PINCH_MAX_DELTA, -normalizedDelta * TRACKPAD_PINCH_ZOOM_RATE)
-      );
-      zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDelta, {
-        duration: GESTURE_ZOOM_TRANSITION_MS
-      });
-    },
-    { capture: true, passive: false }
-  );
+    const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
+    const zoomDelta = Math.max(
+      -TRACKPAD_PINCH_MAX_DELTA,
+      Math.min(TRACKPAD_PINCH_MAX_DELTA, -normalizedDelta * TRACKPAD_PINCH_ZOOM_RATE)
+    );
+    const { clientX, clientY } = getGestureClientPoint(event);
 
-  window.addEventListener(
-    "gesturestart",
-    (event) => {
-      if (!shouldHandleMapPinch(event)) return;
+    zoomMapAtPoint(clientX, clientY, map.getZoom() + zoomDelta, {
+      duration: GESTURE_ZOOM_TRANSITION_MS
+    });
+  };
 
-      event.preventDefault();
-      gestureStartZoom = map.getZoom();
-    },
-    { capture: true, passive: false }
-  );
+  const addPinchListener = (target, eventName, handler, options = { capture: true, passive: false }) => {
+    target?.addEventListener?.(eventName, handler, options);
+  };
 
-  window.addEventListener(
-    "gesturechange",
-    (event) => {
-      if (gestureStartZoom === null || !shouldHandleMapPinch(event)) return;
+  [window, document, mapContainer, mapCanvasContainer, mapCanvas].forEach((target) => {
+    addPinchListener(target, "wheel", handlePinchWheel);
+  });
 
-      event.preventDefault();
-      event.stopPropagation();
-      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * SAFARI_GESTURE_ZOOM_RATE, {
-        duration: GESTURE_ZOOM_TRANSITION_MS
-      });
-    },
-    { capture: true, passive: false }
-  );
+  const handleGestureStart = (event) => {
+    if (!shouldHandleMapPinch(event)) return;
 
-  window.addEventListener(
-    "gestureend",
-    () => {
-      gestureStartZoom = null;
-    },
-    { capture: true, passive: true }
-  );
+    event.preventDefault();
+    gestureStartZoom = map.getZoom();
+  };
+
+  const handleGestureChange = (event) => {
+    if (gestureStartZoom === null || !shouldHandleMapPinch(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const { clientX, clientY } = getGestureClientPoint(event);
+    zoomMapAtPoint(clientX, clientY, gestureStartZoom + Math.log2(event.scale) * SAFARI_GESTURE_ZOOM_RATE, {
+      duration: GESTURE_ZOOM_TRANSITION_MS
+    });
+  };
+
+  const handleGestureEnd = () => {
+    gestureStartZoom = null;
+  };
+
+  [window, document, mapContainer, mapCanvasContainer, mapCanvas].forEach((target) => {
+    addPinchListener(target, "gesturestart", handleGestureStart);
+    addPinchListener(target, "gesturechange", handleGestureChange);
+    addPinchListener(target, "gestureend", handleGestureEnd, { capture: true, passive: true });
+  });
 }
 
 function installEmbeddedScrollBridge() {
@@ -2092,6 +2202,7 @@ function installMobileDoubleTapZoomGuard() {
 installTrackpadPinchZoom();
 installEmbeddedScrollBridge();
 installMobileDoubleTapZoomGuard();
+initMapControls();
 
 /* =========================
    MARKER CLICK
@@ -2148,7 +2259,7 @@ function handleMarkerClick(item, options = {}) {
   resetExplodedMarkers();
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
-  setActiveRegionChip("all");
+  setActiveItemRegion(item);
 
   if (shouldDelaySheetUntilZoom) {
     sheet.classList.add("hidden");
@@ -2298,7 +2409,7 @@ function openMarkerFromHash() {
       delete flyToOptions.speed;
 
       activeItem = item;
-      setActiveRegionChip("all");
+      setActiveItemRegion(item);
       showPlaceSheet(item);
       map.flyTo(flyToOptions);
       map.once("moveend", () => {
@@ -2358,12 +2469,14 @@ map.on("zoom", () => {
   setMarkerVisibilityByZoom();
   updateEdgeIndicator();
   forceActiveMarkerVisible();
+  updateMapControlState();
 });
 
 map.on("moveend", () => {
   setMarkerVisibilityByZoom();
   updateEdgeIndicator();
   forceActiveMarkerVisible();
+  updateMapControlState();
 });
 });
 
