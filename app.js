@@ -186,6 +186,7 @@ const US_STATE_LABELS = {
 let listings = [];
 let markers = [];
 let locationFilters = new Map();
+let activeRegionKey = "all";
 let activeItem = null;
 let isResetting = false;
 let edgeIndicatorEls = new Map();
@@ -203,6 +204,9 @@ const REGION_MARKER_TRANSITION_MS = 2700;
 const REGION_TRANSITION_MS = 1450;
 const GESTURE_ZOOM_TRANSITION_MS = 140;
 const DOUBLE_TAP_ZOOM_TRANSITION_MS = 420;
+const TRACKPAD_PINCH_ZOOM_RATE = 0.01;
+const TRACKPAD_PINCH_MAX_DELTA = 0.5;
+const SAFARI_GESTURE_ZOOM_RATE = 2.15;
 
 /* =========================
    HELPERS
@@ -890,6 +894,7 @@ function initNearbyControls() {
 function focusRegion(regionKey) {
   const region = getLocationFilterView(regionKey);
 
+  activeRegionKey = regionKey;
   activeItem = null;
   resetExplodedMarkers();
   setActiveMarkerState("");
@@ -1649,8 +1654,7 @@ function initSheetDrag() {
 
 function resetView() {
   isResetting = true;
-  const previousActiveItem = activeItem;
-  const targetRegionKey = previousActiveItem ? getRegionKeyForItem(previousActiveItem) : "all";
+  const targetRegionKey = activeRegionKey || "all";
   const targetRegion = getLocationFilterView(targetRegionKey);
 
   activeItem = null;
@@ -1842,8 +1846,33 @@ const MAP_GESTURE_IGNORED_SELECTOR = [
   "#header"
 ].join(",");
 
+const MAP_PINCH_IGNORED_SELECTOR = [
+  "a",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  ".mapboxgl-control-container",
+  ".place-sheet",
+  "#carousel",
+  "#header"
+].join(",");
+
 const shouldKeepGestureInMap = (target) =>
   target instanceof Element && Boolean(target.closest(MAP_GESTURE_IGNORED_SELECTOR));
+
+const shouldSkipTrackpadPinch = (target) =>
+  target instanceof Element && Boolean(target.closest(MAP_PINCH_IGNORED_SELECTOR));
+
+function isPointInsideMap(clientX, clientY) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  return (
+    clientX >= mapRect.left &&
+    clientX <= mapRect.right &&
+    clientY >= mapRect.top &&
+    clientY <= mapRect.bottom
+  );
+}
 
 function zoomMapAtPoint(clientX, clientY, nextZoom, options = {}) {
   const mapRect = map.getContainer().getBoundingClientRect();
@@ -1864,16 +1893,24 @@ function zoomMapAtPoint(clientX, clientY, nextZoom, options = {}) {
 function installTrackpadPinchZoom() {
   let gestureStartZoom = null;
 
+  const shouldHandleMapPinch = (event) => {
+    if (shouldSkipTrackpadPinch(event.target)) return false;
+    return isPointInsideMap(event.clientX, event.clientY);
+  };
+
   window.addEventListener(
     "wheel",
     (event) => {
-      if (!event.ctrlKey || shouldKeepGestureInMap(event.target)) return;
+      if (!event.ctrlKey || !shouldHandleMapPinch(event)) return;
 
       event.preventDefault();
       event.stopPropagation();
 
       const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
-      const zoomDelta = Math.max(-0.45, Math.min(0.45, -normalizedDelta * 0.01));
+      const zoomDelta = Math.max(
+        -TRACKPAD_PINCH_MAX_DELTA,
+        Math.min(TRACKPAD_PINCH_MAX_DELTA, -normalizedDelta * TRACKPAD_PINCH_ZOOM_RATE)
+      );
       zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDelta, {
         duration: GESTURE_ZOOM_TRANSITION_MS
       });
@@ -1884,7 +1921,7 @@ function installTrackpadPinchZoom() {
   window.addEventListener(
     "gesturestart",
     (event) => {
-      if (shouldKeepGestureInMap(event.target)) return;
+      if (!shouldHandleMapPinch(event)) return;
 
       event.preventDefault();
       gestureStartZoom = map.getZoom();
@@ -1895,11 +1932,11 @@ function installTrackpadPinchZoom() {
   window.addEventListener(
     "gesturechange",
     (event) => {
-      if (gestureStartZoom === null || shouldKeepGestureInMap(event.target)) return;
+      if (gestureStartZoom === null || !shouldHandleMapPinch(event)) return;
 
       event.preventDefault();
       event.stopPropagation();
-      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * 2, {
+      zoomMapAtPoint(event.clientX, event.clientY, gestureStartZoom + Math.log2(event.scale) * SAFARI_GESTURE_ZOOM_RATE, {
         duration: GESTURE_ZOOM_TRANSITION_MS
       });
     },
