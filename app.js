@@ -6,6 +6,10 @@ mapboxgl.accessToken = "pk.eyJ1IjoicHJlY2lzbyIsImEiOiJjbW1yMnR4Ym0xNXo2MnFvcjF3O
 const SHOP_URL = "https://precisoart.myshopify.com";
 const STOREFRONT_TOKEN = "c9a152a9e40b1bbbb9e9be8367dcca4c";
 const FALLBACK_IMAGE = "https://picsum.photos/800";
+const MAP_STYLE_URLS = {
+  satellite: "mapbox://styles/preciso/cmmr4qr4k000i01s300a1egdu",
+  standard: "mapbox://styles/mapbox/streets-v12"
+};
 
 /* =========================
    HOME VIEW
@@ -185,9 +189,11 @@ const US_STATE_LABELS = {
 ========================= */
 let listings = [];
 let markers = [];
+let clusterMarkers = [];
 let locationFilters = new Map();
 let activeRegionKey = "all";
 let activeItem = null;
+let currentMapStyleKey = "satellite";
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 let explodedMarkerGroup = null;
@@ -197,6 +203,8 @@ let regionMenuCloseTimer = null;
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
+const MARKER_CLUSTER_MAX_ZOOM = 9.2;
+const MARKER_CLUSTER_DISTANCE = 58;
 const NEARBY_PRINT_LIMIT = 6;
 const NEARBY_TRANSITION_MS = 150;
 const SHEET_MARKER_TRANSITION_MS = 1650;
@@ -220,6 +228,12 @@ function clearMarkers() {
   resetExplodedMarkers();
   markers.forEach((marker) => marker.remove());
   markers = [];
+  clearClusterMarkers();
+}
+
+function clearClusterMarkers() {
+  clusterMarkers.forEach((marker) => marker.remove());
+  clusterMarkers = [];
 }
 
 function setMarkerStack(markerShell, isActive) {
@@ -318,6 +332,66 @@ function clearMarkerHoverStates() {
 function clearEdgeIndicators() {
   edgeIndicatorEls.forEach((el) => el.remove());
   edgeIndicatorEls.clear();
+}
+
+function getItemLocationLabel(item) {
+  return [item?.location2, item?.location1].filter(Boolean).join(" • ") || item?.title || "Print";
+}
+
+function getMarkerLabel(item) {
+  const location = item?.location2 || item?.location1 || item?.title || "Print";
+  return location.replace(/\s+/g, " ").trim();
+}
+
+function hideMarkerPreview() {
+  const preview = document.getElementById("marker-preview");
+  if (!preview) return;
+
+  preview.classList.add("hidden");
+  preview.setAttribute("aria-hidden", "true");
+  preview.replaceChildren();
+}
+
+function showMarkerPreview(item, event) {
+  if (!item || window.matchMedia("(max-width: 700px)").matches) return;
+
+  const preview = document.getElementById("marker-preview");
+  if (!preview) return;
+
+  const thumb = document.createElement("div");
+  thumb.className = "marker-preview-thumb";
+  thumb.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
+
+  const copy = document.createElement("div");
+  copy.className = "marker-preview-copy";
+
+  const title = document.createElement("div");
+  title.className = "marker-preview-title";
+  title.textContent = item.moment || item.title || "Print";
+
+  const meta = document.createElement("div");
+  meta.className = "marker-preview-meta";
+  meta.textContent = getItemLocationLabel(item);
+
+  copy.append(title, meta);
+  preview.replaceChildren(thumb, copy);
+  moveMarkerPreview(event);
+  preview.classList.remove("hidden");
+  preview.setAttribute("aria-hidden", "false");
+}
+
+function moveMarkerPreview(event) {
+  const preview = document.getElementById("marker-preview");
+  if (!preview || preview.classList.contains("hidden")) return;
+
+  const clientX = event?.clientX ?? window.innerWidth / 2;
+  const clientY = event?.clientY ?? window.innerHeight / 2;
+  const padding = 132;
+  const x = Math.min(window.innerWidth - padding, Math.max(padding, clientX));
+  const y = Math.max(96, clientY);
+
+  preview.style.left = `${x}px`;
+  preview.style.top = `${y}px`;
 }
 
 function hasValidCoordinates(item) {
@@ -638,9 +712,78 @@ function getLocationFilterView(regionKey) {
   return locationFilters.get(regionKey)?.view || REGION_VIEWS[regionKey] || REGION_VIEWS.all;
 }
 
+function getItemsForRegion(regionKey = activeRegionKey) {
+  if (!regionKey || regionKey === "all") return listings;
+  return locationFilters.get(regionKey)?.items || listings;
+}
+
+function getVisibleItemIdSet(regionKey = activeRegionKey) {
+  return new Set(getItemsForRegion(regionKey).map((item) => item.id));
+}
+
+function getClusterGroupKey(item, regionKey = activeRegionKey) {
+  if (!item) return "unknown";
+
+  if (regionKey === "all" || regionKey === USA_FILTER_KEY) {
+    return item.stateKey || item.countryKey || getRegionKeyForItem(item);
+  }
+
+  if (regionKey.startsWith("state:")) {
+    return item.stateKey || regionKey;
+  }
+
+  if (regionKey.startsWith("country:")) {
+    return item.countryKey || regionKey;
+  }
+
+  return getRegionKeyForItem(item);
+}
+
+function getRegionHash(regionKey) {
+  if (!regionKey || regionKey === "all") return "";
+  if (regionKey.startsWith("country:")) return `country=${encodeURIComponent(regionKey.replace("country:", ""))}`;
+  if (regionKey.startsWith("state:")) return `state=${encodeURIComponent(regionKey.replace("state:", ""))}`;
+  return `view=${encodeURIComponent(regionKey)}`;
+}
+
+function setHashForRegion(regionKey, options = {}) {
+  if (options.skipHash) return;
+
+  const nextHash = getRegionHash(regionKey);
+  const nextUrl = nextHash
+    ? `${window.location.pathname}${window.location.search}#${nextHash}`
+    : `${window.location.pathname}${window.location.search}`;
+
+  history.replaceState(null, "", nextUrl);
+}
+
+function getRegionKeyFromHash() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash || hash.startsWith("marker=")) return "";
+
+  const params = new URLSearchParams(hash);
+  if (params.has("country")) return `country:${params.get("country")}`;
+  if (params.has("state")) return `state:${params.get("state")}`;
+  if (params.has("view")) return params.get("view") || "";
+  return "";
+}
+
+function getActiveViewLabel(regionKey = activeRegionKey) {
+  if (!regionKey || regionKey === "all") return "My Home";
+  return locationFilters.get(regionKey)?.label || REGION_VIEWS[regionKey]?.label || "Map";
+}
+
+function updateViewingPill(regionKey = activeRegionKey) {
+  const pill = document.getElementById("viewing-pill");
+  if (!pill) return;
+
+  pill.textContent = `Viewing ${getActiveViewLabel(regionKey)}`;
+}
+
 function setActiveRegionKey(regionKey = "all") {
   activeRegionKey = regionKey;
   setActiveRegionChip(regionKey);
+  updateViewingPill(regionKey);
 }
 
 function getResetRegionKey(item = activeItem) {
@@ -911,7 +1054,7 @@ function initNearbyControls() {
   });
 }
 
-function focusRegion(regionKey) {
+function focusRegion(regionKey, options = {}) {
   const region = getLocationFilterView(regionKey);
 
   activeItem = null;
@@ -934,11 +1077,8 @@ function focusRegion(regionKey) {
   document.body.classList.remove("marker-active");
   hideNearbyPrints();
 
-  if (window.location.hash) {
-    history.replaceState(null, "", window.location.pathname + window.location.search);
-  }
-
   setActiveRegionKey(regionKey);
+  setHashForRegion(regionKey, options);
 
   if (region.bounds) {
     map.fitBounds(region.bounds, {
@@ -1061,7 +1201,7 @@ function bindHeaderRegionPills() {
       const shouldOpen = !group?.classList.contains("open");
       if (shouldOpen) {
         const regionKey = toggle.dataset.region || "all";
-        setActiveRegionKey(regionKey);
+        focusRegion(regionKey);
         openRegionMenu(group);
         if (group) group.dataset.regionClickOpen = "true";
       } else {
@@ -1138,6 +1278,90 @@ function bindHeaderRegionPills() {
   setActiveRegionChip("all");
 }
 
+function setMarkerShellVisibility(itemId, isVisible) {
+  const markerShell = getMarkerShell(itemId);
+  if (!markerShell) return;
+
+  const markerWrapper = markerShell.closest(".mapboxgl-marker");
+  const display = isVisible ? "" : "none";
+  markerShell.style.display = display;
+  markerWrapper?.style.setProperty("display", isVisible ? "block" : "none");
+}
+
+function fitItemsOnMap(items, options = {}) {
+  const validItems = items.filter(hasValidCoordinates);
+  if (!validItems.length) return;
+
+  if (validItems.length === 1) {
+    map.flyTo({
+      center: [validItems[0].lng, validItems[0].lat],
+      zoom: Math.max(map.getZoom() + 2, 10),
+      duration: options.duration ?? 850,
+      curve: 1.25,
+      essential: true
+    });
+    return;
+  }
+
+  const bounds = new mapboxgl.LngLatBounds();
+  validItems.forEach((item) => bounds.extend([item.lng, item.lat]));
+  map.fitBounds(bounds, {
+    padding: options.padding ?? 96,
+    maxZoom: options.maxZoom ?? 12.5,
+    duration: options.duration ?? 850,
+    essential: true
+  });
+}
+
+function shouldClusterMarkers() {
+  return (
+    map &&
+    listings.length > 1 &&
+    map.getZoom() < MARKER_CLUSTER_MAX_ZOOM &&
+    !activeItem &&
+    !isPlaceSheetOpen() &&
+    !explodedMarkerGroup
+  );
+}
+
+function createClusterElement(cluster) {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "marker-cluster";
+  el.dataset.count = String(cluster.items.length);
+  el.dataset.clusterGroup = cluster.groupKey;
+  el.style.backgroundImage = `url(${cluster.items[0]?.image || FALLBACK_IMAGE})`;
+  el.setAttribute("aria-label", `Zoom to ${cluster.items.length} nearby prints`);
+
+  el.addEventListener("pointerenter", (event) => {
+    showMarkerPreview({
+      ...cluster.items[0],
+      moment: `${cluster.items.length} nearby prints`,
+      location2: getItemLocationLabel(cluster.items[0])
+    }, event);
+  });
+  el.addEventListener("pointermove", moveMarkerPreview);
+  el.addEventListener("pointerleave", hideMarkerPreview);
+  el.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    hideMarkerPreview();
+    fitItemsOnMap(cluster.items);
+  });
+
+  return el;
+}
+
+function updateMarkerClusters() {
+  clearClusterMarkers();
+  const visibleItemIds = getVisibleItemIdSet();
+
+  markers.forEach((marker) => {
+    const item = marker.item;
+    if (item?.id) setMarkerShellVisibility(item.id, visibleItemIds.has(item.id));
+  });
+}
+
 function setMarkerVisibilityByZoom() {
   if (!map) return;
 
@@ -1149,6 +1373,8 @@ function setMarkerVisibilityByZoom() {
     markerEl.style.opacity = "1";
     markerEl.style.pointerEvents = "auto";
   });
+
+  updateMarkerClusters();
 }
 
 function updateEdgeIndicator() {
@@ -1186,7 +1412,7 @@ function updateEdgeIndicator() {
 
   const nextVisibleIds = new Set();
 
-  listings.forEach((item) => {
+  getItemsForRegion().forEach((item) => {
     const point = map.project([item.lng, item.lat]);
     const isOffscreen = (
       point.x < leftSafe ||
@@ -1681,10 +1907,6 @@ function resetView() {
   activeItem = null;
   resetExplodedMarkers();
 
-  if (window.location.hash) {
-    history.replaceState(null, "", window.location.pathname + window.location.search);
-  }
-
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
     sheet.classList.add("hidden");
@@ -1703,6 +1925,7 @@ function resetView() {
   });
   clearEdgeIndicators();
   setActiveRegionKey(targetRegionKey);
+  setHashForRegion(targetRegionKey);
 
   if (targetRegion.bounds) {
     map.fitBounds(targetRegion.bounds, {
@@ -1831,7 +2054,7 @@ installAppViewportSync();
 ========================= */
 const map = new mapboxgl.Map({
   container: "map",
-  style: "mapbox://styles/preciso/cmmr4qr4k000i01s300a1egdu",
+  style: MAP_STYLE_URLS.satellite,
   center: HOME_VIEW.center,
   zoom: HOME_VIEW.zoom,
   cooperativeGestures: false
@@ -1990,6 +2213,162 @@ function initMapControls() {
   });
 
   updateMapControlState();
+}
+
+function setMapStyle(styleKey) {
+  const nextStyle = MAP_STYLE_URLS[styleKey] ? styleKey : "satellite";
+  if (nextStyle === currentMapStyleKey) return;
+
+  currentMapStyleKey = nextStyle;
+  map.setStyle(MAP_STYLE_URLS[nextStyle]);
+  document.querySelectorAll("[data-map-style]").forEach((button) => {
+    const isActive = button.dataset.mapStyle === nextStyle;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function initMapModeToggle() {
+  document.querySelectorAll("[data-map-style]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setMapStyle(button.dataset.mapStyle);
+    });
+  });
+}
+
+function getSearchText(item) {
+  return normalizeLocationToken([
+    item.title,
+    item.moment,
+    item.location1,
+    item.location2,
+    item.stateLabel,
+    item.countryLabel
+  ].filter(Boolean).join(" "));
+}
+
+function getSearchMatches(query) {
+  const normalizedQuery = normalizeLocationToken(query);
+  if (!normalizedQuery) return [];
+
+  const queryParts = normalizedQuery.split(/\s+/).filter(Boolean);
+  return listings
+    .map((item) => {
+      const text = item.searchText || getSearchText(item);
+      const hasAllParts = queryParts.every((part) => text.includes(part));
+      if (!hasAllParts) return null;
+
+      const title = normalizeLocationToken(item.title || "");
+      const location = normalizeLocationToken(getItemLocationLabel(item));
+      const score = (title.startsWith(normalizedQuery) ? 0 : 2)
+        + (location.startsWith(normalizedQuery) ? 0 : 1)
+        + Math.abs((item.title || "").length - query.length) / 100;
+
+      return { item, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 8)
+    .map(({ item }) => item);
+}
+
+function hideSearchResults() {
+  const results = document.getElementById("map-search-results");
+  results?.classList.add("hidden");
+  results?.replaceChildren();
+  document.body.classList.remove("search-open");
+}
+
+function renderSearchResults(query) {
+  const results = document.getElementById("map-search-results");
+  if (!results) return [];
+
+  const matches = getSearchMatches(query);
+  results.replaceChildren();
+
+  if (!matches.length) {
+    results.classList.add("hidden");
+    document.body.classList.remove("search-open");
+    return matches;
+  }
+
+  matches.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `gm-search-result${index === 0 ? " active" : ""}`;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", index === 0 ? "true" : "false");
+
+    const thumb = document.createElement("span");
+    thumb.className = "gm-search-result-thumb";
+    thumb.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
+
+    const text = document.createElement("span");
+    text.className = "gm-search-result-text";
+
+    const title = document.createElement("span");
+    title.className = "gm-search-result-title";
+    title.textContent = item.moment || item.title || "Print";
+
+    const meta = document.createElement("span");
+    meta.className = "gm-search-result-meta";
+    meta.textContent = getItemLocationLabel(item);
+
+    text.append(title, meta);
+    button.append(thumb, text);
+    button.addEventListener("click", () => {
+      document.getElementById("map-search-input").value = item.title || "";
+      hideSearchResults();
+      handleMarkerClick(item, { skipExplosion: true });
+    });
+
+    results.appendChild(button);
+  });
+
+  results.classList.remove("hidden");
+  document.body.classList.add("search-open");
+  return matches;
+}
+
+function initSearch() {
+  const form = document.getElementById("map-search");
+  const input = document.getElementById("map-search-input");
+  const clearButton = document.getElementById("map-search-clear");
+  if (!form || !input) return;
+
+  let latestMatches = [];
+
+  input.addEventListener("input", () => {
+    latestMatches = renderSearchResults(input.value);
+  });
+
+  input.addEventListener("focus", () => {
+    latestMatches = renderSearchResults(input.value);
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    latestMatches = latestMatches.length ? latestMatches : renderSearchResults(input.value);
+    const item = latestMatches[0];
+    if (!item) return;
+
+    input.value = item.title || "";
+    hideSearchResults();
+    handleMarkerClick(item, { skipExplosion: true });
+  });
+
+  clearButton?.addEventListener("click", () => {
+    input.value = "";
+    hideSearchResults();
+    input.focus();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("#map-search")) return;
+    hideSearchResults();
+  });
 }
 
 function installTrackpadPinchZoom() {
@@ -2203,6 +2582,7 @@ installTrackpadPinchZoom();
 installEmbeddedScrollBridge();
 installMobileDoubleTapZoomGuard();
 initMapControls();
+initMapModeToggle();
 
 /* =========================
    MARKER CLICK
@@ -2335,17 +2715,27 @@ function render() {
     const offset = document.createElement("div");
     offset.className = "custom-marker-offset";
     offset.appendChild(el);
-    shell.appendChild(offset);
 
-    shell.addEventListener("pointerenter", () => {
+    const label = document.createElement("div");
+    label.className = "custom-marker-label";
+    label.textContent = getMarkerLabel(item);
+
+    shell.appendChild(offset);
+    shell.appendChild(label);
+
+    shell.addEventListener("pointerenter", (event) => {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
+      showMarkerPreview(item, event);
     });
 
     shell.addEventListener("pointerleave", () => {
       el.classList.remove("hover");
+      hideMarkerPreview();
     });
+
+    shell.addEventListener("pointermove", moveMarkerPreview);
 
     shell.addEventListener("pointerdown", () => {
       if (activeItem?.id !== item.id) {
@@ -2367,6 +2757,7 @@ function render() {
       e.preventDefault();
       e.stopPropagation();
       el.classList.remove("hover");
+      hideMarkerPreview();
       handleMarkerClick(item);
     });
 
@@ -2381,6 +2772,7 @@ function render() {
     const marker = new mapboxgl.Marker({ element: shell })
       .setLngLat([item.lng, item.lat])
       .addTo(map);
+    marker.item = item;
 
     markers.push(marker);
   });
@@ -2394,11 +2786,11 @@ function render() {
 ========================= */
 function openMarkerFromHash() {
   const hash = window.location.hash;
-  if (!hash.startsWith("#marker=")) return;
+  if (!hash.startsWith("#marker=")) return false;
 
   const id = decodeURIComponent(hash.replace("#marker=", ""));
   const item = listings.find((entry) => entry.id === id);
-  if (!item) return;
+  if (!item) return false;
 
   window.setTimeout(() => {
     if (!activeItem || activeItem.id !== item.id) {
@@ -2426,6 +2818,16 @@ function openMarkerFromHash() {
       }, 300);
     }
   }, 200);
+
+  return true;
+}
+
+function openRegionFromHash() {
+  const regionKey = getRegionKeyFromHash();
+  if (!regionKey) return false;
+
+  focusRegion(regionKey, { skipHash: true });
+  return true;
 }
 
 /* =========================
@@ -2434,6 +2836,9 @@ function openMarkerFromHash() {
 map.on("load", async () => {
   listings = await fetchProducts();
   buildLocationFilters();
+  listings.forEach((item) => {
+    item.searchText = getSearchText(item);
+  });
   renderLocationMenus();
 
   render();
@@ -2444,14 +2849,17 @@ map.on("load", async () => {
   document.body.classList.remove("marker-active");
 
   bindHeaderRegionPills();
+  initSearch();
 
-  if (!window.location.hash.startsWith("#marker=")) {
+  const openedMarkerFromHash = openMarkerFromHash();
+  const openedRegionFromHash = openedMarkerFromHash ? false : openRegionFromHash();
+
+  if (!openedMarkerFromHash && !openedRegionFromHash) {
     requestAnimationFrame(() => {
       focusRegion("all");
     });
   }
 
-  openMarkerFromHash();
   initSheetDrag();
   initNearbyControls();
 
@@ -2480,7 +2888,11 @@ map.on("moveend", () => {
 });
 });
 
-window.addEventListener("hashchange", openMarkerFromHash);
+window.addEventListener("hashchange", () => {
+  if (!openMarkerFromHash()) {
+    openRegionFromHash();
+  }
+});
 
 const closeBtn = document.getElementById("sheet-close");
 if (closeBtn) {
