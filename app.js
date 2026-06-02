@@ -212,6 +212,7 @@ const REGION_MARKER_TRANSITION_MS = 2700;
 const REGION_TRANSITION_MS = 1450;
 const GESTURE_ZOOM_TRANSITION_MS = 140;
 const DOUBLE_TAP_ZOOM_TRANSITION_MS = 420;
+const DOUBLE_CLICK_ZOOM_TRANSITION_MS = 320;
 const TRACKPAD_PINCH_ZOOM_RATE = 0.018;
 const TRACKPAD_PINCH_MAX_DELTA = 0.72;
 const SAFARI_GESTURE_ZOOM_RATE = 2.65;
@@ -2215,6 +2216,20 @@ function initMapControls() {
   updateMapControlState();
 }
 
+function installDoubleClickZoom() {
+  map.getCanvasContainer().addEventListener("dblclick", (event) => {
+    if (shouldKeepGestureInMap(event.target)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const zoomDirection = event.altKey ? -1 : 1;
+    zoomMapAtPoint(event.clientX, event.clientY, map.getZoom() + zoomDirection, {
+      duration: DOUBLE_CLICK_ZOOM_TRANSITION_MS
+    });
+  }, { capture: true });
+}
+
 function setMapStyle(styleKey) {
   const nextStyle = MAP_STYLE_URLS[styleKey] ? styleKey : "satellite";
   if (nextStyle === currentMapStyleKey) return;
@@ -2581,6 +2596,7 @@ function installMobileDoubleTapZoomGuard() {
 installTrackpadPinchZoom();
 installEmbeddedScrollBridge();
 installMobileDoubleTapZoomGuard();
+installDoubleClickZoom();
 initMapControls();
 initMapModeToggle();
 
