@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260529-3" />
+  <link rel="stylesheet" href="styles.css?v=20260605-3" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -22,6 +22,14 @@
   </div>
 
   <div id="marker-preview" class="marker-preview hidden" aria-hidden="true"></div>
+
+  <section id="region-intro" class="region-intro hidden" aria-live="polite" aria-label="Selected map view">
+    <div class="region-intro-copy">
+      <div id="region-intro-title" class="region-intro-title"></div>
+      <div id="region-intro-meta" class="region-intro-meta"></div>
+    </div>
+    <button id="region-explore" class="region-explore-button" type="button">Explore route</button>
+  </section>
 
   <aside id="place-sheet" class="place-sheet hidden" aria-label="Place details" aria-labelledby="sheet-title" aria-describedby="sheet-subtitle" aria-live="polite">
     <div class="place-sheet-handle"></div>
@@ -41,7 +49,7 @@
 
     <section id="sheet-nearby" class="sheet-nearby hidden" aria-label="Nearby prints">
       <div class="sheet-nearby-top">
-        <span>Nearby</span>
+        <span>Explore nearby</span>
         <div class="sheet-nearby-nav">
           <button id="nearby-prev" type="button" aria-label="Previous nearby print">‹</button>
           <button id="nearby-next" type="button" aria-label="Next nearby print">›</button>
@@ -91,7 +99,7 @@
     </div>
   </header>
 
-  <div id="carousel">
+  <div id="carousel" class="hidden" aria-label="Prints in selected view">
     <div id="listings" class="carousel-track">
       <div id="skeletons">
         <div class="card skeleton"></div>
@@ -108,6 +116,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260529-12"></script>
+  <script src="app.js?v=20260605-3"></script>
 </body>
 </html>

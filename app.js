@@ -217,6 +217,9 @@ const TRACKPAD_PINCH_ZOOM_RATE = 0.018;
 const TRACKPAD_PINCH_MAX_DELTA = 0.72;
 const SAFARI_GESTURE_ZOOM_RATE = 2.65;
 const MAP_CONTROL_ZOOM_STEP = 1;
+const PRODUCT_FETCH_PAGE_SIZE = 250;
+const NEW_PRINT_COUNT = 6;
+const PHOTO_STRIP_LIMIT = 18;
 
 /* =========================
    HELPERS
@@ -273,6 +276,8 @@ function setActiveMarkerState(itemId = "") {
       markerInner.classList.remove("hover", "pop");
     }
   });
+
+  syncPhotoStripActive(itemId);
 }
 
 function forceActiveMarkerVisible() {
@@ -359,23 +364,19 @@ function showMarkerPreview(item, event) {
   const preview = document.getElementById("marker-preview");
   if (!preview) return;
 
-  const thumb = document.createElement("div");
-  thumb.className = "marker-preview-thumb";
-  thumb.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
-
   const copy = document.createElement("div");
   copy.className = "marker-preview-copy";
 
   const title = document.createElement("div");
   title.className = "marker-preview-title";
-  title.textContent = item.moment || item.title || "Print";
+  title.textContent = getItemLocationLabel(item);
 
   const meta = document.createElement("div");
   meta.className = "marker-preview-meta";
-  meta.textContent = getItemLocationLabel(item);
+  meta.textContent = item.moment || item.title || "Print";
 
   copy.append(title, meta);
-  preview.replaceChildren(thumb, copy);
+  preview.replaceChildren(copy);
   moveMarkerPreview(event);
   preview.classList.remove("hidden");
   preview.setAttribute("aria-hidden", "false");
@@ -434,6 +435,218 @@ function getNearbyItems(item, limit = NEARBY_PRINT_LIMIT) {
     .filter(({ distance }) => Number.isFinite(distance))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, limit);
+}
+
+function getCreatedTimestamp(item) {
+  const timestamp = Date.parse(item?.createdAt || "");
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function markNewestPrints() {
+  const newestItems = listings
+    .filter((item) => getCreatedTimestamp(item) > 0)
+    .sort((a, b) => getCreatedTimestamp(b) - getCreatedTimestamp(a))
+    .slice(0, NEW_PRINT_COUNT);
+  const newestIds = new Set(newestItems.map((item) => item.id));
+
+  listings.forEach((item) => {
+    item.isNewPrint = newestIds.has(item.id);
+  });
+}
+
+function formatCount(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function getRegionItems(regionKey = activeRegionKey) {
+  return getItemsForRegion(regionKey).filter(hasValidCoordinates);
+}
+
+function getRegionLocationCount(items) {
+  return new Set(items.map((item) => getItemLocationLabel(item))).size;
+}
+
+function buildTrailItems(items) {
+  const remaining = items.filter(hasValidCoordinates);
+  if (remaining.length <= 2) return remaining;
+
+  remaining.sort((a, b) => {
+    const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
+    return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
+  });
+
+  const trail = [remaining.shift()];
+  while (remaining.length) {
+    const current = trail[trail.length - 1];
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+
+    remaining.forEach((candidate, index) => {
+      const distance = getDistanceMiles(current, candidate);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    trail.push(remaining.splice(nearestIndex, 1)[0]);
+  }
+
+  return trail;
+}
+
+function getTrailItemsForRegion(regionKey = activeRegionKey) {
+  return buildTrailItems(getRegionItems(regionKey));
+}
+
+function getNextTrailItem(direction = "next") {
+  if (!activeItem) return null;
+
+  const trailItems = getTrailItemsForRegion(activeRegionKey);
+  if (trailItems.length < 2) return null;
+
+  const currentIndex = trailItems.findIndex((item) => item.id === activeItem.id);
+  if (currentIndex === -1) return null;
+
+  const offset = direction === "previous" ? -1 : 1;
+  const nextIndex = (currentIndex + offset + trailItems.length) % trailItems.length;
+  return trailItems[nextIndex];
+}
+
+function hideRegionIntro() {
+  const intro = document.getElementById("region-intro");
+  if (!intro) return;
+
+  intro.classList.add("hidden");
+  intro.setAttribute("aria-hidden", "true");
+}
+
+function renderRegionIntro(regionKey = activeRegionKey) {
+  const intro = document.getElementById("region-intro");
+  const title = document.getElementById("region-intro-title");
+  const meta = document.getElementById("region-intro-meta");
+  const exploreButton = document.getElementById("region-explore");
+  if (!intro || !title || !meta) return;
+
+  const items = getRegionItems(regionKey);
+  if (!items.length) {
+    hideRegionIntro();
+    return;
+  }
+
+  const viewLabel = getActiveViewLabel(regionKey);
+  const titleLabel = regionKey === "all" ? "Preciso Prints" : `${viewLabel} Prints`;
+  const locationCount = getRegionLocationCount(items);
+
+  title.textContent = titleLabel;
+  meta.textContent = `${formatCount(locationCount, "location")} · ${formatCount(items.length, "print")}`;
+  if (exploreButton) {
+    exploreButton.disabled = items.length < 1;
+    exploreButton.dataset.region = regionKey;
+  }
+
+  intro.classList.remove("hidden");
+  intro.setAttribute("aria-hidden", "false");
+  intro.classList.remove("is-fresh");
+  void intro.offsetWidth;
+  intro.classList.add("is-fresh");
+}
+
+function createPhotoStripButton(item, index, total) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "strip-print";
+  button.dataset.itemId = item.id;
+  button.setAttribute("aria-label", `Open ${item.title || "print"} ${index + 1} of ${total}`);
+  if (item.isNewPrint) button.classList.add("new-print");
+
+  const thumbnail = document.createElement("span");
+  thumbnail.className = "strip-print-thumb";
+  thumbnail.style.backgroundImage = `url(${item.image || FALLBACK_IMAGE})`;
+
+  const copy = document.createElement("span");
+  copy.className = "strip-print-copy";
+
+  const title = document.createElement("span");
+  title.className = "strip-print-title";
+  title.textContent = getMarkerLabel(item);
+
+  const meta = document.createElement("span");
+  meta.className = "strip-print-meta";
+  meta.textContent = item.moment || "Print";
+
+  copy.append(title, meta);
+  button.append(thumbnail, copy);
+  button.addEventListener("click", () => {
+    hideMarkerPreview();
+    handleMarkerClick(item, { skipExplosion: true });
+  });
+
+  return button;
+}
+
+function hidePhotoStrip() {
+  const carousel = document.getElementById("carousel");
+  if (!carousel) return;
+
+  carousel.classList.add("hidden");
+  carousel.setAttribute("aria-hidden", "true");
+}
+
+function renderPhotoStrip(regionKey = activeRegionKey) {
+  const carousel = document.getElementById("carousel");
+  const track = document.getElementById("listings");
+  if (!carousel || !track) return;
+
+  const items = getTrailItemsForRegion(regionKey).slice(0, PHOTO_STRIP_LIMIT);
+  track.replaceChildren();
+
+  if (!items.length) {
+    hidePhotoStrip();
+    return;
+  }
+
+  items.forEach((item, index) => {
+    track.appendChild(createPhotoStripButton(item, index, items.length));
+  });
+
+  carousel.classList.remove("hidden");
+  carousel.setAttribute("aria-hidden", "false");
+  carousel.setAttribute("aria-label", `${getActiveViewLabel(regionKey)} prints`);
+  syncPhotoStripActive(activeItem?.id || "");
+}
+
+function syncPhotoStripActive(itemId = "") {
+  document.querySelectorAll(".strip-print").forEach((button) => {
+    button.classList.toggle("active", button.dataset.itemId === itemId);
+  });
+
+  const activeButton = itemId
+    ? document.querySelector(`.strip-print[data-item-id="${CSS.escape(itemId)}"]`)
+    : null;
+  activeButton?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+}
+
+function renderRegionExperience(regionKey = activeRegionKey) {
+  if (activeItem) {
+    hideRegionExperience();
+    return;
+  }
+
+  renderRegionIntro(regionKey);
+  renderPhotoStrip(regionKey);
+}
+
+function hideRegionExperience() {
+  hideRegionIntro();
+  hidePhotoStrip();
+}
+
+function openTrailForRegion(regionKey = activeRegionKey) {
+  const trailItems = getTrailItemsForRegion(regionKey);
+  if (!trailItems.length) return;
+
+  handleMarkerClick(trailItems[0], { skipExplosion: true });
 }
 
 function getMarkerShell(itemId) {
@@ -942,6 +1155,12 @@ function navigateToNearestHorizontalMarker(direction) {
 function navigateToNearbyMarker(direction = "next") {
   if (!activeItem) return;
 
+  const trailTarget = getNextTrailItem(direction);
+  if (trailTarget) {
+    handleMarkerClick(trailTarget, { skipExplosion: true, smoothNearbyTransition: true });
+    return;
+  }
+
   const nearbyItems = getNearbyItems(activeItem);
   if (!nearbyItems.length) return;
 
@@ -1055,6 +1274,17 @@ function initNearbyControls() {
   });
 }
 
+function initRegionExperienceControls() {
+  const exploreButton = document.getElementById("region-explore");
+  if (exploreButton) {
+    exploreButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openTrailForRegion(exploreButton.dataset.region || activeRegionKey);
+    });
+  }
+}
+
 function focusRegion(regionKey, options = {}) {
   const region = getLocationFilterView(regionKey);
 
@@ -1080,6 +1310,7 @@ function focusRegion(regionKey, options = {}) {
 
   setActiveRegionKey(regionKey);
   setHashForRegion(regionKey, options);
+  renderRegionExperience(regionKey);
 
   if (region.bounds) {
     map.fitBounds(region.bounds, {
@@ -1633,6 +1864,8 @@ function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
+  hideRegionExperience();
+
   const keepExpanded = options.keepExpanded && (
     sheet.classList.contains("level-2") ||
     sheet.classList.contains("level-3") ||
@@ -1927,6 +2160,7 @@ function resetView() {
   clearEdgeIndicators();
   setActiveRegionKey(targetRegionKey);
   setHashForRegion(targetRegionKey);
+  renderRegionExperience(targetRegionKey);
 
   if (targetRegion.bounds) {
     map.fitBounds(targetRegion.bounds, {
@@ -1954,42 +2188,62 @@ function resetView() {
 ========================= */
 async function fetchProducts() {
   try {
-    const res = await fetch(`${SHOP_URL}/api/2023-07/graphql.json`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Storefront-Access-Token": STOREFRONT_TOKEN
-      },
-      body: JSON.stringify({
-        query: `
-        {
-          products(first: 50) {
-            edges {
-              node {
-                title
-                handle
-                images(first: 1) {
-                  edges { node { url } }
+    const edges = [];
+    let afterCursor = null;
+
+    do {
+      const res = await fetch(`${SHOP_URL}/api/2023-07/graphql.json`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Storefront-Access-Token": STOREFRONT_TOKEN
+        },
+        body: JSON.stringify({
+          query: `
+          query Products($first: Int!, $after: String) {
+            products(first: $first, after: $after) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              edges {
+                node {
+                  title
+                  handle
+                  createdAt
+                  images(first: 1) {
+                    edges { node { url } }
+                  }
+                  lat: metafield(namespace: "custom", key: "lat") { value }
+                  lng: metafield(namespace: "custom", key: "lng") { value }
+                  moment: metafield(namespace: "custom", key: "moment") { value }
+                  time: metafield(namespace: "custom", key: "time") { value }
+                  location1: metafield(namespace: "custom", key: "location_1") { value }
+                  location2: metafield(namespace: "custom", key: "location_2") { value }
                 }
-                lat: metafield(namespace: "custom", key: "lat") { value }
-                lng: metafield(namespace: "custom", key: "lng") { value }
-                moment: metafield(namespace: "custom", key: "moment") { value }
-                time: metafield(namespace: "custom", key: "time") { value }
-                location1: metafield(namespace: "custom", key: "location_1") { value }
-                location2: metafield(namespace: "custom", key: "location_2") { value }
               }
             }
+          }`,
+          variables: {
+            first: PRODUCT_FETCH_PAGE_SIZE,
+            after: afterCursor
           }
-        }`
-      })
-    });
+        })
+      });
 
-    if (!res.ok) {
-      throw new Error(`Storefront request failed: ${res.status}`);
-    }
+      if (!res.ok) {
+        throw new Error(`Storefront request failed: ${res.status}`);
+      }
 
-    const json = await res.json();
-    const edges = json?.data?.products?.edges || [];
+      const json = await res.json();
+      if (json.errors?.length) {
+        throw new Error(`Storefront GraphQL failed: ${json.errors.map((error) => error.message).join("; ")}`);
+      }
+
+      const page = json?.data?.products;
+      edges.push(...(page?.edges || []));
+      afterCursor = page?.pageInfo?.hasNextPage ? page.pageInfo.endCursor : null;
+    } while (afterCursor);
 
     return edges
       .map(({ node }) => {
@@ -2011,7 +2265,8 @@ async function fetchProducts() {
           image: node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE,
           link: `${SHOP_URL}/products/${node.handle}`,
           moment: node.moment?.value || "Explore",
-          time: node.time?.value || "Any time"
+          time: node.time?.value || "Any time",
+          createdAt: node.createdAt || ""
         };
 
         return { ...item, id: getItemId(item) };
@@ -2656,6 +2911,7 @@ function handleMarkerClick(item, options = {}) {
   window.location.hash = `marker=${encodeURIComponent(item.id)}`;
   activeItem = item;
   setActiveItemRegion(item);
+  hideRegionExperience();
 
   if (shouldDelaySheetUntilZoom) {
     sheet.classList.add("hidden");
@@ -2719,6 +2975,9 @@ function render() {
   listings.forEach((item) => {
     const shell = document.createElement("div");
     shell.className = "custom-marker-shell";
+    if (item.isNewPrint) {
+      shell.classList.add("new-print", "new-print-pulse");
+    }
     shell.dataset.itemId = item.id;
     shell.setAttribute("role", "button");
     shell.setAttribute("tabindex", "0");
@@ -2851,6 +3110,7 @@ function openRegionFromHash() {
 ========================= */
 map.on("load", async () => {
   listings = await fetchProducts();
+  markNewestPrints();
   buildLocationFilters();
   listings.forEach((item) => {
     item.searchText = getSearchText(item);
@@ -2878,6 +3138,7 @@ map.on("load", async () => {
 
   initSheetDrag();
   initNearbyControls();
+  initRegionExperienceControls();
 
   map.on("movestart", () => {
     if (explodedMarkerGroup) {
