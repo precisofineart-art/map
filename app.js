@@ -77,6 +77,65 @@ const LOCATION_FILTER_PADDING = {
   left: 80,
   right: 80
 };
+const COUNTRY_VIEW_BOUNDS = {
+  "country:usa": USA_COORDINATE_BOUNDS,
+  "country:cuba": [[-85.2, 19.4], [-73.6, 23.7]],
+  "country:poland": [[14.0, 49.0], [24.3, 55.1]],
+  "country:thailand": [[97.1, 5.3], [106.1, 20.7]]
+};
+const US_STATE_VIEW_BOUNDS = {
+  "state:alabama": [[-88.471, 30.247], [-84.889, 35.001]],
+  "state:alaska": [[-188.905, 51.613], [-129.986, 71.352]],
+  "state:arizona": [[-114.815, 31.332], [-109.043, 37.006]],
+  "state:arkansas": [[-94.616, 33.002], [-89.731, 36.502]],
+  "state:california": [[-124.411, 32.537], [-114.136, 42.012]],
+  "state:colorado": [[-109.059, 36.995], [-102.043, 41.004]],
+  "state:connecticut": [[-73.727, 40.987], [-71.799, 42.05]],
+  "state:delaware": [[-75.787, 38.452], [-75.047, 39.832]],
+  "state:florida": [[-87.633, 25.121], [-80.031, 31.003]],
+  "state:georgia": [[-85.607, 30.357], [-80.886, 35.001]],
+  "state:hawaii": [[-159.764, 18.948], [-154.808, 22.229]],
+  "state:idaho": [[-117.241, 41.995], [-111.047, 49.0]],
+  "state:illinois": [[-91.505, 36.984], [-87.496, 42.51]],
+  "state:indiana": [[-88.06, 37.789], [-84.802, 41.76]],
+  "state:iowa": [[-96.632, 40.38], [-90.142, 43.501]],
+  "state:kansas": [[-102.054, 36.995], [-94.611, 40.002]],
+  "state:kentucky": [[-89.419, 36.496], [-81.97, 39.103]],
+  "state:louisiana": [[-94.041, 29.009], [-89.002, 33.019]],
+  "state:maine": [[-71.082, 43.058], [-66.98, 47.461]],
+  "state:maryland": [[-79.489, 37.909], [-75.047, 39.722]],
+  "state:massachusetts": [[-73.508, 41.497], [-69.937, 42.888]],
+  "state:michigan": [[-90.415, 41.694], [-82.414, 48.173]],
+  "state:minnesota": [[-97.229, 43.501], [-89.616, 49.384]],
+  "state:mississippi": [[-91.637, 30.181], [-88.099, 34.996]],
+  "state:missouri": [[-95.766, 35.998], [-89.134, 40.615]],
+  "state:montana": [[-116.048, 44.394], [-104.042, 49.0]],
+  "state:nebraska": [[-104.053, 40.002], [-95.306, 43.003]],
+  "state:nevada": [[-120.002, 35.001], [-114.043, 42.001]],
+  "state:new-hampshire": [[-72.544, 42.696], [-70.704, 45.303]],
+  "state:new-jersey": [[-75.562, 38.994], [-73.902, 41.36]],
+  "state:new-mexico": [[-109.048, 31.332], [-103.001, 37.0]],
+  "state:new-york": [[-79.763, 40.544], [-72.101, 45.019]],
+  "state:north-carolina": [[-84.32, 33.846], [-75.715, 36.589]],
+  "state:north-dakota": [[-104.048, 45.933], [-96.561, 49.0]],
+  "state:ohio": [[-84.818, 38.424], [-80.519, 41.979]],
+  "state:oklahoma": [[-103.001, 33.637], [-94.43, 37.0]],
+  "state:oregon": [[-124.553, 41.99], [-116.464, 46.262]],
+  "state:pennsylvania": [[-80.519, 39.722], [-74.697, 42.269]],
+  "state:rhode-island": [[-71.86, 41.322], [-71.12, 42.017]],
+  "state:south-carolina": [[-83.339, 32.033], [-78.541, 35.198]],
+  "state:south-dakota": [[-104.058, 42.488], [-96.435, 45.944]],
+  "state:tennessee": [[-90.311, 34.985], [-81.68, 36.677]],
+  "state:texas": [[-106.644, 25.888], [-93.526, 36.502]],
+  "state:utah": [[-114.048, 37.0], [-109.043, 42.001]],
+  "state:vermont": [[-73.437, 42.729], [-71.493, 45.013]],
+  "state:virginia": [[-83.673, 36.54], [-75.244, 39.465]],
+  "state:washington": [[-124.707, 45.55], [-116.918, 49.0]],
+  "state:washington-dc": [[-77.117, 38.791], [-76.909, 38.994]],
+  "state:west-virginia": [[-82.622, 37.203], [-77.72, 40.637]],
+  "state:wisconsin": [[-92.886, 42.494], [-87.031, 46.957]],
+  "state:wyoming": [[-111.053, 40.998], [-104.053, 45.002]]
+};
 
 const US_STATE_LABELS = {
   al: "Alabama",
@@ -864,6 +923,30 @@ function buildViewForItems(items, zoom = 5.8) {
   };
 }
 
+function buildCountryView(countryKey, items, zoom = 5.8) {
+  const countryBounds = COUNTRY_VIEW_BOUNDS[countryKey];
+  if (countryBounds) {
+    return {
+      bounds: countryBounds,
+      padding: LOCATION_FILTER_PADDING
+    };
+  }
+
+  return buildViewForItems(items, zoom);
+}
+
+function buildStateView(stateKey, items, zoom = 6.8) {
+  const stateBounds = US_STATE_VIEW_BOUNDS[stateKey];
+  if (stateBounds) {
+    return {
+      bounds: stateBounds,
+      padding: LOCATION_FILTER_PADDING
+    };
+  }
+
+  return buildViewForItems(items, zoom);
+}
+
 function buildLocationFilters() {
   const nextFilters = new Map();
   const usaItems = [];
@@ -918,7 +1001,7 @@ function buildLocationFilters() {
       label: "USA",
       type: "country",
       items: usaItems,
-      view: buildViewForItems(usaItems, 4.8)
+      view: buildCountryView(USA_FILTER_KEY, usaItems, 4.8)
     });
   }
 
@@ -927,7 +1010,7 @@ function buildLocationFilters() {
     .forEach((filter) => {
       nextFilters.set(filter.key, {
         ...filter,
-        view: buildViewForItems(filter.items, 6.8)
+        view: buildStateView(filter.key, filter.items, 6.8)
       });
     });
 
@@ -936,7 +1019,7 @@ function buildLocationFilters() {
     .forEach((filter) => {
       nextFilters.set(filter.key, {
         ...filter,
-        view: buildViewForItems(filter.items, 5.7)
+        view: buildCountryView(filter.key, filter.items, 5.7)
       });
     });
 
