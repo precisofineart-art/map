@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260605-3" />
+  <link rel="stylesheet" href="styles.css?v=20260606-1" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -58,16 +58,6 @@
       <div id="sheet-nearby-list" class="sheet-nearby-list"></div>
     </section>
 
-    <div class="sheet-region-menu" aria-label="Map countries" data-location-menu>
-      <button class="sheet-region-pill active" type="button" data-region="all">My Home</button>
-      <div class="region-menu-group" data-country-group="usa">
-        <button class="sheet-region-pill region-parent-pill" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="sheet-usa-region-menu">
-          USA <span class="region-pill-caret" aria-hidden="true">v</span>
-        </button>
-        <div id="sheet-usa-region-menu" class="region-submenu" aria-label="USA states" data-country-submenu="usa"></div>
-      </div>
-    </div>
-
     <div class="sheet-media">
       <img id="sheet-image-main" src="" alt="" loading="lazy" decoding="async" draggable="false">
     </div>
@@ -116,6 +106,6 @@
   </footer>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260605-3"></script>
+  <script src="app.js?v=20260606-1"></script>
 </body>
 </html>

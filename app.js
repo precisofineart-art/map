@@ -220,6 +220,7 @@ const MAP_CONTROL_ZOOM_STEP = 1;
 const PRODUCT_FETCH_PAGE_SIZE = 250;
 const NEW_PRINT_COUNT = 6;
 const PHOTO_STRIP_LIMIT = 18;
+const MOBILE_HOME_MARKER_LIMIT = 10;
 
 /* =========================
    HELPERS
@@ -400,6 +401,10 @@ function hasValidCoordinates(item) {
   return Number.isFinite(item?.lng) && Number.isFinite(item?.lat);
 }
 
+function isMobileMapViewport() {
+  return window.matchMedia("(max-width: 700px)").matches;
+}
+
 function getDistanceMiles(a, b) {
   if (!hasValidCoordinates(a) || !hasValidCoordinates(b)) return Infinity;
 
@@ -529,20 +534,26 @@ function renderRegionIntro(regionKey = activeRegionKey) {
   if (!intro || !title || !meta) return;
 
   const items = getRegionItems(regionKey);
-  if (!items.length) {
+  const isMobile = isMobileMapViewport();
+  if (!items.length || (isMobile && regionKey === "all")) {
     hideRegionIntro();
     return;
   }
 
   const viewLabel = getActiveViewLabel(regionKey);
-  const titleLabel = regionKey === "all" ? "Preciso Prints" : `${viewLabel} Prints`;
   const locationCount = getRegionLocationCount(items);
+  const titleLabel = isMobile
+    ? `${viewLabel} · ${formatCount(items.length, "print")}`
+    : regionKey === "all"
+      ? "Preciso Prints"
+      : `${viewLabel} Prints`;
 
   title.textContent = titleLabel;
   meta.textContent = `${formatCount(locationCount, "location")} · ${formatCount(items.length, "print")}`;
   if (exploreButton) {
     exploreButton.disabled = items.length < 1;
     exploreButton.dataset.region = regionKey;
+    exploreButton.textContent = isMobile ? "Route" : "Explore route";
   }
 
   intro.classList.remove("hidden");
@@ -597,6 +608,12 @@ function renderPhotoStrip(regionKey = activeRegionKey) {
   const carousel = document.getElementById("carousel");
   const track = document.getElementById("listings");
   if (!carousel || !track) return;
+
+  if (isMobileMapViewport()) {
+    track.replaceChildren();
+    hidePhotoStrip();
+    return;
+  }
 
   const items = getTrailItemsForRegion(regionKey).slice(0, PHOTO_STRIP_LIMIT);
   track.replaceChildren();
@@ -932,7 +949,18 @@ function getItemsForRegion(regionKey = activeRegionKey) {
 }
 
 function getVisibleItemIdSet(regionKey = activeRegionKey) {
-  return new Set(getItemsForRegion(regionKey).map((item) => item.id));
+  let visibleItems = getItemsForRegion(regionKey);
+
+  if (isMobileMapViewport() && regionKey === "all" && !activeItem) {
+    visibleItems = [...visibleItems]
+      .sort((a, b) => {
+        const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
+        return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
+      })
+      .slice(0, MOBILE_HOME_MARKER_LIMIT);
+  }
+
+  return new Set(visibleItems.map((item) => item.id));
 }
 
 function getClusterGroupKey(item, regionKey = activeRegionKey) {
@@ -1028,7 +1056,6 @@ function renderLocationMenus() {
   const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
 
   document.querySelectorAll("[data-location-menu]").forEach((menu) => {
-    const buttonClass = menu.classList.contains("sheet-region-menu") ? "sheet-region-pill" : "region-pill";
     const usaGroup = menu.querySelector("[data-country-group='usa']");
     const usaSubmenu = menu.querySelector("[data-country-submenu='usa']");
     const usaToggle = menu.querySelector("[data-country-toggle='usa']");
@@ -1052,7 +1079,7 @@ function renderLocationMenus() {
     }
 
     countryFilters.forEach((filter) => {
-      const button = makeLocationMenuButton(buttonClass, filter);
+      const button = makeLocationMenuButton("region-pill", filter);
       button.dataset.countryFilter = "true";
       menu.appendChild(button);
     });
