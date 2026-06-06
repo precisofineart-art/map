@@ -550,18 +550,14 @@ function renderRegionIntro(regionKey = activeRegionKey) {
 
   const viewLabel = getActiveViewLabel(regionKey);
   const locationCount = getRegionLocationCount(items);
-  const titleLabel = isMobile
-    ? `${viewLabel} · ${formatCount(items.length, "print")}`
-    : regionKey === "all"
-      ? "Preciso Prints"
-      : `${viewLabel} Prints`;
+  const titleLabel = `${regionKey === "all" ? "Preciso" : viewLabel} · ${formatCount(items.length, "print")}`;
 
   title.textContent = titleLabel;
   meta.textContent = `${formatCount(locationCount, "location")} · ${formatCount(items.length, "print")}`;
   if (exploreButton) {
     exploreButton.disabled = items.length < 1;
     exploreButton.dataset.region = regionKey;
-    exploreButton.textContent = isMobile ? "Route" : "Explore route";
+    exploreButton.textContent = "Route";
   }
 
   intro.classList.remove("hidden");

@@ -338,24 +338,26 @@ body.marker-active #google-ui {
 }
 
 .region-intro {
-  top: calc(var(--app-top) + 112px);
-  left: 18px;
+  top: calc(var(--app-top) + 104px);
+  left: 50%;
   z-index: 24;
-  max-width: min(360px, calc(100vw - 36px));
+  max-width: min(320px, calc(100vw - 36px));
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid rgba(12, 52, 122, 0.1);
-  border-radius: 18px;
-  padding: 10px 10px 10px 14px;
-  background: rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  padding: 7px 7px 7px 12px;
+  background: rgba(255, 255, 255, 0.84);
   color: #202124;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: translateX(-50%);
 }
 
 .region-intro.is-fresh {
-  animation: regionIntroIn 520ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+  animation: none;
 }
 
 .region-intro-copy {
@@ -364,7 +366,8 @@ body.marker-active #google-ui {
 
 .region-intro-title {
   overflow: hidden;
-  font-size: 14px;
+  max-width: 190px;
+  font-size: 12px;
   font-weight: 850;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -372,26 +375,23 @@ body.marker-active #google-ui {
 }
 
 .region-intro-meta {
-  margin-top: 3px;
-  color: #5f6368;
-  font-size: 11px;
-  font-weight: 750;
-  line-height: 1.2;
+  display: none;
 }
 
 .region-explore-button {
   flex: 0 0 auto;
-  min-height: 34px;
+  min-width: 54px;
+  min-height: 28px;
   border: 0;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 10px;
   background: #0c347a;
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 850;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 8px 18px rgba(12, 52, 122, 0.22);
+  box-shadow: none;
 }
 
 .region-explore-button:active {
