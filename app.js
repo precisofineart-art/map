@@ -350,6 +350,14 @@ function getMarkerLabel(item) {
   return location.replace(/\s+/g, " ").trim();
 }
 
+function getMarkerPreviewTopLine(item) {
+  return item?.moment || item?.title || "Print";
+}
+
+function getMarkerPreviewMetaLine(item) {
+  return item?.location1 || item?.title || "Print";
+}
+
 function hideMarkerPreview() {
   const preview = document.getElementById("marker-preview");
   if (!preview) return;
@@ -370,11 +378,11 @@ function showMarkerPreview(item, event) {
 
   const title = document.createElement("div");
   title.className = "marker-preview-title";
-  title.textContent = getItemLocationLabel(item);
+  title.textContent = getMarkerPreviewTopLine(item);
 
   const meta = document.createElement("div");
   meta.className = "marker-preview-meta";
-  meta.textContent = item.moment || item.title || "Print";
+  meta.textContent = getMarkerPreviewMetaLine(item);
 
   copy.append(title, meta);
   preview.replaceChildren(copy);
