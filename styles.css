@@ -338,7 +338,7 @@ body.marker-active #google-ui {
 }
 
 .region-intro {
-  top: calc(var(--app-top) + 104px);
+  top: calc(var(--app-top) + 124px);
   left: 50%;
   z-index: 24;
   max-width: min(320px, calc(100vw - 36px));
