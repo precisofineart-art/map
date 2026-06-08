@@ -18,6 +18,8 @@ const HOME_VIEW = {
   center: [-85.2, 43.2],
   zoom: 5.55
 };
+const HOME_VIEW_BOUNDS = [[-91.8, 40.35], [-80.15, 45.75]];
+const MICHIGAN_VIEW_CHICAGO_BOUNDS = [[-87.95, 41.6], [-87.45, 42.05]];
 
 const REGION_VIEWS = {
   all: {
@@ -83,6 +85,12 @@ const COUNTRY_VIEW_BOUNDS = {
   "country:poland": [[14.0, 49.0], [24.3, 55.1]],
   "country:thailand": [[97.1, 5.3], [106.1, 20.7]]
 };
+const COUNTRY_VIEW_OVERRIDES = {
+  "country:usa": () => ({
+    center: [-98.5, 38.4],
+    zoom: isMobileMapViewport() ? 2.75 : (window.innerWidth >= 1500 ? 4.14 : 3.72)
+  })
+};
 const US_STATE_VIEW_BOUNDS = {
   "state:alabama": [[-88.471, 30.247], [-84.889, 35.001]],
   "state:alaska": [[-188.905, 51.613], [-129.986, 71.352]],
@@ -105,7 +113,7 @@ const US_STATE_VIEW_BOUNDS = {
   "state:maine": [[-71.082, 43.058], [-66.98, 47.461]],
   "state:maryland": [[-79.489, 37.909], [-75.047, 39.722]],
   "state:massachusetts": [[-73.508, 41.497], [-69.937, 42.888]],
-  "state:michigan": [[-90.415, 41.694], [-82.414, 48.173]],
+  "state:michigan": [[-86.8, 41.65], [-82.1, 45.2]],
   "state:minnesota": [[-97.229, 43.501], [-89.616, 49.384]],
   "state:mississippi": [[-91.637, 30.181], [-88.099, 34.996]],
   "state:missouri": [[-95.766, 35.998], [-89.134, 40.615]],
@@ -135,6 +143,12 @@ const US_STATE_VIEW_BOUNDS = {
   "state:west-virginia": [[-82.622, 37.203], [-77.72, 40.637]],
   "state:wisconsin": [[-92.886, 42.494], [-87.031, 46.957]],
   "state:wyoming": [[-111.053, 40.998], [-104.053, 45.002]]
+};
+const US_STATE_VIEW_PADDING = {
+  "state:michigan": {
+    ...LOCATION_FILTER_PADDING,
+    top: 64
+  }
 };
 
 const US_STATE_LABELS = {
@@ -248,7 +262,6 @@ const US_STATE_LABELS = {
 ========================= */
 let listings = [];
 let markers = [];
-let clusterMarkers = [];
 let locationFilters = new Map();
 let activeRegionKey = "all";
 let activeItem = null;
@@ -256,15 +269,20 @@ let currentMapStyleKey = "satellite";
 let isResetting = false;
 let edgeIndicatorEls = new Map();
 let explodedMarkerGroup = null;
+let activeMarkerGroups = new Map();
+let isFittingExplodedGroup = false;
 let nearbyRenderToken = 0;
 let regionMenuCloseTimer = null;
 
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
-const MARKER_CLUSTER_MAX_ZOOM = 9.2;
-const MARKER_CLUSTER_DISTANCE = 58;
-const NEARBY_PRINT_LIMIT = 6;
+const MARKER_STACK_DISTANCE_MILES = 0.18;
+const MARKER_GROUP_MAX_ZOOM = 9.6;
+const MARKER_GROUP_MIN_ITEMS = 2;
+const MARKER_REPRESENTATIVE_GROUP_MAX_ZOOM = 7.8;
+const MARKER_REPRESENTATIVE_GROUP_DISTANCE = 72;
+const NEARBY_PRINT_LIMIT = 4;
 const NEARBY_TRANSITION_MS = 150;
 const SHEET_MARKER_TRANSITION_MS = 1650;
 const REGION_MARKER_TRANSITION_MS = 2700;
@@ -279,6 +297,7 @@ const MAP_CONTROL_ZOOM_STEP = 1;
 const PRODUCT_FETCH_PAGE_SIZE = 250;
 const NEW_PRINT_COUNT = 6;
 const PHOTO_STRIP_LIMIT = 18;
+const MOBILE_PHOTO_STRIP_LIMIT = 3;
 const MOBILE_HOME_MARKER_LIMIT = 10;
 
 /* =========================
@@ -292,12 +311,6 @@ function clearMarkers() {
   resetExplodedMarkers();
   markers.forEach((marker) => marker.remove());
   markers = [];
-  clearClusterMarkers();
-}
-
-function clearClusterMarkers() {
-  clusterMarkers.forEach((marker) => marker.remove());
-  clusterMarkers = [];
 }
 
 function setMarkerStack(markerShell, isActive) {
@@ -526,12 +539,225 @@ function markNewestPrints() {
   });
 }
 
+function getDisplayedItemsForRegion(regionKey = activeRegionKey) {
+  return getItemsForRegion(regionKey);
+}
+
+function getStackMarkerItems(item, sourceItems = listings) {
+  if (!item || !hasValidCoordinates(item)) return [];
+
+  return sourceItems
+    .filter((candidate) => (
+      candidate?.id &&
+      hasValidCoordinates(candidate) &&
+      getDistanceMiles(item, candidate) <= MARKER_STACK_DISTANCE_MILES
+    ))
+    .sort((a, b) => {
+      if (a.id === item.id) return -1;
+      if (b.id === item.id) return 1;
+
+      const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
+      return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
+    })
+    .slice(0, MARKER_EXPLODE_MAX_ITEMS);
+}
+
+function sortItemsForMarkerPriority(items = []) {
+  return [...items].sort((a, b) => {
+    if (a.isNewPrint !== b.isNewPrint) return a.isNewPrint ? -1 : 1;
+
+    const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
+    return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
+  });
+}
+
+function getMarkerGroupRepresentative(items = []) {
+  const activeGroupItem = activeItem
+    ? items.find((item) => item.id === activeItem.id)
+    : null;
+  return activeGroupItem || sortItemsForMarkerPriority(items)[0] || null;
+}
+
+function makeMarkerGroup(type, key, items) {
+  const groupItems = sortItemsForMarkerPriority(items.filter(hasValidCoordinates));
+  const representative = getMarkerGroupRepresentative(groupItems);
+  if (!representative || groupItems.length < MARKER_GROUP_MIN_ITEMS) return null;
+
+  return {
+    id: `${type}:${key}:${representative.id}`,
+    type,
+    key,
+    representative,
+    items: groupItems
+  };
+}
+
+function shouldUseLocationGrouping() {
+  if (!map || activeItem || isPlaceSheetOpen()) return false;
+  return map.getZoom() <= MARKER_GROUP_MAX_ZOOM;
+}
+
+function shouldUseRepresentativeGrouping() {
+  if (!map || activeItem || isPlaceSheetOpen()) return false;
+  return map.getZoom() <= MARKER_REPRESENTATIVE_GROUP_MAX_ZOOM;
+}
+
+function getRepresentativeGroupDistance() {
+  const zoom = map?.getZoom?.() || 0;
+  const mobileBoost = isMobileMapViewport() ? 12 : 0;
+
+  if (zoom < 5) {
+    return MARKER_REPRESENTATIVE_GROUP_DISTANCE + mobileBoost + 18;
+  }
+
+  if (zoom < 6.6) {
+    return MARKER_REPRESENTATIVE_GROUP_DISTANCE + mobileBoost;
+  }
+
+  return MARKER_REPRESENTATIVE_GROUP_DISTANCE + mobileBoost - 14;
+}
+
+function getProjectedItemPoint(item) {
+  if (!map || !hasValidCoordinates(item)) return null;
+
+  const point = map.project([item.lng, item.lat]);
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+  return point;
+}
+
+function getLocationGroupKey(item) {
+  const locationLabel = getItemLocationLabel(item) || getMarkerLabel(item);
+  const regionKey = getRegionKeyForItem(item);
+  return `${regionKey}:${normalizeLocationToken(locationLabel)}`;
+}
+
+function buildExactLocationGroups(items, assignedItemIds = new Set()) {
+  const groups = [];
+
+  sortItemsForMarkerPriority(items).forEach((item) => {
+    if (assignedItemIds.has(item.id)) return;
+
+    const stackItems = getStackMarkerItems(item, items)
+      .filter((stackItem) => !assignedItemIds.has(stackItem.id));
+    const group = makeMarkerGroup("exact", item.id, stackItems);
+
+    if (!group) return;
+    group.items.forEach((groupItem) => assignedItemIds.add(groupItem.id));
+    groups.push(group);
+  });
+
+  return groups;
+}
+
+function buildRepresentativeProximityGroups(items, assignedItemIds = new Set()) {
+  if (!shouldUseRepresentativeGrouping()) return [];
+
+  const groups = [];
+  const groupDistance = getRepresentativeGroupDistance();
+  const remainingItems = sortItemsForMarkerPriority(items)
+    .filter((item) => !assignedItemIds.has(item.id) && getProjectedItemPoint(item));
+
+  while (remainingItems.length) {
+    const representative = remainingItems.shift();
+    const representativePoint = getProjectedItemPoint(representative);
+    if (!representativePoint) continue;
+
+    const groupedItems = [representative];
+
+    for (let index = remainingItems.length - 1; index >= 0; index -= 1) {
+      const candidate = remainingItems[index];
+      const candidatePoint = getProjectedItemPoint(candidate);
+      if (!candidatePoint) continue;
+
+      const distance = Math.hypot(
+        candidatePoint.x - representativePoint.x,
+        candidatePoint.y - representativePoint.y
+      );
+
+      if (distance <= groupDistance) {
+        groupedItems.push(candidate);
+        remainingItems.splice(index, 1);
+      }
+    }
+
+    const group = makeMarkerGroup("proximity", representative.id, groupedItems);
+    if (!group) continue;
+
+    group.items.forEach((groupItem) => assignedItemIds.add(groupItem.id));
+    groups.push(group);
+  }
+
+  return groups;
+}
+
+function buildMarkerGroups(items = []) {
+  if (activeItem || isPlaceSheetOpen()) return [];
+
+  const assignedItemIds = new Set();
+  const groups = [];
+
+  if (shouldUseLocationGrouping()) {
+    const locationGroups = new Map();
+
+    items.forEach((item) => {
+      if (!hasValidCoordinates(item)) return;
+
+      const groupKey = getLocationGroupKey(item);
+      if (!locationGroups.has(groupKey)) locationGroups.set(groupKey, []);
+      locationGroups.get(groupKey).push(item);
+    });
+
+    [...locationGroups.entries()].forEach(([groupKey, groupItems]) => {
+      const group = makeMarkerGroup("location", groupKey, groupItems);
+      if (!group) return;
+
+      group.items.forEach((groupItem) => assignedItemIds.add(groupItem.id));
+      groups.push(group);
+    });
+  }
+
+  groups.push(...buildRepresentativeProximityGroups(items, assignedItemIds));
+  groups.push(...buildExactLocationGroups(items, assignedItemIds));
+  return groups;
+}
+
+function getMarkerRenderState(regionKey = activeRegionKey) {
+  const baseVisibleItemIds = getVisibleItemIdSet(regionKey);
+  const visibleItems = listings.filter((item) => baseVisibleItemIds.has(item.id) && hasValidCoordinates(item));
+  const markerGroups = buildMarkerGroups(visibleItems);
+  const visibleItemIds = new Set(baseVisibleItemIds);
+  const groupByItemId = new Map();
+
+  markerGroups.forEach((group) => {
+    group.items.forEach((groupItem) => {
+      groupByItemId.set(groupItem.id, group);
+      if (groupItem.id !== group.representative.id) {
+        visibleItemIds.delete(groupItem.id);
+      }
+    });
+
+    visibleItemIds.add(group.representative.id);
+  });
+
+  if (explodedMarkerGroup?.itemIds) {
+    explodedMarkerGroup.itemIds.forEach((itemId) => visibleItemIds.add(itemId));
+  }
+
+  if (activeItem?.id) visibleItemIds.add(activeItem.id);
+
+  return {
+    groupByItemId,
+    groups: markerGroups,
+    visibleItemIds
+  };
+}
+
 function formatCount(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function getRegionItems(regionKey = activeRegionKey) {
-  return getItemsForRegion(regionKey).filter(hasValidCoordinates);
+  return getDisplayedItemsForRegion(regionKey).filter(hasValidCoordinates);
 }
 
 function getRegionLocationCount(items) {
@@ -609,10 +835,11 @@ function renderRegionIntro(regionKey = activeRegionKey) {
 
   const viewLabel = getActiveViewLabel(regionKey);
   const locationCount = getRegionLocationCount(items);
-  const titleLabel = `${regionKey === "all" ? "Preciso" : viewLabel} · ${formatCount(items.length, "print")}`;
+  const printLabel = formatCount(items.length, "print");
+  const titleLabel = `${regionKey === "all" ? "Preciso" : viewLabel} · ${printLabel}`;
 
   title.textContent = titleLabel;
-  meta.textContent = `${formatCount(locationCount, "location")} · ${formatCount(items.length, "print")}`;
+  meta.textContent = `${formatCount(locationCount, "location")} · ${printLabel}`;
   if (exploreButton) {
     exploreButton.disabled = items.length < 1;
     exploreButton.dataset.region = regionKey;
@@ -672,13 +899,8 @@ function renderPhotoStrip(regionKey = activeRegionKey) {
   const track = document.getElementById("listings");
   if (!carousel || !track) return;
 
-  if (isMobileMapViewport()) {
-    track.replaceChildren();
-    hidePhotoStrip();
-    return;
-  }
-
-  const items = getTrailItemsForRegion(regionKey).slice(0, PHOTO_STRIP_LIMIT);
+  const stripLimit = isMobileMapViewport() ? MOBILE_PHOTO_STRIP_LIMIT : PHOTO_STRIP_LIMIT;
+  const items = getTrailItemsForRegion(regionKey).slice(0, stripLimit);
   track.replaceChildren();
 
   if (!items.length) {
@@ -694,6 +916,25 @@ function renderPhotoStrip(regionKey = activeRegionKey) {
   carousel.setAttribute("aria-hidden", "false");
   carousel.setAttribute("aria-label", `${getActiveViewLabel(regionKey)} prints`);
   syncPhotoStripActive(activeItem?.id || "");
+}
+
+function renderGroupedPhotoStrip(groupItems = [], representativeItem = null) {
+  const carousel = document.getElementById("carousel");
+  const track = document.getElementById("listings");
+  if (!carousel || !track || !groupItems.length) return;
+
+  const stripLimit = isMobileMapViewport() ? MOBILE_PHOTO_STRIP_LIMIT : PHOTO_STRIP_LIMIT;
+  const items = sortItemsForMarkerPriority(groupItems).slice(0, stripLimit);
+  track.replaceChildren();
+
+  items.forEach((item, index) => {
+    track.appendChild(createPhotoStripButton(item, index, items.length));
+  });
+
+  carousel.classList.remove("hidden");
+  carousel.setAttribute("aria-hidden", "false");
+  carousel.setAttribute("aria-label", `${getMarkerLabel(representativeItem || items[0])} prints`);
+  syncPhotoStripActive("");
 }
 
 function syncPhotoStripActive(itemId = "") {
@@ -745,7 +986,6 @@ function resetExplodedMarkers() {
     markerShell.style.removeProperty("--explode-x");
     markerShell.style.removeProperty("--explode-y");
     markerShell.style.removeProperty("z-index");
-    markerShell.removeAttribute("data-explode-count");
   });
 
   explodedMarkerGroup = null;
@@ -755,10 +995,23 @@ function resetExplodedMarkers() {
 function getNearbyMarkerItems(item) {
   if (!map || !listings.length || !hasValidCoordinates(item)) return [];
 
+  const activeGroup = activeMarkerGroups.get(item.id);
+  if (activeGroup?.representative?.id === item.id && activeGroup.items.length > 1) {
+    return [
+      item,
+      ...activeGroup.items.filter((groupItem) => groupItem.id !== item.id)
+    ].slice(0, MARKER_EXPLODE_MAX_ITEMS);
+  }
+
+  const visibleItemIds = getVisibleItemIdSet();
+  const visibleItems = listings.filter((candidate) => visibleItemIds.has(candidate.id));
+  const stackedItems = getStackMarkerItems(item, visibleItems);
+  if (stackedItems.length > 1) return stackedItems;
+
   const centerPoint = map.project([item.lng, item.lat]);
   if (!Number.isFinite(centerPoint.x) || !Number.isFinite(centerPoint.y)) return [];
 
-  const nearbyItems = listings
+  const nearbyItems = visibleItems
     .filter((candidate) => candidate.id !== item.id && hasValidCoordinates(candidate))
     .map((candidate) => {
       const point = map.project([candidate.lng, candidate.lat]);
@@ -801,6 +1054,86 @@ function getExplodeOffset(index, count) {
   };
 }
 
+function getExplodedGroupFitPadding() {
+  const isMobileViewport = isMobileMapViewport();
+
+  if (isMobileViewport) {
+    return {
+      top: 128,
+      right: 76,
+      bottom: 154,
+      left: 76
+    };
+  }
+
+  return {
+    top: 160,
+    right: 150,
+    bottom: 190,
+    left: 150
+  };
+}
+
+function getUniqueGroupCoordinateCount(items = []) {
+  return new Set(
+    items
+      .filter(hasValidCoordinates)
+      .map((item) => `${item.lng.toFixed(6)},${item.lat.toFixed(6)}`)
+  ).size;
+}
+
+function releaseExplodedGroupFitGuard() {
+  if (!isFittingExplodedGroup) return;
+
+  isFittingExplodedGroup = false;
+  setMarkerVisibilityByZoom();
+  updateEdgeIndicator();
+}
+
+function fitExpandedGroupIntoView(groupItems = [], originItem = null) {
+  if (!map) return;
+
+  const validItems = groupItems.filter(hasValidCoordinates);
+  if (!validItems.length) return;
+
+  const duration = 720;
+  const padding = getExplodedGroupFitPadding();
+  const uniqueCoordinateCount = getUniqueGroupCoordinateCount(validItems);
+  const fitTargetItem = hasValidCoordinates(originItem) ? originItem : validItems[0];
+
+  isFittingExplodedGroup = true;
+
+  map.once("moveend", () => {
+    window.setTimeout(releaseExplodedGroupFitGuard, 80);
+  });
+  window.setTimeout(releaseExplodedGroupFitGuard, duration + 420);
+
+  if (uniqueCoordinateCount < 2) {
+    const currentZoom = map.getZoom();
+    const targetZoom = Math.max(currentZoom, isMobileMapViewport() ? 14.4 : 14.9);
+
+    map.easeTo({
+      center: [fitTargetItem.lng, fitTargetItem.lat],
+      zoom: targetZoom,
+      duration,
+      essential: true
+    });
+    return;
+  }
+
+  const bounds = new mapboxgl.LngLatBounds();
+  validItems.forEach((groupItem) => {
+    bounds.extend([groupItem.lng, groupItem.lat]);
+  });
+
+  map.fitBounds(bounds, {
+    padding,
+    duration,
+    maxZoom: isMobileMapViewport() ? 12.2 : 12.8,
+    essential: true
+  });
+}
+
 function explodeMarkersForItem(item) {
   const groupItems = getNearbyMarkerItems(item);
   if (groupItems.length < 2) return false;
@@ -817,6 +1150,8 @@ function explodeMarkersForItem(item) {
     const markerShell = getMarkerShell(groupItem.id);
     if (!markerShell) return;
 
+    setMarkerShellVisibility(groupItem.id, true);
+
     const offset = index === 0
       ? { x: 0, y: 0 }
       : getExplodeOffset(index - 1, groupItems.length - 1);
@@ -828,12 +1163,13 @@ function explodeMarkersForItem(item) {
 
     if (groupItem.id === item.id) {
       markerShell.classList.add("explode-origin");
-      markerShell.dataset.explodeCount = String(groupItems.length);
     }
   });
 
   clearEdgeIndicators();
+  renderGroupedPhotoStrip(groupItems, item);
   document.body.classList.add("markers-exploded");
+  fitExpandedGroupIntoView(groupItems, item);
   return true;
 }
 
@@ -924,6 +1260,11 @@ function buildViewForItems(items, zoom = 5.8) {
 }
 
 function buildCountryView(countryKey, items, zoom = 5.8) {
+  const countryViewOverride = COUNTRY_VIEW_OVERRIDES[countryKey];
+  if (countryViewOverride) {
+    return typeof countryViewOverride === "function" ? countryViewOverride() : countryViewOverride;
+  }
+
   const countryBounds = COUNTRY_VIEW_BOUNDS[countryKey];
   if (countryBounds) {
     return {
@@ -940,7 +1281,7 @@ function buildStateView(stateKey, items, zoom = 6.8) {
   if (stateBounds) {
     return {
       bounds: stateBounds,
-      padding: LOCATION_FILTER_PADDING
+      padding: US_STATE_VIEW_PADDING[stateKey] || LOCATION_FILTER_PADDING
     };
   }
 
@@ -1030,13 +1371,39 @@ function getLocationFilterView(regionKey) {
   return locationFilters.get(regionKey)?.view || REGION_VIEWS[regionKey] || REGION_VIEWS.all;
 }
 
+function getHomeItems() {
+  return listings.filter((item) => (
+    hasValidCoordinates(item) &&
+    pointInBounds(item.lng, item.lat, HOME_VIEW_BOUNDS)
+  ));
+}
+
+function getSupplementalItemsForRegion(regionKey) {
+  if (regionKey !== "state:michigan") return [];
+
+  return listings.filter((item) => (
+    hasValidCoordinates(item) &&
+    pointInBounds(item.lng, item.lat, MICHIGAN_VIEW_CHICAGO_BOUNDS)
+  ));
+}
+
 function getItemsForRegion(regionKey = activeRegionKey) {
-  if (!regionKey || regionKey === "all") return listings;
-  return locationFilters.get(regionKey)?.items || listings;
+  if (!regionKey || regionKey === "all") return getHomeItems();
+
+  const regionItems = locationFilters.get(regionKey)?.items;
+  if (!regionItems) return listings;
+
+  const seenIds = new Set(regionItems.map((item) => item.id));
+  const supplementalItems = getSupplementalItemsForRegion(regionKey)
+    .filter((item) => !seenIds.has(item.id));
+
+  return supplementalItems.length
+    ? [...regionItems, ...supplementalItems]
+    : regionItems;
 }
 
 function getVisibleItemIdSet(regionKey = activeRegionKey) {
-  let visibleItems = getItemsForRegion(regionKey);
+  let visibleItems = getDisplayedItemsForRegion(regionKey);
 
   if (isMobileMapViewport() && regionKey === "all" && !activeItem) {
     visibleItems = [...visibleItems]
@@ -1047,25 +1414,9 @@ function getVisibleItemIdSet(regionKey = activeRegionKey) {
       .slice(0, MOBILE_HOME_MARKER_LIMIT);
   }
 
-  return new Set(visibleItems.map((item) => item.id));
-}
-
-function getClusterGroupKey(item, regionKey = activeRegionKey) {
-  if (!item) return "unknown";
-
-  if (regionKey === "all" || regionKey === USA_FILTER_KEY) {
-    return item.stateKey || item.countryKey || getRegionKeyForItem(item);
-  }
-
-  if (regionKey.startsWith("state:")) {
-    return item.stateKey || regionKey;
-  }
-
-  if (regionKey.startsWith("country:")) {
-    return item.countryKey || regionKey;
-  }
-
-  return getRegionKeyForItem(item);
+  const visibleItemIds = new Set(visibleItems.map((item) => item.id));
+  if (activeItem?.id) visibleItemIds.add(activeItem.id);
+  return visibleItemIds;
 }
 
 function getRegionHash(regionKey) {
@@ -1129,12 +1480,36 @@ function setActiveItemRegion(item) {
   setActiveRegionChip(regionKey);
 }
 
+function setRegionButtonContent(button, label, count, options = {}) {
+  if (!button) return;
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "region-pill-label";
+  labelEl.textContent = label;
+  button.replaceChildren(labelEl);
+
+  if (Number.isFinite(count)) {
+    const countEl = document.createElement("span");
+    countEl.className = "region-count";
+    countEl.textContent = String(count);
+    button.appendChild(countEl);
+  }
+
+  if (options.caret) {
+    const caretEl = document.createElement("span");
+    caretEl.className = "region-pill-caret";
+    caretEl.setAttribute("aria-hidden", "true");
+    caretEl.textContent = "v";
+    button.appendChild(caretEl);
+  }
+}
+
 function makeLocationMenuButton(className, filter) {
   const button = document.createElement("button");
   button.className = className;
   button.type = "button";
   button.dataset.region = filter.key;
-  button.textContent = filter.label;
+  setRegionButtonContent(button, filter.label, filter.items?.length ?? 0);
   return button;
 }
 
@@ -1149,9 +1524,19 @@ function renderLocationMenus() {
 
     menu.querySelectorAll("[data-country-filter='true']").forEach((button) => button.remove());
 
+    const homeButton = [...menu.querySelectorAll("[data-region='all']")]
+      .find((button) => !button.matches("[data-country-toggle]"));
+    setRegionButtonContent(homeButton, "My Home", getItemsForRegion("all").length);
+
     if (usaToggle) {
       usaToggle.dataset.region = USA_FILTER_KEY;
       usaToggle.hidden = !locationFilters.has(USA_FILTER_KEY);
+      setRegionButtonContent(
+        usaToggle,
+        "USA",
+        locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0,
+        { caret: true }
+      );
     }
 
     if (usaGroup) {
@@ -1171,6 +1556,7 @@ function renderLocationMenus() {
       menu.appendChild(button);
     });
   });
+
 }
 
 function setActiveRegionChip(regionKey = "all") {
@@ -1634,93 +2020,64 @@ function setMarkerShellVisibility(itemId, isVisible) {
   markerWrapper?.style.setProperty("display", isVisible ? "block" : "none");
 }
 
-function fitItemsOnMap(items, options = {}) {
-  const validItems = items.filter(hasValidCoordinates);
-  if (!validItems.length) return;
+function updateMarkerScaleForZoom() {
+  if (!map) return;
 
-  if (validItems.length === 1) {
-    map.flyTo({
-      center: [validItems[0].lng, validItems[0].lat],
-      zoom: Math.max(map.getZoom() + 2, 10),
-      duration: options.duration ?? 850,
-      curve: 1.25,
-      essential: true
-    });
-    return;
+  const zoom = map.getZoom();
+  const isMobile = isMobileMapViewport();
+  let markerSize = 36;
+
+  if (zoom >= 12) {
+    markerSize = 46;
+  } else if (zoom >= 9) {
+    markerSize = 42;
+  } else if (zoom >= 6) {
+    markerSize = 38;
   }
 
-  const bounds = new mapboxgl.LngLatBounds();
-  validItems.forEach((item) => bounds.extend([item.lng, item.lat]));
-  map.fitBounds(bounds, {
-    padding: options.padding ?? 96,
-    maxZoom: options.maxZoom ?? 12.5,
-    duration: options.duration ?? 850,
-    essential: true
-  });
-}
+  if (isMobile) {
+    markerSize = Math.max(34, markerSize - 3);
+  }
 
-function shouldClusterMarkers() {
-  return (
-    map &&
-    listings.length > 1 &&
-    map.getZoom() < MARKER_CLUSTER_MAX_ZOOM &&
-    !activeItem &&
-    !isPlaceSheetOpen() &&
-    !explodedMarkerGroup
-  );
-}
-
-function createClusterElement(cluster) {
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "marker-cluster";
-  el.dataset.count = String(cluster.items.length);
-  el.dataset.clusterGroup = cluster.groupKey;
-  el.style.backgroundImage = `url(${cluster.items[0]?.image || FALLBACK_IMAGE})`;
-  el.setAttribute("aria-label", `Zoom to ${cluster.items.length} nearby prints`);
-
-  el.addEventListener("pointerenter", (event) => {
-    showMarkerPreview({
-      ...cluster.items[0],
-      moment: `${cluster.items.length} nearby prints`,
-      location2: getItemLocationLabel(cluster.items[0])
-    }, event);
-  });
-  el.addEventListener("pointermove", moveMarkerPreview);
-  el.addEventListener("pointerleave", hideMarkerPreview);
-  el.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    hideMarkerPreview();
-    fitItemsOnMap(cluster.items);
-  });
-
-  return el;
-}
-
-function updateMarkerClusters() {
-  clearClusterMarkers();
-  const visibleItemIds = getVisibleItemIdSet();
-
-  markers.forEach((marker) => {
-    const item = marker.item;
-    if (item?.id) setMarkerShellVisibility(item.id, visibleItemIds.has(item.id));
-  });
+  document.documentElement.style.setProperty("--map-marker-size", `${markerSize}px`);
 }
 
 function setMarkerVisibilityByZoom() {
   if (!map) return;
+  updateMarkerScaleForZoom();
+  const markerRenderState = getMarkerRenderState();
+  const visibleItemIds = markerRenderState.visibleItemIds;
+  activeMarkerGroups = markerRenderState.groupByItemId;
 
   markers.forEach((marker) => {
+    const item = marker.item;
     const markerEl = marker.getElement();
     if (!markerEl) return;
 
-    markerEl.style.display = "";
     markerEl.style.opacity = "1";
     markerEl.style.pointerEvents = "auto";
-  });
 
-  updateMarkerClusters();
+    if (item?.id) {
+      const markerGroup = activeMarkerGroups.get(item.id);
+      const isGroupRepresentative = Boolean(
+        markerGroup &&
+        markerGroup.representative.id === item.id &&
+        markerGroup.items.length > 1 &&
+        visibleItemIds.has(item.id)
+      );
+
+      markerEl.classList.toggle("group-representative", isGroupRepresentative);
+      markerEl.dataset.groupType = isGroupRepresentative ? markerGroup.type : "";
+      markerEl.setAttribute(
+        "aria-label",
+        isGroupRepresentative
+          ? `${item.title || "Map marker"}, grouped prints at this real marker location`
+          : item.title || "Map marker"
+      );
+
+      setMarkerShellVisibility(item.id, visibleItemIds.has(item.id));
+    }
+  });
 }
 
 function updateEdgeIndicator() {
@@ -1758,7 +2115,7 @@ function updateEdgeIndicator() {
 
   const nextVisibleIds = new Set();
 
-  getItemsForRegion().forEach((item) => {
+  getRegionItems().forEach((item) => {
     const point = map.project([item.lng, item.lat]);
     const isOffscreen = (
       point.x < leftSafe ||
@@ -3250,13 +3607,25 @@ map.on("load", async () => {
     });
   }
 
+  requestAnimationFrame(() => {
+    if (!activeItem) {
+      renderRegionExperience(activeRegionKey);
+    }
+    setMarkerVisibilityByZoom();
+    updateEdgeIndicator();
+  });
+
   initSheetDrag();
   initNearbyControls();
   initRegionExperienceControls();
 
   map.on("movestart", () => {
-    if (explodedMarkerGroup) {
+    if (explodedMarkerGroup && !isFittingExplodedGroup) {
       resetExplodedMarkers();
+      setMarkerVisibilityByZoom();
+      if (!activeItem) {
+        renderRegionExperience(activeRegionKey);
+      }
     }
   });
 
@@ -3298,8 +3667,11 @@ window.addEventListener("resize", () => {
     keepActiveMarkerVisible();
   }
 
-  setMarkerVisibilityByZoom();
   resetExplodedMarkers();
+  setMarkerVisibilityByZoom();
+  if (!activeItem) {
+    renderRegionExperience(activeRegionKey);
+  }
   updateEdgeIndicator();
 });
 
@@ -3309,6 +3681,10 @@ map.on("click", (e) => {
   if (e.originalEvent?.target?.closest?.("#place-sheet")) return;
   if (explodedMarkerGroup) {
     resetExplodedMarkers();
+    setMarkerVisibilityByZoom();
+    if (!activeItem) {
+      renderRegionExperience(activeRegionKey);
+    }
     updateEdgeIndicator();
     return;
   }

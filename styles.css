@@ -10,6 +10,7 @@ body.marker-active .edge-indicator {
   --app-top: 0px;
   --app-bottom: 0px;
   --app-height: 100vh;
+  --map-marker-size: 40px;
 }
 
 html,
@@ -166,6 +167,10 @@ body {
 
 .region-pill {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   min-height: 30px;
   border: 1px solid rgba(12, 52, 122, 0.1);
   border-radius: 999px;
@@ -179,6 +184,27 @@ body {
   box-shadow: none;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.region-pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.region-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(12, 52, 122, 0.1);
+  color: #0c347a;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .region-pill:hover {
@@ -196,6 +222,12 @@ body {
   border-color: rgb(12, 52, 122);
   color: #fff;
   box-shadow: 0 7px 16px rgba(12, 52, 122, 0.22);
+}
+
+.region-pill.active .region-count,
+.region-submenu-item.active .region-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .region-menu-group {
@@ -246,6 +278,10 @@ body {
 }
 
 .region-submenu-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   min-height: 32px;
   border: 1px solid rgba(12, 52, 122, 0.1);
   border-radius: 999px;
@@ -843,7 +879,7 @@ body.marker-active #carousel {
   flex: 0 0 auto;
   position: relative;
   z-index: 2;
-  padding: 12px 16px 8px;
+  padding: 9px 14px 7px;
   background: rgba(255, 255, 255, 0.98);
 }
 
@@ -862,9 +898,9 @@ body.marker-active #carousel {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #202124;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -914,14 +950,14 @@ body.marker-active #carousel {
 }
 
 .nearby-print {
-  flex: 0 0 148px;
+  flex: 0 0 134px;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(0, 0, 0, 0.07);
-  border-radius: 14px;
-  padding: 7px;
+  border-radius: 999px;
+  padding: 5px 8px 5px 5px;
   background: rgba(255, 255, 255, 0.92);
   color: #202124;
   text-align: left;
@@ -935,8 +971,8 @@ body.marker-active #carousel {
 
 .nearby-print-thumb {
   flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 2px solid #fff;
   background-size: cover;
@@ -1105,17 +1141,46 @@ body.marker-active #carousel {
 .custom-marker-shell {
   --explode-x: 0px;
   --explode-y: 0px;
-  width: 40px;
-  height: 40px;
+  width: var(--map-marker-size);
+  height: var(--map-marker-size);
 }
 
 .custom-marker-offset {
-  width: 40px;
-  height: 40px;
+  position: relative;
+  width: var(--map-marker-size);
+  height: var(--map-marker-size);
   transform: translate(var(--explode-x), var(--explode-y));
   transform-origin: center center;
   transition: transform 0.26s cubic-bezier(0.22, 0.9, 0.24, 1), filter 0.2s ease;
   will-change: transform;
+}
+
+.custom-marker-shell.group-representative .custom-marker-offset::before,
+.custom-marker-shell.group-representative .custom-marker-offset::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+  box-shadow: 0 7px 15px rgba(0, 0, 0, 0.16);
+}
+
+.custom-marker-shell.group-representative .custom-marker-offset::before {
+  z-index: 0;
+  transform: translate(6px, 5px) scale(0.92);
+}
+
+.custom-marker-shell.group-representative .custom-marker-offset::after {
+  z-index: 1;
+  transform: translate(11px, 9px) scale(0.82);
+  opacity: 0.78;
+}
+
+.custom-marker-shell.group-representative.exploded .custom-marker-offset::before,
+.custom-marker-shell.group-representative.exploded .custom-marker-offset::after {
+  opacity: 0;
 }
 
 .custom-marker-shell.exploded {
@@ -1130,30 +1195,11 @@ body.marker-active #carousel {
   z-index: 9012 !important;
 }
 
-.custom-marker-shell.explode-origin::after {
-  content: attr(data-explode-count);
-  position: absolute;
-  top: -9px;
-  right: -9px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border: 2px solid #fff;
-  border-radius: 999px;
-  background: #0c347a;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
-}
-
 .custom-marker {
   position: relative;
-  width: 40px;
-  height: 40px;
+  z-index: 2;
+  width: var(--map-marker-size);
+  height: var(--map-marker-size);
   background-size: cover;
   background-position: center;
   border-radius: 50%;
@@ -1219,42 +1265,6 @@ body.marker-active #carousel {
 .custom-marker-shell:hover .custom-marker-label,
 .custom-marker-shell:focus-visible .custom-marker-label {
   display: block;
-}
-
-.marker-cluster {
-  position: relative;
-  width: 50px;
-  height: 50px;
-  border: 3px solid #fff;
-  border-radius: 999px;
-  background-size: cover;
-  background-position: center;
-  box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.26),
-    0 0 0 5px rgba(12, 52, 122, 0.18);
-  cursor: pointer;
-}
-
-.marker-cluster::after {
-  content: attr(data-count);
-  position: absolute;
-  right: -7px;
-  top: -7px;
-  min-width: 22px;
-  height: 22px;
-  border: 2px solid #fff;
-  border-radius: 999px;
-  background: #0c347a;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 18px;
-  text-align: center;
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
-}
-
-.marker-cluster:hover {
-  transform: scale(1.08);
 }
 
 .custom-marker:hover,
@@ -1372,7 +1382,45 @@ body.marker-active #carousel {
   }
 
   #carousel {
-    display: none !important;
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 48px);
+    width: min(430px, calc(100vw - 18px));
+  }
+
+  #carousel.hidden {
+    display: none;
+  }
+
+  .carousel-track {
+    gap: 5px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 9px 20px rgba(0, 0, 0, 0.14);
+  }
+
+  .strip-print {
+    min-width: 132px;
+    gap: 6px;
+    padding: 4px 8px 4px 4px;
+  }
+
+  .strip-print-thumb {
+    width: 34px;
+    height: 34px;
+    border-width: 1px;
+    box-shadow: none;
+  }
+
+  .strip-print-title,
+  .strip-print-meta {
+    max-width: 78px;
+  }
+
+  .strip-print-title {
+    font-size: 10px;
+  }
+
+  .strip-print-meta {
+    font-size: 8px;
   }
 
   .custom-marker-shell.new-print .custom-marker::after {
