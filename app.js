@@ -543,6 +543,27 @@ function getDisplayedItemsForRegion(regionKey = activeRegionKey) {
   return getItemsForRegion(regionKey);
 }
 
+function getMapMarkerItems() {
+  let markerItems = listings.filter(hasValidCoordinates);
+
+  if (isMobileMapViewport() && activeRegionKey === "all" && !activeItem) {
+    markerItems = [...markerItems]
+      .sort((a, b) => {
+        const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
+        return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
+      })
+      .slice(0, MOBILE_HOME_MARKER_LIMIT);
+  }
+
+  return markerItems;
+}
+
+function getMapMarkerItemIdSet() {
+  const visibleItemIds = new Set(getMapMarkerItems().map((item) => item.id));
+  if (activeItem?.id) visibleItemIds.add(activeItem.id);
+  return visibleItemIds;
+}
+
 function getStackMarkerItems(item, sourceItems = listings) {
   if (!item || !hasValidCoordinates(item)) return [];
 
@@ -721,8 +742,8 @@ function buildMarkerGroups(items = []) {
   return groups;
 }
 
-function getMarkerRenderState(regionKey = activeRegionKey) {
-  const baseVisibleItemIds = getVisibleItemIdSet(regionKey);
+function getMarkerRenderState() {
+  const baseVisibleItemIds = getMapMarkerItemIdSet();
   const visibleItems = listings.filter((item) => baseVisibleItemIds.has(item.id) && hasValidCoordinates(item));
   const markerGroups = buildMarkerGroups(visibleItems);
   const visibleItemIds = new Set(baseVisibleItemIds);
@@ -1003,7 +1024,7 @@ function getNearbyMarkerItems(item) {
     ].slice(0, MARKER_EXPLODE_MAX_ITEMS);
   }
 
-  const visibleItemIds = getVisibleItemIdSet();
+  const visibleItemIds = getMapMarkerItemIdSet();
   const visibleItems = listings.filter((candidate) => visibleItemIds.has(candidate.id));
   const stackedItems = getStackMarkerItems(item, visibleItems);
   if (stackedItems.length > 1) return stackedItems;
@@ -1400,23 +1421,6 @@ function getItemsForRegion(regionKey = activeRegionKey) {
   return supplementalItems.length
     ? [...regionItems, ...supplementalItems]
     : regionItems;
-}
-
-function getVisibleItemIdSet(regionKey = activeRegionKey) {
-  let visibleItems = getDisplayedItemsForRegion(regionKey);
-
-  if (isMobileMapViewport() && regionKey === "all" && !activeItem) {
-    visibleItems = [...visibleItems]
-      .sort((a, b) => {
-        const createdDelta = getCreatedTimestamp(b) - getCreatedTimestamp(a);
-        return createdDelta || getMarkerLabel(a).localeCompare(getMarkerLabel(b));
-      })
-      .slice(0, MOBILE_HOME_MARKER_LIMIT);
-  }
-
-  const visibleItemIds = new Set(visibleItems.map((item) => item.id));
-  if (activeItem?.id) visibleItemIds.add(activeItem.id);
-  return visibleItemIds;
 }
 
 function getRegionHash(regionKey) {
