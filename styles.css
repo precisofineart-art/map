@@ -69,8 +69,8 @@ body {
 
 @media (min-width: 701px) {
   body.marker-active #header {
-    left: calc(50% + 203px);
-    max-width: min(680px, calc(100vw - 440px));
+    left: calc(50% + 243px);
+    max-width: min(680px, calc(100vw - 520px));
   }
 }
 
@@ -342,7 +342,7 @@ body {
 
 @media (min-width: 701px) {
   body.marker-active #footer {
-    left: calc(50% + 203px);
+    left: calc(50% + 243px);
   }
 }
 
@@ -770,9 +770,9 @@ body.marker-active #carousel {
   top: 50%;
   left: 16px;
   transform: translateY(-50%);
-  width: min(390px, calc(100vw - 32px));
+  width: min(470px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
-  max-height: min(760px, calc(100vh - 32px));
+  max-height: min(840px, calc(100vh - 32px));
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
@@ -818,19 +818,19 @@ body.marker-active #carousel {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 16px 0;
+  padding: 12px 22px 0;
 }
 
 .place-sheet-header h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.1;
   color: #202124;
 }
 
 .sheet-subtitle {
   margin-top: 8px;
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 700;
   line-height: 1.18;
   color: #202124;
@@ -838,7 +838,7 @@ body.marker-active #carousel {
 
 .sheet-location-2 {
   margin-top: 3px;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   line-height: 1.2;
   color: #3c4043;
@@ -846,7 +846,7 @@ body.marker-active #carousel {
 
 .sheet-time {
   margin-top: 7px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #000;
 }
@@ -1010,24 +1010,62 @@ body.marker-active #carousel {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 20px;
-  min-height: 220px;
+  padding: 6px 26px 0;
+  min-height: 280px;
 }
 
 .sheet-media img {
   width: 98%;
   max-width: 98%;
-  height: min(360px, 100%);
+  height: min(460px, 100%);
   display: block;
   object-fit: contain;
   object-position: center;
   border-radius: 0;
   background: #ffffff;
+  cursor: zoom-in;
 }
 
 #sheet-image-main {
   aspect-ratio: auto;
   background: #ffffff;
+}
+
+.sheet-photo-popout {
+  position: fixed;
+  z-index: 28;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border: 1px solid rgba(12, 52, 122, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.24),
+    0 10px 24px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px) scale(0.965);
+  transform-origin: left center;
+  transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 0.9, 0.24, 1), visibility 160ms ease;
+  visibility: hidden;
+}
+
+.sheet-photo-popout.visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  visibility: visible;
+}
+
+.sheet-photo-popout img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
 }
 
 .sheet-media-stack {
@@ -1038,7 +1076,7 @@ body.marker-active #carousel {
   position: sticky;
   bottom: 0;
   z-index: 2;
-  padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  padding: 14px 22px calc(env(safe-area-inset-bottom, 0px) + 20px);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.94) 22%, rgba(255, 255, 255, 0.98) 100%);
   backdrop-filter: blur(10px);
 }
@@ -1048,13 +1086,13 @@ body.marker-active #carousel {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px 14px;
   border-radius: 14px;
   background: #111;
   color: #fff;
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -1332,8 +1370,18 @@ body.marker-active #carousel {
     transform: scale(1.42);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-photo-popout {
+    transition: none;
+  }
+}
  
 @media (max-width: 700px) {
+  .sheet-photo-popout {
+    display: none !important;
+  }
+
   .gm-topbar,
   .gm-fabs {
     display: none;

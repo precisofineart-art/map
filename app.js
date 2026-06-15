@@ -477,6 +477,128 @@ function moveMarkerPreview(event) {
   preview.style.top = `${y}px`;
 }
 
+function canUseSheetPhotoPopout() {
+  return window.matchMedia("(min-width: 701px) and (hover: hover) and (pointer: fine)").matches;
+}
+
+function getSheetPhotoPopout() {
+  let popout = document.getElementById("sheet-photo-popout");
+  if (popout) return popout;
+
+  popout = document.createElement("div");
+  popout.id = "sheet-photo-popout";
+  popout.className = "sheet-photo-popout";
+  popout.setAttribute("aria-hidden", "true");
+
+  const image = document.createElement("img");
+  image.alt = "";
+  image.draggable = false;
+  popout.appendChild(image);
+  document.body.appendChild(popout);
+  return popout;
+}
+
+function hideSheetPhotoPopout() {
+  const popout = document.getElementById("sheet-photo-popout");
+  if (!popout) return;
+
+  popout.classList.remove("visible");
+  popout.setAttribute("aria-hidden", "true");
+}
+
+function positionSheetPhotoPopout() {
+  const popout = document.getElementById("sheet-photo-popout");
+  const sheet = document.getElementById("place-sheet");
+  const image = document.getElementById("sheet-image-main");
+  if (!popout || !sheet || !image || sheet.classList.contains("hidden")) return false;
+
+  const sheetRect = sheet.getBoundingClientRect();
+  const imageRect = image.getBoundingClientRect();
+  const left = Math.round(sheetRect.right + 20);
+  const rightPadding = 24;
+  const availableWidth = window.innerWidth - left - rightPadding;
+
+  if (!canUseSheetPhotoPopout() || availableWidth < 300 || imageRect.width < 80 || imageRect.height < 80) {
+    hideSheetPhotoPopout();
+    return false;
+  }
+
+  const aspectRatio = image.naturalWidth && image.naturalHeight
+    ? image.naturalWidth / image.naturalHeight
+    : Math.max(0.65, Math.min(1.55, imageRect.width / imageRect.height));
+  const width = Math.round(Math.min(Math.max(imageRect.width * 1.45, 390), availableWidth, 620));
+  const height = Math.round(Math.min(Math.max(width / aspectRatio, imageRect.height * 1.25), window.innerHeight - 48, 620));
+  const top = Math.round(Math.min(
+    window.innerHeight - height - 24,
+    Math.max(24, imageRect.top + imageRect.height / 2 - height / 2)
+  ));
+
+  popout.style.left = `${left}px`;
+  popout.style.top = `${top}px`;
+  popout.style.width = `${width}px`;
+  popout.style.height = `${height}px`;
+  return true;
+}
+
+function showSheetPhotoPopout() {
+  if (!canUseSheetPhotoPopout()) return;
+
+  const sourceImage = document.getElementById("sheet-image-main");
+  const source = sourceImage?.currentSrc || sourceImage?.src;
+  if (!source) return;
+
+  const popout = getSheetPhotoPopout();
+  const image = popout.querySelector("img");
+  if (!image) return;
+
+  image.src = source;
+  image.alt = sourceImage.alt || "";
+  if (!positionSheetPhotoPopout()) return;
+  popout.classList.add("visible");
+  popout.setAttribute("aria-hidden", "false");
+}
+
+function initSheetPhotoPopout() {
+  const sheetImage = document.getElementById("sheet-image-main");
+  const sheetMedia = document.querySelector(".sheet-media");
+  if (!sheetImage || !sheetMedia) return;
+
+  const showFromSheetMedia = (event) => {
+    if (event.target === sheetImage || sheetImage.contains(event.target)) {
+      showSheetPhotoPopout();
+    }
+  };
+  const hideFromSheetMedia = (event) => {
+    if (!sheetMedia.contains(event.relatedTarget)) {
+      hideSheetPhotoPopout();
+    }
+  };
+
+  sheetImage.addEventListener("pointerenter", showSheetPhotoPopout);
+  sheetImage.addEventListener("pointermove", positionSheetPhotoPopout);
+  sheetImage.addEventListener("pointerleave", hideSheetPhotoPopout);
+  sheetImage.addEventListener("mouseenter", showSheetPhotoPopout);
+  sheetImage.addEventListener("mousemove", positionSheetPhotoPopout);
+  sheetImage.addEventListener("mouseleave", hideSheetPhotoPopout);
+  sheetImage.addEventListener("click", showSheetPhotoPopout);
+  sheetMedia.addEventListener("mouseover", showFromSheetMedia);
+  sheetMedia.addEventListener("mouseout", hideFromSheetMedia);
+  sheetMedia.addEventListener("pointerleave", hideSheetPhotoPopout);
+  sheetMedia.addEventListener("mouseleave", hideSheetPhotoPopout);
+  document.addEventListener("click", (event) => {
+    const popout = document.getElementById("sheet-photo-popout");
+    if (!popout?.classList.contains("visible")) return;
+    if (event.target instanceof Element && event.target.closest(".sheet-media")) return;
+    hideSheetPhotoPopout();
+  });
+  sheetImage.addEventListener("load", () => {
+    const popout = document.getElementById("sheet-photo-popout");
+    if (popout?.classList.contains("visible")) {
+      showSheetPhotoPopout();
+    }
+  });
+}
+
 function hasValidCoordinates(item) {
   return Number.isFinite(item?.lng) && Number.isFinite(item?.lat);
 }
@@ -2339,7 +2461,9 @@ function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
+  hideSheetPhotoPopout();
   hideRegionExperience();
+
 
   const keepExpanded = options.keepExpanded && (
     sheet.classList.contains("level-2") ||
@@ -2615,6 +2739,7 @@ function resetView() {
 
   activeItem = null;
   resetExplodedMarkers();
+  hideSheetPhotoPopout();
 
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
@@ -3620,6 +3745,7 @@ map.on("load", async () => {
   });
 
   initSheetDrag();
+  initSheetPhotoPopout();
   initNearbyControls();
   initRegionExperienceControls();
 
@@ -3666,6 +3792,8 @@ if (closeBtn) {
 window.addEventListener("resize", () => {
   const sheet = document.getElementById("place-sheet");
   const isSheetOpen = sheet && !sheet.classList.contains("hidden");
+
+  hideSheetPhotoPopout();
 
   if (isSheetOpen && activeItem) {
     keepActiveMarkerVisible();
