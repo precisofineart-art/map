@@ -439,7 +439,16 @@ function hideMarkerPreview() {
   preview.replaceChildren();
 }
 
-function showMarkerPreview(item, event) {
+function getMarkerPreviewAnchor(anchor) {
+  if (anchor instanceof Element) return anchor.closest(".custom-marker-shell");
+
+  const target = anchor?.currentTarget || anchor?.target;
+  if (target instanceof Element) return target.closest(".custom-marker-shell");
+
+  return null;
+}
+
+function showMarkerPreview(item, anchor) {
   if (!item || window.matchMedia("(max-width: 700px)").matches) return;
 
   const preview = document.getElementById("marker-preview");
@@ -458,20 +467,32 @@ function showMarkerPreview(item, event) {
 
   copy.append(title, meta);
   preview.replaceChildren(copy);
-  moveMarkerPreview(event);
   preview.classList.remove("hidden");
   preview.setAttribute("aria-hidden", "false");
+  moveMarkerPreview(anchor);
+
+  requestAnimationFrame(() => moveMarkerPreview(anchor));
+  window.setTimeout(() => moveMarkerPreview(anchor), 260);
 }
 
-function moveMarkerPreview(event) {
+function moveMarkerPreview(anchor) {
   const preview = document.getElementById("marker-preview");
   if (!preview || preview.classList.contains("hidden")) return;
 
-  const clientX = event?.clientX ?? window.innerWidth / 2;
-  const clientY = event?.clientY ?? window.innerHeight / 2;
-  const padding = 132;
-  const x = Math.min(window.innerWidth - padding, Math.max(padding, clientX));
-  const y = Math.max(96, clientY);
+  const markerShell = getMarkerPreviewAnchor(anchor);
+  const markerEl = markerShell?.querySelector(".custom-marker") || markerShell;
+  const markerRect = markerEl?.getBoundingClientRect();
+  const previewRect = preview.getBoundingClientRect();
+  const viewportPadding = 14;
+
+  if (!markerRect || markerRect.width <= 0 || markerRect.height <= 0) return;
+
+  const previewHalfWidth = previewRect.width / 2;
+  const minX = previewHalfWidth + viewportPadding;
+  const maxX = window.innerWidth - previewHalfWidth - viewportPadding;
+  const markerCenterX = markerRect.left + markerRect.width / 2;
+  const x = Math.min(maxX, Math.max(minX, markerCenterX));
+  const y = Math.max(previewRect.height + viewportPadding + 10, markerRect.top);
 
   preview.style.left = `${x}px`;
   preview.style.top = `${y}px`;
@@ -3598,11 +3619,11 @@ function render() {
     shell.appendChild(offset);
     shell.appendChild(label);
 
-    shell.addEventListener("pointerenter", (event) => {
+    shell.addEventListener("pointerenter", () => {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
-      showMarkerPreview(item, event);
+      showMarkerPreview(item, shell);
     });
 
     shell.addEventListener("pointerleave", () => {
@@ -3610,7 +3631,7 @@ function render() {
       hideMarkerPreview();
     });
 
-    shell.addEventListener("pointermove", moveMarkerPreview);
+    shell.addEventListener("pointermove", () => moveMarkerPreview(shell));
 
     shell.addEventListener("pointerdown", () => {
       if (activeItem?.id !== item.id) {
