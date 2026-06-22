@@ -1481,20 +1481,6 @@ body.marker-active #carousel {
     animation-duration: 2s;
   }
 
-  .marker-preview {
-    max-width: min(220px, calc(100vw - 20px));
-    padding: 7px 10px;
-    transform: translate(-50%, calc(-100% - 11px));
-  }
-
-  .marker-preview-title {
-    font-size: 11px;
-  }
-
-  .marker-preview-meta {
-    font-size: 9px;
-  }
-
   .gm-zoom-control {
     right: 9px;
     bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 74px);

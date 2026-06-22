@@ -449,7 +449,7 @@ function getMarkerPreviewAnchor(anchor) {
 }
 
 function showMarkerPreview(item, anchor) {
-  if (!item) return;
+  if (!item || window.matchMedia("(max-width: 700px)").matches) return;
 
   const preview = document.getElementById("marker-preview");
   if (!preview) return;
@@ -3626,11 +3626,9 @@ function render() {
       showMarkerPreview(item, shell);
     });
 
-    shell.addEventListener("pointerleave", (event) => {
+    shell.addEventListener("pointerleave", () => {
       el.classList.remove("hover");
-      if (event.pointerType !== "touch") {
-        hideMarkerPreview();
-      }
+      hideMarkerPreview();
     });
 
     shell.addEventListener("pointermove", () => moveMarkerPreview(shell));
@@ -3639,7 +3637,6 @@ function render() {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
-      showMarkerPreview(item, shell);
     });
 
     shell.addEventListener("pointerup", () => {
@@ -3650,21 +3647,14 @@ function render() {
 
     shell.addEventListener("pointercancel", () => {
       el.classList.remove("hover");
-      hideMarkerPreview();
     });
 
     shell.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const keepPreviewBriefly = isMobileMapViewport();
       el.classList.remove("hover");
-      if (!keepPreviewBriefly) {
-        hideMarkerPreview();
-      }
+      hideMarkerPreview();
       handleMarkerClick(item);
-      if (keepPreviewBriefly) {
-        window.setTimeout(hideMarkerPreview, 1100);
-      }
     });
 
     shell.addEventListener("keydown", (e) => {
