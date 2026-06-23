@@ -1983,6 +1983,12 @@ function positionRegionSubmenu(group) {
   const submenu = submenuId ? document.getElementById(submenuId) : null;
   if (!toggle || !submenu) return;
 
+  if (group.closest(".desktop-sidebar")) {
+    submenu.style.removeProperty("--region-submenu-left");
+    submenu.style.removeProperty("--region-submenu-top");
+    return;
+  }
+
   const rect = toggle.getBoundingClientRect();
   const maxLeft = window.innerWidth - 94;
   const left = Math.max(94, Math.min(maxLeft, rect.left + rect.width / 2));

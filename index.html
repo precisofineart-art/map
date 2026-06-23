@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260621-1" />
+  <link rel="stylesheet" href="styles.css?v=20260622-15" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -22,6 +22,29 @@
   </div>
 
   <div id="marker-preview" class="marker-preview hidden" aria-hidden="true"></div>
+
+  <aside id="desktop-sidebar" class="desktop-sidebar" aria-label="Desktop map menu">
+    <div class="desktop-sidebar-top">
+      <a href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer" class="desktop-brand" aria-label="Open Preciso store">
+        <img src="logo.png" alt="Preciso" draggable="false">
+      </a>
+    </div>
+
+    <div class="desktop-sidebar-scroll">
+      <div class="desktop-menu-section">
+        <div class="desktop-menu-label">Library</div>
+        <nav class="desktop-location-menu" aria-label="Map countries and states" data-location-menu>
+          <button class="region-pill desktop-menu-item active" type="button" data-region="all">My Home</button>
+          <div class="region-menu-group desktop-menu-group" data-country-group="usa">
+            <button class="region-pill region-parent-pill desktop-menu-item desktop-menu-parent" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="desktop-usa-region-menu">
+              USA <span class="region-pill-caret" aria-hidden="true">v</span>
+            </button>
+            <div id="desktop-usa-region-menu" class="region-submenu desktop-region-submenu" aria-label="USA states" data-country-submenu="usa"></div>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </aside>
 
   <section id="region-intro" class="region-intro hidden" aria-live="polite" aria-label="Selected map view">
     <div class="region-intro-copy">
@@ -99,13 +122,7 @@
     </div>
   </div>
 
-  <footer id="footer" class="app-footer" aria-label="Site navigation">
-    <a class="footer-site-link" href="https://precisoart.myshopify.com" target="_blank" rel="noopener noreferrer">
-      Back to Full Site
-    </a>
-  </footer>
-
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260621-1"></script>
+  <script src="app.js?v=20260622-15"></script>
 </body>
 </html>
