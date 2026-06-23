@@ -1668,7 +1668,6 @@ body.marker-active #carousel {
   pointer-events: none;
 }
 
-.custom-marker-shell.exploded .custom-marker-label,
 .custom-marker-shell:hover .custom-marker-label,
 .custom-marker-shell:focus-visible .custom-marker-label {
   display: block;

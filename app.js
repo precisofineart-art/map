@@ -3777,6 +3777,9 @@ map.on("load", async () => {
   initRegionExperienceControls();
 
   map.on("movestart", () => {
+    hideMarkerPreview();
+    clearMarkerHoverStates();
+
     if (explodedMarkerGroup && !isFittingExplodedGroup) {
       resetExplodedMarkers();
       setMarkerVisibilityByZoom();
@@ -3791,6 +3794,8 @@ map.on("load", async () => {
   });
 
 map.on("zoom", () => {
+  hideMarkerPreview();
+  clearMarkerHoverStates();
   setMarkerVisibilityByZoom();
   updateEdgeIndicator();
   forceActiveMarkerVisible();
