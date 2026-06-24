@@ -628,6 +628,23 @@ function isMobileMapViewport() {
   return window.matchMedia("(max-width: 700px)").matches;
 }
 
+function isMobileHeaderLocationMenu(menu) {
+  return Boolean(menu?.closest("#header")) && isMobileMapViewport();
+}
+
+function closeMobileLocationMenus(exceptMenu = null) {
+  document.querySelectorAll("#header [data-location-menu].mobile-menu-open").forEach((menu) => {
+    if (menu !== exceptMenu) menu.classList.remove("mobile-menu-open");
+  });
+}
+
+function openMobileLocationMenu(menu) {
+  if (!isMobileHeaderLocationMenu(menu)) return;
+
+  closeMobileLocationMenus(menu);
+  menu.classList.add("mobile-menu-open");
+}
+
 function getDistanceMiles(a, b) {
   if (!hasValidCoordinates(a) || !hasValidCoordinates(b)) return Infinity;
 
@@ -1983,7 +2000,8 @@ function positionRegionSubmenu(group) {
   const submenu = submenuId ? document.getElementById(submenuId) : null;
   if (!toggle || !submenu) return;
 
-  if (group.closest(".desktop-sidebar")) {
+  const menu = group.closest("[data-location-menu]");
+  if (group.closest(".desktop-sidebar") || isMobileHeaderLocationMenu(menu)) {
     submenu.style.removeProperty("--region-submenu-left");
     submenu.style.removeProperty("--region-submenu-top");
     return;
@@ -2054,6 +2072,7 @@ function canUseHoverRegionMenu() {
 function closeRegionMenus(exceptGroup = null) {
   if (!exceptGroup) {
     window.clearTimeout(regionMenuCloseTimer);
+    closeMobileLocationMenus();
   }
 
   document.querySelectorAll(".region-menu-group.open").forEach((group) => {
@@ -2078,19 +2097,23 @@ function bindHeaderRegionPills() {
     toggle.dataset.regionMenuBound = "true";
     const group = toggle.closest(".region-menu-group");
     const submenu = getRegionSubmenuForGroup(group);
+    const menu = toggle.closest("[data-location-menu]");
 
     toggle.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
+      const isMobileSelector = isMobileHeaderLocationMenu(menu);
       const shouldOpen = !group?.classList.contains("open");
       if (shouldOpen) {
+        if (isMobileSelector) openMobileLocationMenu(menu);
         const regionKey = toggle.dataset.region || "all";
         focusRegion(regionKey);
         openRegionMenu(group);
         if (group) group.dataset.regionClickOpen = "true";
       } else {
         closeRegionMenus();
+        if (isMobileSelector) closeMobileLocationMenus();
       }
     });
 
@@ -2148,9 +2171,22 @@ function bindHeaderRegionPills() {
     chip.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      const menu = chip.closest("[data-location-menu]");
+      const isClosedMobileSelector = (
+        isMobileHeaderLocationMenu(menu) &&
+        !menu.classList.contains("mobile-menu-open") &&
+        chip.classList.contains("active")
+      );
+
+      if (isClosedMobileSelector) {
+        openMobileLocationMenu(menu);
+        return;
+      }
+
       const regionKey = chip.dataset.region || "all";
       focusRegion(regionKey);
       closeRegionMenus();
+      if (isMobileMapViewport()) closeMobileLocationMenus();
     });
   });
 
