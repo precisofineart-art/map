@@ -11,6 +11,18 @@ body.marker-active .edge-indicator {
   --app-bottom: 0px;
   --app-height: 100vh;
   --map-marker-size: 40px;
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-panel:
+    radial-gradient(circle at 25% 0%, rgba(255, 255, 255, 0.58), transparent 44%),
+    linear-gradient(135deg, rgba(248, 250, 252, 0.7), rgba(206, 216, 224, 0.42));
+  --glass-pill:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(222, 230, 237, 0.48));
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    0 14px 34px rgba(13, 23, 38, 0.18),
+    0 4px 12px rgba(13, 23, 38, 0.12);
+  --glass-filter: blur(24px) saturate(1.55) brightness(1.04);
 }
 
 html,
@@ -147,14 +159,6 @@ body {
     gap: 8px;
   }
 
-  .desktop-menu-label {
-    padding: 0 8px;
-    color: rgba(245, 247, 250, 0.58);
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 1.2;
-  }
-
   .desktop-location-menu {
     display: flex;
     flex-direction: column;
@@ -189,24 +193,22 @@ body {
   .desktop-region-submenu .region-submenu-item::before {
     content: "";
     flex: 0 0 auto;
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 22px;
     border: 0;
-    border-radius: 6px;
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(185, 199, 211, 0.7)),
-      rgba(255, 255, 255, 0.22);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-      0 2px 6px rgba(0, 0, 0, 0.18);
+    border-radius: 0;
+    background: #0a84ff;
+    box-shadow: 0 4px 10px rgba(10, 132, 255, 0.24);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='black'%20fill-rule='evenodd'%20d='M12%202C8.14%202%205%205.14%205%209c0%205.25%207%2013%207%2013s7-7.75%207-13c0-3.86-3.14-7-7-7Zm0%209.5A2.5%202.5%200%201%200%2012%206.5a2.5%202.5%200%200%200%200%205Z'%20clip-rule='evenodd'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='black'%20fill-rule='evenodd'%20d='M12%202C8.14%202%205%205.14%205%209c0%205.25%207%2013%207%2013s7-7.75%207-13c0-3.86-3.14-7-7-7Zm0%209.5A2.5%202.5%200%201%200%2012%206.5a2.5%202.5%200%200%200%200%205Z'%20clip-rule='evenodd'/%3E%3C/svg%3E") center / contain no-repeat;
   }
 
   .desktop-region-submenu .region-submenu-item::before {
-    width: 12px;
-    height: 12px;
-    margin-left: 2px;
-    border-radius: 999px;
-    background: rgba(245, 247, 250, 0.46);
+    width: 13px;
+    height: 16px;
+    margin-left: 3px;
+    background: rgba(10, 132, 255, 0.72);
+    box-shadow: none;
   }
 
   .desktop-location-menu .region-pill:hover,
@@ -500,11 +502,12 @@ body {
   max-width: min(100%, 680px);
   min-width: 0;
   padding: 4px;
-  border: 1px solid rgba(12, 52, 122, 0.08);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(12px);
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   pointer-events: auto;
   overflow-x: auto;
   overflow-y: hidden;
@@ -529,7 +532,7 @@ body {
   margin-left: -18px;
   pointer-events: none;
   border-radius: 0 999px 999px 0;
-  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.72));
+  background: linear-gradient(to right, rgba(236, 242, 247, 0), rgba(236, 242, 247, 0.54));
 }
 
 .region-pill {
@@ -539,16 +542,20 @@ body {
   justify-content: center;
   gap: 5px;
   min-height: 30px;
-  border: 1px solid rgba(12, 52, 122, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
   padding: 0 12px;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--glass-pill);
   color: #0c347a;
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 4px 11px rgba(13, 23, 38, 0.08);
+  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
@@ -576,8 +583,11 @@ body {
 
 .region-pill:hover {
   transform: translateY(-0.5px);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(233, 239, 245, 0.62));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 9px 20px rgba(13, 23, 38, 0.15);
 }
 
 .region-pill:active {
@@ -631,11 +641,12 @@ body {
   gap: 5px;
   width: min(188px, calc(100vw - 24px));
   padding: 6px;
-  border: 1px solid rgba(12, 52, 122, 0.1);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(14px);
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   transform: translateX(-50%);
 }
 
@@ -650,9 +661,9 @@ body {
   justify-content: center;
   gap: 5px;
   min-height: 32px;
-  border: 1px solid rgba(12, 52, 122, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass-pill);
   color: #0c347a;
   font-size: 10px;
   font-weight: 800;
@@ -748,14 +759,14 @@ body.marker-active #google-ui {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(12, 52, 122, 0.1);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
   padding: 7px 7px 7px 12px;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--glass-panel);
   color: #202124;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   transform: translateX(-50%);
 }
 
@@ -818,11 +829,12 @@ body.marker-active #google-ui {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 4px;
-  border: 1px solid rgba(12, 52, 122, 0.08);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(14px);
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   pointer-events: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -838,10 +850,10 @@ body.marker-active #google-ui {
   display: flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(12, 52, 122, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
   padding: 3px 8px 3px 3px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--glass-pill);
   color: #202124;
   text-align: left;
   cursor: pointer;
@@ -850,8 +862,11 @@ body.marker-active #google-ui {
 
 .strip-print:hover,
 .strip-print.active {
-  background: #fff;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(236, 242, 247, 0.68));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 10px 22px rgba(13, 23, 38, 0.14);
   transform: translateY(-1px);
 }
 
@@ -1053,10 +1068,12 @@ body.marker-active #carousel {
   flex-direction: column;
   width: 34px;
   overflow: hidden;
-  border: 1px solid rgba(60, 64, 67, 0.18);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.24);
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   pointer-events: auto;
 }
 
@@ -1066,7 +1083,7 @@ body.marker-active #carousel {
   align-items: center;
   justify-content: center;
   border: 0;
-  background: #fff;
+  background: transparent;
   color: #3c4043;
   cursor: pointer;
   font-family: Arial, sans-serif;
@@ -1085,7 +1102,7 @@ body.marker-active #carousel {
 .gm-zoom-divider {
   height: 1px;
   margin: 0 8px;
-  background: #e0e0e0;
+  background: rgba(60, 64, 67, 0.18);
 }
 
 .gm-reset-button {
@@ -1094,21 +1111,24 @@ body.marker-active #carousel {
   bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 44px);
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(60, 64, 67, 0.18);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.24);
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   font-size: 17px;
   pointer-events: auto;
 }
 
 .gm-zoom-button:hover,
 .gm-reset-button:hover {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .gm-zoom-button:active,
 .gm-reset-button:active {
-  background: #f1f3f4;
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .gm-zoom-button:disabled {
@@ -2131,15 +2151,17 @@ body.marker-active #carousel {
     overflow-y: hidden;
     white-space: nowrap;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.54);
-    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
+    background: var(--glass-panel);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
   }
 
   .region-pills::after {
     display: block;
     width: 16px;
     margin-left: -16px;
-    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.54));
+    background: linear-gradient(to right, rgba(236, 242, 247, 0), rgba(236, 242, 247, 0.54));
   }
 
   body.marker-active #header {
