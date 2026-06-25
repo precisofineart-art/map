@@ -159,6 +159,15 @@ body {
     gap: 8px;
   }
 
+  .desktop-menu-label {
+    padding: 0 10px 4px;
+    color: rgba(245, 247, 250, 0.56);
+    font-size: 11px;
+    font-weight: 820;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
   .desktop-location-menu {
     display: flex;
     flex-direction: column;
@@ -758,10 +767,9 @@ body.marker-active #google-ui {
   max-width: min(320px, calc(100vw - 36px));
   display: flex;
   align-items: center;
-  gap: 8px;
   border: 1px solid var(--glass-border);
   border-radius: 999px;
-  padding: 7px 7px 7px 12px;
+  padding: 8px 14px;
   background: var(--glass-panel);
   color: #202124;
   box-shadow: var(--glass-shadow);
@@ -790,26 +798,6 @@ body.marker-active #google-ui {
 
 .region-intro-meta {
   display: none;
-}
-
-.region-explore-button {
-  flex: 0 0 auto;
-  min-width: 54px;
-  min-height: 28px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 10px;
-  background: #0c347a;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 850;
-  cursor: pointer;
-  pointer-events: auto;
-  box-shadow: none;
-}
-
-.region-explore-button:active {
-  transform: scale(0.98);
 }
 
 #carousel {
@@ -1568,6 +1556,8 @@ body.marker-active #carousel {
 .custom-marker-shell {
   --explode-x: 0px;
   --explode-y: 0px;
+  --marker-shift-x: 0px;
+  --marker-shift-y: 0px;
   width: var(--map-marker-size);
   height: var(--map-marker-size);
 }
@@ -1576,7 +1566,10 @@ body.marker-active #carousel {
   position: relative;
   width: var(--map-marker-size);
   height: var(--map-marker-size);
-  transform: translate(var(--explode-x), var(--explode-y));
+  transform: translate(
+    calc(var(--explode-x) + var(--marker-shift-x)),
+    calc(var(--explode-y) + var(--marker-shift-y))
+  );
   transform-origin: center center;
   transition: transform 0.26s cubic-bezier(0.22, 0.9, 0.24, 1), filter 0.2s ease;
   will-change: transform;
@@ -1993,12 +1986,11 @@ body.marker-active #carousel {
   }
 
   .region-intro {
-    top: calc(var(--app-top) + 76px);
+    top: calc(var(--app-top) + 98px);
     left: 50%;
     right: auto;
-    max-width: min(218px, calc(100vw - 20px));
-    gap: 5px;
-    padding: 4px 4px 4px 9px;
+    max-width: min(250px, calc(100vw - 20px));
+    padding: 6px 12px;
     border-radius: 999px;
     background: var(--glass-panel);
     box-shadow: var(--glass-shadow);
@@ -2012,26 +2004,12 @@ body.marker-active #carousel {
   }
 
   .region-intro-title {
-    max-width: 122px;
+    max-width: 220px;
     font-size: 10px;
   }
 
   .region-intro-meta {
     display: none;
-  }
-
-  .region-explore-button {
-    position: static;
-    min-width: 43px;
-    min-height: 22px;
-    padding: 0 7px;
-    font-size: 8.5px;
-    box-shadow: none;
-    transform: none;
-  }
-
-  .region-explore-button:active {
-    transform: scale(0.98);
   }
 
   #carousel {

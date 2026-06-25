@@ -273,6 +273,8 @@ let activeMarkerGroups = new Map();
 let isFittingExplodedGroup = false;
 let nearbyRenderToken = 0;
 let regionMenuCloseTimer = null;
+let regionMenuPointer = null;
+let regionMenuPointerTrackingBound = false;
 
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
@@ -282,6 +284,9 @@ const MARKER_GROUP_MAX_ZOOM = 9.6;
 const MARKER_GROUP_MIN_ITEMS = 2;
 const MARKER_REPRESENTATIVE_GROUP_MAX_ZOOM = 7.8;
 const MARKER_REPRESENTATIVE_GROUP_DISTANCE = 72;
+const MARKER_AUTO_SPREAD_MIN_ZOOM = 10.2;
+const MARKER_AUTO_SPREAD_DISTANCE = 56;
+const MARKER_AUTO_SPREAD_RADIUS = 82;
 const NEARBY_PRINT_LIMIT = 4;
 const NEARBY_TRANSITION_MS = 150;
 const SHEET_MARKER_TRANSITION_MS = 1650;
@@ -290,6 +295,7 @@ const REGION_TRANSITION_MS = 1450;
 const GESTURE_ZOOM_TRANSITION_MS = 140;
 const DOUBLE_TAP_ZOOM_TRANSITION_MS = 420;
 const DOUBLE_CLICK_ZOOM_TRANSITION_MS = 320;
+const REGION_MENU_CLOSE_DELAY_MS = 320;
 const TRACKPAD_PINCH_ZOOM_RATE = 0.018;
 const TRACKPAD_PINCH_MAX_DELTA = 0.72;
 const SAFARI_GESTURE_ZOOM_RATE = 2.65;
@@ -1004,7 +1010,6 @@ function renderRegionIntro(regionKey = activeRegionKey) {
   const intro = document.getElementById("region-intro");
   const title = document.getElementById("region-intro-title");
   const meta = document.getElementById("region-intro-meta");
-  const exploreButton = document.getElementById("region-explore");
   if (!intro || !title || !meta) return;
 
   const items = getRegionItems(regionKey);
@@ -1021,11 +1026,6 @@ function renderRegionIntro(regionKey = activeRegionKey) {
 
   title.textContent = titleLabel;
   meta.textContent = `${formatCount(locationCount, "location")} · ${printLabel}`;
-  if (exploreButton) {
-    exploreButton.disabled = items.length < 1;
-    exploreButton.dataset.region = regionKey;
-    exploreButton.textContent = "Route";
-  }
 
   intro.classList.remove("hidden");
   intro.setAttribute("aria-hidden", "false");
@@ -1233,6 +1233,157 @@ function getExplodeOffset(index, count) {
     x: Math.round(Math.cos(radians) * radius),
     y: Math.round(Math.sin(radians) * radius)
   };
+}
+
+function getMarkerSizePx() {
+  const markerSizeValue = getComputedStyle(document.documentElement)
+    .getPropertyValue("--map-marker-size");
+  const markerSize = Number.parseFloat(markerSizeValue);
+  return Number.isFinite(markerSize) ? markerSize : 46;
+}
+
+function shouldAutoSpreadCloseMarkers() {
+  if (!map || explodedMarkerGroup) return false;
+  return map.getZoom() >= MARKER_AUTO_SPREAD_MIN_ZOOM || Boolean(activeItem) || isPlaceSheetOpen();
+}
+
+function getAutoSpreadOffset(index, count) {
+  const markerSize = getMarkerSizePx();
+  const anglePattern = [-50, 50, -130, 130, 0, 180, -85, 85, 150, -150, 20];
+  const angle = anglePattern[index % anglePattern.length];
+  const ring = Math.floor(index / anglePattern.length);
+  const radius = Math.max(MARKER_AUTO_SPREAD_RADIUS, markerSize + 12)
+    + ring * 18
+    + Math.min(14, Math.max(0, count - 5) * 2);
+  const radians = angle * Math.PI / 180;
+
+  return {
+    x: Math.round(Math.cos(radians) * radius),
+    y: Math.round(Math.sin(radians) * radius)
+  };
+}
+
+function clearAutoMarkerOffsets() {
+  document.querySelectorAll(".custom-marker-shell").forEach((markerShell) => {
+    const wasAutoSpread = markerShell.classList.contains("auto-spread");
+    markerShell.classList.remove("auto-spread");
+    markerShell.style.removeProperty("--marker-shift-x");
+    markerShell.style.removeProperty("--marker-shift-y");
+
+    const keepsStack = (
+      markerShell.classList.contains("active") ||
+      markerShell.classList.contains("exploded") ||
+      markerShell.classList.contains("explode-origin")
+    );
+
+    if (wasAutoSpread && !keepsStack) {
+      markerShell.style.removeProperty("z-index");
+      markerShell.closest(".mapboxgl-marker")?.style.removeProperty("z-index");
+    }
+  });
+}
+
+function getAutoSpreadAnchor(groupItems = []) {
+  const activeGroupItem = activeItem
+    ? groupItems.find((entry) => entry.item.id === activeItem.id)
+    : null;
+  if (activeGroupItem) return activeGroupItem;
+
+  const representative = groupItems.find((entry) => (
+    activeMarkerGroups.get(entry.item.id)?.representative?.id === entry.item.id
+  ));
+  if (representative) return representative;
+
+  return groupItems[0];
+}
+
+function groupCloseMarkerEntries(entries = []) {
+  const parent = entries.map((_, index) => index);
+  const find = (index) => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  };
+  const union = (a, b) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent[rootB] = rootA;
+  };
+
+  const markerSize = getMarkerSizePx();
+  const spreadDistance = Math.max(MARKER_AUTO_SPREAD_DISTANCE, markerSize * 1.14);
+
+  for (let a = 0; a < entries.length; a += 1) {
+    for (let b = a + 1; b < entries.length; b += 1) {
+      const distance = Math.hypot(
+        entries[a].point.x - entries[b].point.x,
+        entries[a].point.y - entries[b].point.y
+      );
+
+      if (distance <= spreadDistance) union(a, b);
+    }
+  }
+
+  const groups = new Map();
+  entries.forEach((entry, index) => {
+    const root = find(index);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(entry);
+  });
+
+  return [...groups.values()].filter((groupItems) => groupItems.length > 1);
+}
+
+function applyAutoMarkerOffsets() {
+  clearAutoMarkerOffsets();
+  if (!shouldAutoSpreadCloseMarkers()) return;
+
+  const visibleEntries = markers
+    .map((marker) => {
+      const item = marker.item;
+      const markerShell = marker.getElement();
+      if (!item?.id || !markerShell || markerShell.style.display === "none") return null;
+      if (!hasValidCoordinates(item)) return null;
+
+      const point = getProjectedItemPoint(item);
+      if (!point) return null;
+
+      return { item, markerShell, point };
+    })
+    .filter(Boolean);
+
+  groupCloseMarkerEntries(visibleEntries).forEach((groupItems) => {
+    const sortedItems = groupItems.sort((a, b) => {
+      if (a.item.id === activeItem?.id) return -1;
+      if (b.item.id === activeItem?.id) return 1;
+
+      const createdDelta = getCreatedTimestamp(b.item) - getCreatedTimestamp(a.item);
+      return createdDelta || getMarkerLabel(a.item).localeCompare(getMarkerLabel(b.item));
+    });
+    const anchor = getAutoSpreadAnchor(sortedItems);
+    if (!anchor) return;
+
+    sortedItems
+      .filter((entry) => entry.item.id !== anchor.item.id)
+      .sort((a, b) => {
+        const angleA = Math.atan2(a.point.y - anchor.point.y, a.point.x - anchor.point.x);
+        const angleB = Math.atan2(b.point.y - anchor.point.y, b.point.x - anchor.point.x);
+        return angleA - angleB || getMarkerLabel(a.item).localeCompare(getMarkerLabel(b.item));
+      })
+      .forEach((entry, index, shiftedItems) => {
+        const offset = getAutoSpreadOffset(index, shiftedItems.length);
+        const zIndex = 8200 + shiftedItems.length - index;
+        const markerWrapper = entry.markerShell.closest(".mapboxgl-marker");
+
+        entry.markerShell.classList.add("auto-spread");
+        entry.markerShell.style.setProperty("--marker-shift-x", `${offset.x}px`);
+        entry.markerShell.style.setProperty("--marker-shift-y", `${offset.y}px`);
+        entry.markerShell.style.zIndex = `${zIndex}`;
+        markerWrapper?.style.setProperty("z-index", `${zIndex}`);
+      });
+  });
 }
 
 function getExplodedGroupFitPadding() {
@@ -1552,6 +1703,15 @@ function getLocationFilterView(regionKey) {
   return locationFilters.get(regionKey)?.view || REGION_VIEWS[regionKey] || REGION_VIEWS.all;
 }
 
+function getDefaultRegionKey() {
+  if (locationFilters.has(USA_FILTER_KEY)) return USA_FILTER_KEY;
+
+  const firstCountry = [...locationFilters.values()]
+    .find((filter) => filter.type === "country");
+
+  return firstCountry?.key || "all";
+}
+
 function getHomeItems() {
   return listings.filter((item) => (
     hasValidCoordinates(item) &&
@@ -1613,7 +1773,7 @@ function getRegionKeyFromHash() {
 }
 
 function getActiveViewLabel(regionKey = activeRegionKey) {
-  if (!regionKey || regionKey === "all") return "My Home";
+  if (!regionKey || regionKey === "all") return "Preciso";
   return locationFilters.get(regionKey)?.label || REGION_VIEWS[regionKey]?.label || "Map";
 }
 
@@ -1635,7 +1795,7 @@ function getResetRegionKey(item = activeItem) {
     return activeRegionKey;
   }
 
-  return item ? getRegionKeyForItem(item) : "all";
+  return item ? getRegionKeyForItem(item) : getDefaultRegionKey();
 }
 
 function setActiveItemRegion(item) {
@@ -1687,10 +1847,6 @@ function renderLocationMenus() {
     const usaToggle = menu.querySelector("[data-country-toggle='usa']");
 
     menu.querySelectorAll("[data-country-filter='true']").forEach((button) => button.remove());
-
-    const homeButton = [...menu.querySelectorAll("[data-region='all']")]
-      .find((button) => !button.matches("[data-country-toggle]"));
-    setRegionButtonContent(homeButton, "My Home", getItemsForRegion("all").length);
 
     if (usaToggle) {
       usaToggle.dataset.region = USA_FILTER_KEY;
@@ -1938,17 +2094,6 @@ function initNearbyControls() {
   });
 }
 
-function initRegionExperienceControls() {
-  const exploreButton = document.getElementById("region-explore");
-  if (exploreButton) {
-    exploreButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openTrailForRegion(exploreButton.dataset.region || activeRegionKey);
-    });
-  }
-}
-
 function focusRegion(regionKey, options = {}) {
   const region = getLocationFilterView(regionKey);
 
@@ -2012,7 +2157,7 @@ function positionRegionSubmenu(group) {
   const left = Math.max(94, Math.min(maxLeft, rect.left + rect.width / 2));
 
   submenu.style.setProperty("--region-submenu-left", `${Math.round(left)}px`);
-  submenu.style.setProperty("--region-submenu-top", `${Math.round(rect.bottom + 7)}px`);
+  submenu.style.setProperty("--region-submenu-top", `${Math.round(rect.bottom + 3)}px`);
   document.body.appendChild(submenu);
 }
 
@@ -2054,11 +2199,12 @@ function openRegionMenu(group) {
   positionRegionSubmenu(group);
 }
 
-function scheduleCloseRegionMenus() {
+function scheduleCloseRegionMenus(delay = REGION_MENU_CLOSE_DELAY_MS) {
   window.clearTimeout(regionMenuCloseTimer);
   regionMenuCloseTimer = window.setTimeout(() => {
+    if (isPointerInsideOpenRegionMenu()) return;
     closeRegionMenus();
-  }, 160);
+  }, delay);
 }
 
 function isRegionMenuPinned(group) {
@@ -2067,6 +2213,72 @@ function isRegionMenuPinned(group) {
 
 function canUseHoverRegionMenu() {
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
+function isInsideRegionHoverZone(target, group, submenu) {
+  if (!(target instanceof Node)) return false;
+
+  return Boolean(
+    (
+      group?.contains(target) ||
+      submenu?.contains(target)
+    )
+  );
+}
+
+function isMovingWithinRegionHoverZone(event, group, submenu) {
+  return isInsideRegionHoverZone(event?.relatedTarget, group, submenu);
+}
+
+function updateRegionMenuPointer(event) {
+  if (!Number.isFinite(event?.clientX) || !Number.isFinite(event?.clientY)) return;
+
+  regionMenuPointer = {
+    x: event.clientX,
+    y: event.clientY
+  };
+}
+
+function pointInsideRect(rect, point, padding = 0) {
+  if (!rect || !point) return false;
+
+  return (
+    point.x >= rect.left - padding &&
+    point.x <= rect.right + padding &&
+    point.y >= rect.top - padding &&
+    point.y <= rect.bottom + padding
+  );
+}
+
+function pointInsideRegionMenuBridge(group, submenu, point) {
+  if (!group || !submenu || !point) return false;
+
+  const groupRect = group.getBoundingClientRect();
+  const submenuRect = submenu.getBoundingClientRect();
+  if (!groupRect.width || !groupRect.height || !submenuRect.width || !submenuRect.height) return false;
+
+  const bridgePadding = 12;
+  const bridgeRect = {
+    left: Math.min(groupRect.left, submenuRect.left) - bridgePadding,
+    right: Math.max(groupRect.right, submenuRect.right) + bridgePadding,
+    top: Math.min(groupRect.top, submenuRect.top) - bridgePadding,
+    bottom: Math.max(groupRect.bottom, submenuRect.bottom) + bridgePadding
+  };
+
+  return pointInsideRect(bridgeRect, point);
+}
+
+function isPointerInsideOpenRegionMenu() {
+  if (!regionMenuPointer) return false;
+
+  return [...document.querySelectorAll(".region-menu-group.open")].some((group) => {
+    const submenu = getRegionSubmenuForGroup(group);
+    return (
+      pointInsideRect(group.getBoundingClientRect(), regionMenuPointer, 8) ||
+      pointInsideRect(submenu?.getBoundingClientRect(), regionMenuPointer, 8) ||
+      pointInsideRegionMenuBridge(group, submenu, regionMenuPointer)
+    );
+  });
 }
 
 function closeRegionMenus(exceptGroup = null) {
@@ -2091,6 +2303,12 @@ function closeRegionMenus(exceptGroup = null) {
 }
 
 function bindHeaderRegionPills() {
+  if (!regionMenuPointerTrackingBound) {
+    regionMenuPointerTrackingBound = true;
+    document.addEventListener("pointermove", updateRegionMenuPointer, { passive: true });
+    document.addEventListener("mousemove", updateRegionMenuPointer, { passive: true });
+  }
+
   document.querySelectorAll("[data-region-menu-toggle]").forEach((toggle) => {
     if (toggle.dataset.regionMenuBound === "true") return;
 
@@ -2121,20 +2339,24 @@ function bindHeaderRegionPills() {
       if (e.pointerType === "mouse") openRegionMenu(group);
     });
     group?.addEventListener("pointerleave", (e) => {
-      if (e.pointerType === "mouse" && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
+      if (e.pointerType !== "mouse") return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
+      if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseenter", () => {
       if (canUseHoverRegionMenu()) openRegionMenu(group);
     });
-    group?.addEventListener("mouseleave", () => {
-      if (canUseHoverRegionMenu() && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
+    group?.addEventListener("mouseleave", (e) => {
+      if (!canUseHoverRegionMenu()) return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
+      if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseover", () => {
       if (canUseHoverRegionMenu()) openRegionMenu(group);
     });
     group?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
-      if (group.contains(e.relatedTarget) || submenu?.contains(e.relatedTarget)) return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
     });
@@ -2144,20 +2366,24 @@ function bindHeaderRegionPills() {
       if (e.pointerType === "mouse") window.clearTimeout(regionMenuCloseTimer);
     });
     submenu?.addEventListener("pointerleave", (e) => {
-      if (e.pointerType === "mouse" && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
+      if (e.pointerType !== "mouse") return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
+      if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     submenu?.addEventListener("mouseenter", () => {
       if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
     });
-    submenu?.addEventListener("mouseleave", () => {
-      if (canUseHoverRegionMenu() && !isRegionMenuPinned(group)) scheduleCloseRegionMenus();
+    submenu?.addEventListener("mouseleave", (e) => {
+      if (!canUseHoverRegionMenu()) return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
+      if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     submenu?.addEventListener("mouseover", () => {
       if (canUseHoverRegionMenu()) window.clearTimeout(regionMenuCloseTimer);
     });
     submenu?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
-      if (submenu.contains(e.relatedTarget) || group?.contains(e.relatedTarget)) return;
+      if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
     });
@@ -2267,6 +2493,8 @@ function setMarkerVisibilityByZoom() {
       setMarkerShellVisibility(item.id, visibleItemIds.has(item.id));
     }
   });
+
+  applyAutoMarkerOffsets();
 }
 
 function updateEdgeIndicator() {
@@ -3795,7 +4023,7 @@ map.on("load", async () => {
 
   if (!openedMarkerFromHash && !openedRegionFromHash) {
     requestAnimationFrame(() => {
-      focusRegion("all");
+      focusRegion(getDefaultRegionKey());
     });
   }
 
@@ -3810,7 +4038,6 @@ map.on("load", async () => {
   initSheetDrag();
   initSheetPhotoPopout();
   initNearbyControls();
-  initRegionExperienceControls();
 
   map.on("movestart", () => {
     hideMarkerPreview();

@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260622-19" />
+  <link rel="stylesheet" href="styles.css?v=20260624-4" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -32,8 +32,8 @@
 
     <div class="desktop-sidebar-scroll">
       <div class="desktop-menu-section">
+        <div class="desktop-menu-label">Locations</div>
         <nav class="desktop-location-menu" aria-label="Map countries and states" data-location-menu>
-          <button class="region-pill desktop-menu-item active" type="button" data-region="all">My Home</button>
           <div class="region-menu-group desktop-menu-group" data-country-group="usa">
             <button class="region-pill region-parent-pill desktop-menu-item desktop-menu-parent" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="desktop-usa-region-menu">
               USA <span class="region-pill-caret" aria-hidden="true">v</span>
@@ -50,7 +50,6 @@
       <div id="region-intro-title" class="region-intro-title"></div>
       <div id="region-intro-meta" class="region-intro-meta"></div>
     </div>
-    <button id="region-explore" class="region-explore-button" type="button">Explore route</button>
   </section>
 
   <aside id="place-sheet" class="place-sheet hidden" aria-label="Place details" aria-labelledby="sheet-title" aria-describedby="sheet-subtitle" aria-live="polite">
@@ -100,7 +99,6 @@
       </div>
 
       <div class="region-pills" aria-label="Map countries" data-location-menu>
-        <button class="region-pill active" type="button" data-region="all">My Home</button>
         <div class="region-menu-group" data-country-group="usa">
           <button class="region-pill region-parent-pill" type="button" data-region="country:usa" data-country-toggle="usa" data-region-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="header-usa-region-menu">
             USA <span class="region-pill-caret" aria-hidden="true">v</span>
@@ -122,6 +120,6 @@
   </div>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260622-19"></script>
+  <script src="app.js?v=20260624-4"></script>
 </body>
 </html>
