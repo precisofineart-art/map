@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260624-4" />
+  <link rel="stylesheet" href="styles.css?v=20260626-3" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -43,6 +43,30 @@
         </nav>
       </div>
     </div>
+
+    <div id="desktop-marker-caption" class="desktop-marker-caption hidden" aria-hidden="true" aria-live="polite">
+      <div id="desktop-marker-moment" class="desktop-marker-moment"></div>
+      <div id="desktop-marker-title" class="desktop-marker-title"></div>
+      <div id="desktop-marker-location" class="desktop-marker-location"></div>
+      <div id="desktop-marker-time" class="desktop-marker-time"></div>
+    </div>
+
+    <div id="desktop-marker-actions" class="desktop-marker-actions hidden" aria-hidden="true">
+      <section id="desktop-nearby" class="desktop-nearby hidden" aria-label="Explore nearby prints">
+        <div class="desktop-nearby-top">
+          <span>Explore nearby</span>
+          <div class="desktop-nearby-nav">
+            <button id="desktop-nearby-prev" type="button" aria-label="Previous nearby print">‹</button>
+            <button id="desktop-nearby-next" type="button" aria-label="Next nearby print">›</button>
+          </div>
+        </div>
+        <div id="desktop-nearby-list" class="desktop-nearby-list"></div>
+      </section>
+
+      <a id="desktop-marker-buy" class="desktop-marker-buy" href="#" target="_blank" rel="noopener noreferrer">
+        Buy Print
+      </a>
+    </div>
   </aside>
 
   <section id="region-intro" class="region-intro hidden" aria-live="polite" aria-label="Selected map view">
@@ -56,7 +80,7 @@
     <div class="place-sheet-handle"></div>
 
     <div class="place-sheet-header">
-      <div>
+      <div class="sheet-copy">
         <h2 id="sheet-title"></h2>
         <div id="sheet-subtitle" class="sheet-subtitle"></div>
         <div id="sheet-location-2" class="sheet-location-2"></div>
@@ -120,6 +144,6 @@
   </div>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260624-4"></script>
+  <script src="app.js?v=20260626-3"></script>
 </body>
 </html>

@@ -302,8 +302,6 @@ const SAFARI_GESTURE_ZOOM_RATE = 2.65;
 const MAP_CONTROL_ZOOM_STEP = 1;
 const PRODUCT_FETCH_PAGE_SIZE = 250;
 const NEW_PRINT_COUNT = 6;
-const PHOTO_STRIP_LIMIT = 18;
-const MOBILE_PHOTO_STRIP_LIMIT = 3;
 const MOBILE_HOME_MARKER_LIMIT = 10;
 
 /* =========================
@@ -357,6 +355,71 @@ function setActiveMarkerState(itemId = "") {
   });
 
   syncPhotoStripActive(itemId);
+}
+
+function updateDesktopMarkerCaption(item = null) {
+  const caption = document.getElementById("desktop-marker-caption");
+  updateDesktopMarkerActions(item);
+  if (!caption) return;
+
+  const moment = document.getElementById("desktop-marker-moment");
+  const title = document.getElementById("desktop-marker-title");
+  const location = document.getElementById("desktop-marker-location");
+  const time = document.getElementById("desktop-marker-time");
+
+  if (!item) {
+    caption.classList.add("hidden");
+    caption.setAttribute("aria-hidden", "true");
+    if (moment) moment.textContent = "";
+    if (title) title.textContent = "";
+    if (location) location.textContent = "";
+    if (time) time.textContent = "";
+    return;
+  }
+
+  if (moment) moment.textContent = item.moment || "";
+  if (title) title.textContent = item.location1 || item.title || "";
+  if (location) location.textContent = item.location2 || "";
+  if (time) time.textContent = item.time || "";
+  caption.classList.remove("hidden");
+  caption.setAttribute("aria-hidden", "false");
+}
+
+function updateDesktopMarkerActions(item = null) {
+  const actions = document.getElementById("desktop-marker-actions");
+  const buyLink = document.getElementById("desktop-marker-buy");
+  const nearbySection = document.getElementById("desktop-nearby");
+  const nearbyList = document.getElementById("desktop-nearby-list");
+  const prevButton = document.getElementById("desktop-nearby-prev");
+  const nextButton = document.getElementById("desktop-nearby-next");
+
+  if (!actions) return;
+
+  if (!item) {
+    actions.classList.add("hidden");
+    actions.setAttribute("aria-hidden", "true");
+    if (buyLink) {
+      buyLink.href = "#";
+      buyLink.removeAttribute("aria-label");
+    }
+    nearbySection?.classList.add("hidden");
+    nearbyList?.replaceChildren();
+    if (prevButton) prevButton.disabled = true;
+    if (nextButton) nextButton.disabled = true;
+    return;
+  }
+
+  if (buyLink) {
+    buyLink.href = item.link || "#";
+    buyLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
+  }
+
+  if (nearbySection && nearbyList) {
+    populateNearbyPrints(item, nearbyList, prevButton, nextButton, nearbySection);
+  }
+
+  actions.classList.remove("hidden");
+  actions.setAttribute("aria-hidden", "false");
 }
 
 function forceActiveMarkerVisible() {
@@ -1080,8 +1143,7 @@ function renderPhotoStrip(regionKey = activeRegionKey) {
   const track = document.getElementById("listings");
   if (!carousel || !track) return;
 
-  const stripLimit = isMobileMapViewport() ? MOBILE_PHOTO_STRIP_LIMIT : PHOTO_STRIP_LIMIT;
-  const items = getTrailItemsForRegion(regionKey).slice(0, stripLimit);
+  const items = getTrailItemsForRegion(regionKey);
   track.replaceChildren();
 
   if (!items.length) {
@@ -1092,6 +1154,7 @@ function renderPhotoStrip(regionKey = activeRegionKey) {
   items.forEach((item, index) => {
     track.appendChild(createPhotoStripButton(item, index, items.length));
   });
+  track.scrollLeft = 0;
 
   carousel.classList.remove("hidden");
   carousel.setAttribute("aria-hidden", "false");
@@ -1104,13 +1167,13 @@ function renderGroupedPhotoStrip(groupItems = [], representativeItem = null) {
   const track = document.getElementById("listings");
   if (!carousel || !track || !groupItems.length) return;
 
-  const stripLimit = isMobileMapViewport() ? MOBILE_PHOTO_STRIP_LIMIT : PHOTO_STRIP_LIMIT;
-  const items = sortItemsForMarkerPriority(groupItems).slice(0, stripLimit);
+  const items = sortItemsForMarkerPriority(groupItems);
   track.replaceChildren();
 
   items.forEach((item, index) => {
     track.appendChild(createPhotoStripButton(item, index, items.length));
   });
+  track.scrollLeft = 0;
 
   carousel.classList.remove("hidden");
   carousel.setAttribute("aria-hidden", "false");
@@ -2073,13 +2136,19 @@ function renderNearbyPrints(item, options = {}) {
 function hideNearbyPrints() {
   const nearbySection = document.getElementById("sheet-nearby");
   const nearbyList = document.getElementById("sheet-nearby-list");
+  const desktopNearbySection = document.getElementById("desktop-nearby");
+  const desktopNearbyList = document.getElementById("desktop-nearby-list");
   nearbySection?.classList.add("hidden");
   nearbyList?.replaceChildren();
+  desktopNearbySection?.classList.add("hidden");
+  desktopNearbyList?.replaceChildren();
 }
 
 function initNearbyControls() {
   const prevButton = document.getElementById("nearby-prev");
   const nextButton = document.getElementById("nearby-next");
+  const desktopPrevButton = document.getElementById("desktop-nearby-prev");
+  const desktopNextButton = document.getElementById("desktop-nearby-next");
 
   prevButton?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -2092,6 +2161,18 @@ function initNearbyControls() {
     e.stopPropagation();
     navigateToNearbyMarker("next");
   });
+
+  desktopPrevButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToNearbyMarker("previous");
+  });
+
+  desktopNextButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToNearbyMarker("next");
+  });
 }
 
 function focusRegion(regionKey, options = {}) {
@@ -2100,6 +2181,7 @@ function focusRegion(regionKey, options = {}) {
   activeItem = null;
   resetExplodedMarkers();
   setActiveMarkerState("");
+  updateDesktopMarkerCaption(null);
   clearMarkerHoverStates();
   document.querySelectorAll(".custom-marker").forEach((markerEl) => {
     markerEl.classList.remove("pop");
@@ -2773,6 +2855,7 @@ function showPlaceSheet(item, options = {}) {
   if (subtitle) subtitle.textContent = item.location1 || "";
   if (location2) location2.textContent = item.location2 || "";
   if (time) time.textContent = item.time || "Any time";
+  updateDesktopMarkerCaption(item);
 
   if (image) {
     image.src = item.image || FALLBACK_IMAGE;
@@ -3031,6 +3114,7 @@ function resetView() {
   activeItem = null;
   resetExplodedMarkers();
   hideSheetPhotoPopout();
+  updateDesktopMarkerCaption(null);
 
   const sheet = document.getElementById("place-sheet");
   if (sheet) {
@@ -4014,6 +4098,7 @@ map.on("load", async () => {
   document.getElementById("skeletons")?.remove();
   document.getElementById("place-sheet")?.classList.add("hidden");
   document.body.classList.remove("marker-active");
+  updateDesktopMarkerCaption(null);
 
   bindHeaderRegionPills();
   initSearch();
