@@ -2036,11 +2036,55 @@ function hideNearbyPrints() {
   desktopNearbyList?.replaceChildren();
 }
 
+function setPlaceSheetLevel(level = 2, options = {}) {
+  const sheet = document.getElementById("place-sheet");
+  if (!sheet) return;
+
+  const nextLevel = Math.min(4, Math.max(2, Number(level) || 2));
+  sheet.style.transition = "";
+  sheet.style.transform = "";
+  sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+  sheet.classList.add(`level-${nextLevel}`);
+
+  if (options.keepMarkerVisible === false) return;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      keepActiveMarkerVisible();
+    });
+  });
+}
+
+async function shareActivePlace() {
+  const shareUrl = activeItem
+    ? `${window.location.origin}${window.location.pathname}${window.location.search}#marker=${encodeURIComponent(activeItem.id)}`
+    : window.location.href;
+  const shareTitle = activeItem?.title || document.title;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: shareTitle,
+        text: shareTitle,
+        url: shareUrl
+      });
+      return;
+    }
+
+    await navigator.clipboard?.writeText(shareUrl);
+  } catch (error) {
+    // Sharing can be cancelled by the user; no visual error state is needed.
+  }
+}
+
 function initNearbyControls() {
   const prevButton = document.getElementById("nearby-prev");
   const nextButton = document.getElementById("nearby-next");
   const desktopPrevButton = document.getElementById("desktop-nearby-prev");
   const desktopNextButton = document.getElementById("desktop-nearby-next");
+  const shareButton = document.getElementById("sheet-share");
+  const nearbyToggle = document.getElementById("sheet-nearby-toggle");
+  const photoFocusButton = document.getElementById("sheet-photo-focus");
 
   prevButton?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -2064,6 +2108,32 @@ function initNearbyControls() {
     e.preventDefault();
     e.stopPropagation();
     navigateToNearbyMarker("next");
+  });
+
+  shareButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    shareActivePlace();
+  });
+
+  nearbyToggle?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPlaceSheetLevel(3);
+    document.getElementById("sheet-nearby")?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth"
+    });
+  });
+
+  photoFocusButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPlaceSheetLevel(4);
+    document.querySelector(".sheet-media")?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth"
+    });
   });
 }
 
@@ -2780,7 +2850,7 @@ function showPlaceSheet(item, options = {}) {
   } else {
     sheet.classList.remove("level-1", "level-3", "level-4");
     sheet.classList.add("level-2");
-    closeButton?.focus({ preventScroll: true });
+    if (!isMobileMapViewport()) closeButton?.focus({ preventScroll: true });
   }
 }
 
