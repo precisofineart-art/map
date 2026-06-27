@@ -3725,18 +3725,7 @@ body.markers-exploded .edge-indicator {
   .place-sheet.level-3 .sheet-cta,
   .place-sheet.level-4 .sheet-cta,
   .sheet-cta {
-    order: 2;
-    position: relative;
-    inset: auto;
-    z-index: 2;
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    width: 100%;
-    padding: 0 0 14px;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    display: none !important;
   }
 
   .sheet-product-link,
@@ -3842,14 +3831,14 @@ body.markers-exploded .edge-indicator {
   .place-sheet.level-3 .sheet-media,
   .place-sheet.level-4 .sheet-media,
   .sheet-media {
-    order: 4;
+    order: 2;
     position: relative;
     inset: auto;
     z-index: 1;
     display: flex;
     flex: 0 0 auto;
     width: 100%;
-    height: clamp(164px, 25dvh, 255px);
+    height: clamp(210px, 32dvh, 310px);
     min-height: 0;
     padding: 0 0 2px;
     overflow: visible;
@@ -3900,5 +3889,35 @@ body.markers-exploded .edge-indicator {
     min-height: 58px;
     border-radius: 18px;
     font-size: 12px;
+  }
+}
+
+.place-sheet .sheet-media {
+  aspect-ratio: 2501 / 1775;
+  overflow: hidden;
+}
+
+.place-sheet #sheet-image-main {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+@media (min-width: 701px) {
+  .place-sheet .sheet-media {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .place-sheet.level-2 .sheet-media,
+  .place-sheet.level-3 .sheet-media,
+  .place-sheet.level-4 .sheet-media,
+  .sheet-media {
+    flex: 0 0 auto;
+    height: auto;
   }
 }
