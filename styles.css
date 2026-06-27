@@ -3897,6 +3897,12 @@ body.markers-exploded .edge-indicator {
   overflow: hidden;
 }
 
+.place-sheet.sheet-photo-portrait .sheet-media {
+  aspect-ratio: 1775 / 2501;
+  align-self: center;
+  width: min(70%, 390px);
+}
+
 .place-sheet #sheet-image-main {
   width: 100%;
   height: 100%;
@@ -3919,5 +3925,9 @@ body.markers-exploded .edge-indicator {
   .sheet-media {
     flex: 0 0 auto;
     height: auto;
+  }
+
+  .place-sheet.sheet-photo-portrait .sheet-media {
+    width: min(72vw, 390px);
   }
 }

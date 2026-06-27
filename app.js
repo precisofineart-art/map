@@ -2792,6 +2792,95 @@ function keepActiveMarkerVisible() {
   }, 300);
 }
 
+function getImageDimensionOrientation(width, height, threshold = 1.06) {
+  const numericWidth = Number(width);
+  const numericHeight = Number(height);
+  if (!Number.isFinite(numericWidth) || !Number.isFinite(numericHeight) || numericWidth <= 0 || numericHeight <= 0) {
+    return null;
+  }
+
+  if (numericHeight > numericWidth * threshold) return "portrait";
+  if (numericWidth > numericHeight * threshold) return "landscape";
+  return null;
+}
+
+function estimateImageContentOrientation(image) {
+  if (!image?.complete || !image.naturalWidth || !image.naturalHeight) return null;
+
+  const canvas = document.createElement("canvas");
+  const sampleSize = 96;
+  canvas.width = sampleSize;
+  canvas.height = sampleSize;
+
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+
+  try {
+    context.drawImage(image, 0, 0, sampleSize, sampleSize);
+    const { data } = context.getImageData(0, 0, sampleSize, sampleSize);
+    let minX = sampleSize;
+    let minY = sampleSize;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < sampleSize; y += 1) {
+      for (let x = 0; x < sampleSize; x += 1) {
+        const index = (y * sampleSize + x) * 4;
+        const alpha = data[index + 3];
+        if (alpha < 32) continue;
+
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const chroma = max - min;
+        const isArtworkPixel = max < 220 || (chroma > 18 && max < 248);
+        if (!isArtworkPixel) continue;
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX < minX || maxY < minY) return null;
+
+    const contentWidth = maxX - minX + 1;
+    const contentHeight = maxY - minY + 1;
+    return getImageDimensionOrientation(contentWidth, contentHeight, 1.12);
+  } catch (error) {
+    return null;
+  }
+}
+
+function setSheetPhotoOrientation(orientation) {
+  const sheet = document.getElementById("place-sheet");
+  if (!sheet) return;
+
+  const isPortrait = orientation === "portrait";
+  sheet.classList.toggle("sheet-photo-portrait", isPortrait);
+  sheet.classList.toggle("sheet-photo-landscape", !isPortrait);
+}
+
+function updateSheetPhotoOrientation(image, item = {}) {
+  const orientation = getImageDimensionOrientation(item.imageWidth, item.imageHeight)
+    || getImageDimensionOrientation(image?.naturalWidth, image?.naturalHeight)
+    || estimateImageContentOrientation(image)
+    || "landscape";
+
+  setSheetPhotoOrientation(orientation);
+}
+
+function applyLoadedSheetPhotoOrientation(image, item = {}) {
+  if (!image?.complete || !image.naturalWidth || !image.naturalHeight) return;
+
+  requestAnimationFrame(() => {
+    updateSheetPhotoOrientation(image, item);
+  });
+}
+
 function showPlaceSheet(item, options = {}) {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
@@ -2820,12 +2909,26 @@ function showPlaceSheet(item, options = {}) {
   updateDesktopMarkerCaption(item);
 
   if (image) {
-    image.src = item.image || FALLBACK_IMAGE;
+    const imageSrc = item.image || FALLBACK_IMAGE;
+    setSheetPhotoOrientation(getImageDimensionOrientation(item.imageWidth, item.imageHeight) || "landscape");
+    if (/^https?:/i.test(imageSrc)) {
+      image.crossOrigin = "anonymous";
+    } else {
+      image.removeAttribute("crossorigin");
+    }
+    image.onload = () => {
+      updateSheetPhotoOrientation(image, item);
+    };
     image.alt = item.title || "";
     image.onerror = () => {
       image.onerror = null;
+      image.onload = () => {
+        updateSheetPhotoOrientation(image, {});
+      };
       image.src = FALLBACK_IMAGE;
     };
+    image.src = imageSrc;
+    applyLoadedSheetPhotoOrientation(image, item);
   }
 
   if (productLink) {
@@ -3176,7 +3279,7 @@ async function fetchProducts() {
                   handle
                   createdAt
                   images(first: 1) {
-                    edges { node { url } }
+                    edges { node { url width height } }
                   }
                   lat: metafield(namespace: "custom", key: "lat") { value }
                   lng: metafield(namespace: "custom", key: "lng") { value }
@@ -3218,6 +3321,7 @@ async function fetchProducts() {
         const location1 = node.location1?.value?.trim();
         const location2 = node.location2?.value?.trim();
         const sheetTitle = [location2, location1].filter(Boolean).join(" • ") || node.title;
+        const imageNode = node.images?.edges?.[0]?.node;
 
         const item = {
           title: node.title,
@@ -3226,7 +3330,9 @@ async function fetchProducts() {
           location2,
           lat,
           lng,
-          image: node.images?.edges?.[0]?.node?.url || FALLBACK_IMAGE,
+          image: imageNode?.url || FALLBACK_IMAGE,
+          imageWidth: imageNode?.width || null,
+          imageHeight: imageNode?.height || null,
           link: `${SHOP_URL}/products/${node.handle}`,
           moment: node.moment?.value || "Explore",
           time: node.time?.value || "Any time",
