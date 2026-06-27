@@ -491,12 +491,17 @@ function getMarkerLabel(item) {
   return location.replace(/\s+/g, " ").trim();
 }
 
+function getPinMarkerLabel(item) {
+  const location = item?.location1 || item?.location2 || item?.title || "Print";
+  return location.replace(/\s+/g, " ").trim();
+}
+
 function getMarkerPreviewTopLine(item) {
   return item?.moment || item?.title || "Print";
 }
 
 function getMarkerPreviewMetaLine(item) {
-  return item?.location1 || item?.title || "Print";
+  return item?.location2 || item?.location1 || item?.title || "Print";
 }
 
 function hideMarkerPreview() {
@@ -567,126 +572,13 @@ function moveMarkerPreview(anchor) {
   preview.style.top = `${y}px`;
 }
 
-function canUseSheetPhotoPopout() {
-  return window.matchMedia("(min-width: 701px) and (hover: hover) and (pointer: fine)").matches;
-}
-
-function getSheetPhotoPopout() {
-  let popout = document.getElementById("sheet-photo-popout");
-  if (popout) return popout;
-
-  popout = document.createElement("div");
-  popout.id = "sheet-photo-popout";
-  popout.className = "sheet-photo-popout";
-  popout.setAttribute("aria-hidden", "true");
-
-  const image = document.createElement("img");
-  image.alt = "";
-  image.draggable = false;
-  popout.appendChild(image);
-  document.body.appendChild(popout);
-  return popout;
-}
-
 function hideSheetPhotoPopout() {
   const popout = document.getElementById("sheet-photo-popout");
-  if (!popout) return;
-
-  popout.classList.remove("visible");
-  popout.setAttribute("aria-hidden", "true");
-}
-
-function positionSheetPhotoPopout() {
-  const popout = document.getElementById("sheet-photo-popout");
-  const sheet = document.getElementById("place-sheet");
-  const image = document.getElementById("sheet-image-main");
-  if (!popout || !sheet || !image || sheet.classList.contains("hidden")) return false;
-
-  const sheetRect = sheet.getBoundingClientRect();
-  const imageRect = image.getBoundingClientRect();
-  const left = Math.round(sheetRect.right + 20);
-  const rightPadding = 24;
-  const availableWidth = window.innerWidth - left - rightPadding;
-
-  if (!canUseSheetPhotoPopout() || availableWidth < 300 || imageRect.width < 80 || imageRect.height < 80) {
-    hideSheetPhotoPopout();
-    return false;
-  }
-
-  const aspectRatio = image.naturalWidth && image.naturalHeight
-    ? image.naturalWidth / image.naturalHeight
-    : Math.max(0.65, Math.min(1.55, imageRect.width / imageRect.height));
-  const width = Math.round(Math.min(Math.max(imageRect.width * 1.45, 390), availableWidth, 620));
-  const height = Math.round(Math.min(Math.max(width / aspectRatio, imageRect.height * 1.25), window.innerHeight - 48, 620));
-  const top = Math.round(Math.min(
-    window.innerHeight - height - 24,
-    Math.max(24, imageRect.top + imageRect.height / 2 - height / 2)
-  ));
-
-  popout.style.left = `${left}px`;
-  popout.style.top = `${top}px`;
-  popout.style.width = `${width}px`;
-  popout.style.height = `${height}px`;
-  return true;
-}
-
-function showSheetPhotoPopout() {
-  if (!canUseSheetPhotoPopout()) return;
-
-  const sourceImage = document.getElementById("sheet-image-main");
-  const source = sourceImage?.currentSrc || sourceImage?.src;
-  if (!source) return;
-
-  const popout = getSheetPhotoPopout();
-  const image = popout.querySelector("img");
-  if (!image) return;
-
-  image.src = source;
-  image.alt = sourceImage.alt || "";
-  if (!positionSheetPhotoPopout()) return;
-  popout.classList.add("visible");
-  popout.setAttribute("aria-hidden", "false");
+  popout?.remove();
 }
 
 function initSheetPhotoPopout() {
-  const sheetImage = document.getElementById("sheet-image-main");
-  const sheetMedia = document.querySelector(".sheet-media");
-  if (!sheetImage || !sheetMedia) return;
-
-  const showFromSheetMedia = (event) => {
-    if (event.target === sheetImage || sheetImage.contains(event.target)) {
-      showSheetPhotoPopout();
-    }
-  };
-  const hideFromSheetMedia = (event) => {
-    if (!sheetMedia.contains(event.relatedTarget)) {
-      hideSheetPhotoPopout();
-    }
-  };
-
-  sheetImage.addEventListener("pointerenter", showSheetPhotoPopout);
-  sheetImage.addEventListener("pointermove", positionSheetPhotoPopout);
-  sheetImage.addEventListener("pointerleave", hideSheetPhotoPopout);
-  sheetImage.addEventListener("mouseenter", showSheetPhotoPopout);
-  sheetImage.addEventListener("mousemove", positionSheetPhotoPopout);
-  sheetImage.addEventListener("mouseleave", hideSheetPhotoPopout);
-  sheetImage.addEventListener("click", showSheetPhotoPopout);
-  sheetMedia.addEventListener("mouseover", showFromSheetMedia);
-  sheetMedia.addEventListener("mouseout", hideFromSheetMedia);
-  sheetMedia.addEventListener("pointerleave", hideSheetPhotoPopout);
-  sheetMedia.addEventListener("mouseleave", hideSheetPhotoPopout);
-  document.addEventListener("click", (event) => {
-    const popout = document.getElementById("sheet-photo-popout");
-    if (!popout?.classList.contains("visible")) return;
-    if (event.target instanceof Element && event.target.closest(".sheet-media")) return;
-    hideSheetPhotoPopout();
-  });
-  sheetImage.addEventListener("load", () => {
-    const popout = document.getElementById("sheet-photo-popout");
-    if (popout?.classList.contains("visible")) {
-      showSheetPhotoPopout();
-    }
-  });
+  hideSheetPhotoPopout();
 }
 
 function hasValidCoordinates(item) {
@@ -3158,6 +3050,33 @@ function resetView() {
   }, REGION_TRANSITION_MS + 50);
 }
 
+function closePlaceSheetAtMarkerZoom() {
+  hideSheetPhotoPopout();
+
+  const sheet = document.getElementById("place-sheet");
+  if (sheet) {
+    sheet.classList.add("hidden");
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+  }
+
+  if (!activeItem) {
+    document.body.classList.remove("marker-active");
+    hideNearbyPrints();
+    updateDesktopMarkerCaption(null);
+    setActiveMarkerState("");
+    updateEdgeIndicator();
+    updateMapControlState();
+    return;
+  }
+
+  document.body.classList.add("marker-active");
+  updateDesktopMarkerCaption(activeItem);
+  setActiveMarkerState(activeItem.id);
+  setMarkerVisibilityByZoom();
+  clearEdgeIndicators();
+  updateMapControlState();
+}
+
 /* =========================
    FETCH PRODUCTS
 ========================= */
@@ -3960,7 +3879,11 @@ function render() {
 
     const el = document.createElement("div");
     el.className = "custom-marker";
-    el.style.backgroundImage = `url(${item.image})`;
+
+    const photo = document.createElement("div");
+    photo.className = "custom-marker-photo";
+    photo.style.backgroundImage = `url(${item.image})`;
+    el.appendChild(photo);
 
     const offset = document.createElement("div");
     offset.className = "custom-marker-offset";
@@ -3968,7 +3891,7 @@ function render() {
 
     const label = document.createElement("div");
     label.className = "custom-marker-label";
-    label.textContent = getMarkerLabel(item);
+    label.textContent = getPinMarkerLabel(item);
 
     shell.appendChild(offset);
     shell.appendChild(label);
@@ -3977,15 +3900,11 @@ function render() {
       if (activeItem?.id !== item.id) {
         el.classList.add("hover");
       }
-      showMarkerPreview(item, shell);
     });
 
     shell.addEventListener("pointerleave", () => {
       el.classList.remove("hover");
-      hideMarkerPreview();
     });
-
-    shell.addEventListener("pointermove", () => moveMarkerPreview(shell));
 
     shell.addEventListener("pointerdown", () => {
       if (activeItem?.id !== item.id) {
@@ -4019,7 +3938,7 @@ function render() {
       }
     });
 
-    const marker = new mapboxgl.Marker({ element: shell })
+    const marker = new mapboxgl.Marker({ element: shell, anchor: "bottom" })
       .setLngLat([item.lng, item.lat])
       .addTo(map);
     marker.item = item;
@@ -4166,7 +4085,7 @@ window.addEventListener("hashchange", () => {
 
 const closeBtn = document.getElementById("sheet-close");
 if (closeBtn) {
-  closeBtn.addEventListener("click", resetView);
+  closeBtn.addEventListener("click", closePlaceSheetAtMarkerZoom);
 }
 
 window.addEventListener("resize", () => {

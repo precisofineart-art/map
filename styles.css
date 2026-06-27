@@ -1969,49 +1969,12 @@ body.marker-active #carousel {
   object-position: center;
   border-radius: 0;
   background: #ffffff;
-  cursor: zoom-in;
+  cursor: default;
 }
 
 #sheet-image-main {
   aspect-ratio: auto;
   background: #ffffff;
-}
-
-.sheet-photo-popout {
-  position: fixed;
-  z-index: 28;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  border: 1px solid rgba(12, 52, 122, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.24),
-    0 10px 24px rgba(0, 0, 0, 0.16);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-10px) scale(0.965);
-  transform-origin: left center;
-  transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 0.9, 0.24, 1), visibility 160ms ease;
-  visibility: hidden;
-}
-
-.sheet-photo-popout.visible {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-  visibility: visible;
-}
-
-.sheet-photo-popout img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  object-position: center;
-  background: #ffffff;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
 }
 
 .sheet-media-stack {
@@ -2127,14 +2090,14 @@ body.marker-active #carousel {
   --explode-y: 0px;
   --marker-shift-x: 0px;
   --marker-shift-y: 0px;
-  width: var(--map-marker-size);
-  height: var(--map-marker-size);
+  width: calc(var(--map-marker-size) * 1.45);
+  height: calc(var(--map-marker-size) * 1.52);
 }
 
 .custom-marker-offset {
   position: relative;
-  width: var(--map-marker-size);
-  height: var(--map-marker-size);
+  width: calc(var(--map-marker-size) * 1.45);
+  height: calc(var(--map-marker-size) * 1.52);
   transform: translate(
     calc(var(--explode-x) + var(--marker-shift-x)),
     calc(var(--explode-y) + var(--marker-shift-y))
@@ -2148,7 +2111,10 @@ body.marker-active #carousel {
 .custom-marker-shell.group-representative .custom-marker-offset::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 50%;
+  width: var(--map-marker-size);
+  height: var(--map-marker-size);
   border: 2px solid #fff;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
@@ -2158,12 +2124,12 @@ body.marker-active #carousel {
 
 .custom-marker-shell.group-representative .custom-marker-offset::before {
   z-index: 0;
-  transform: translate(6px, 5px) scale(0.92);
+  transform: translate(calc(-50% + 6px), 5px) scale(0.92);
 }
 
 .custom-marker-shell.group-representative .custom-marker-offset::after {
   z-index: 1;
-  transform: translate(11px, 9px) scale(0.82);
+  transform: translate(calc(-50% + 11px), 9px) scale(0.82);
   opacity: 0.78;
 }
 
@@ -2187,44 +2153,105 @@ body.marker-active #carousel {
 .custom-marker {
   position: relative;
   z-index: 2;
-  width: var(--map-marker-size);
-  height: var(--map-marker-size);
-  background-size: cover;
-  background-position: center;
-  border-radius: 50%;
-  border: 2px solid white;
+  width: calc(var(--map-marker-size) * 1.45);
+  height: calc(var(--map-marker-size) * 1.52);
+  background: transparent;
+  border: 0;
   transform: scale(1);
-  transform-origin: center center;
+  transform-origin: 50% 100%;
   will-change: transform, box-shadow;
   backface-visibility: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, border-width 0.25s ease;
+  transition: transform 0.25s ease, filter 0.25s ease;
   cursor: pointer;
 }
 
-.custom-marker-shell.new-print .custom-marker::before,
-.custom-marker-shell.new-print .custom-marker::after {
+.custom-marker::before,
+.custom-marker::after,
+.custom-marker-photo {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+}
+
+.custom-marker::before {
+  content: "";
+  z-index: 1;
+  top: calc(var(--map-marker-size) * 0.72);
+  width: calc(var(--map-marker-size) * 0.42);
+  height: calc(var(--map-marker-size) * 0.42);
+  border-radius: 0 0 58% 0;
+  background: linear-gradient(145deg, #ffffff 0%, #deded9 72%);
+  box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.18),
+    inset -2px -3px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: translateX(-50%) rotate(45deg);
+  transition: opacity 0.18s ease;
+}
+
+.custom-marker::after {
+  content: "";
+  z-index: 3;
+  bottom: 0;
+  width: calc(var(--map-marker-size) * 0.16);
+  height: calc(var(--map-marker-size) * 0.16);
+  border-radius: 999px;
+  background: #ececea;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.18s ease;
+}
+
+.custom-marker-photo {
+  z-index: 2;
+  top: 0;
+  width: var(--map-marker-size);
+  height: var(--map-marker-size);
+  overflow: hidden;
+  border: 5px solid #ffffff;
+  border-radius: 50%;
+  background-color: #d8d8d5;
+  background-size: cover;
+  background-position: center;
+  box-shadow:
+    0 9px 14px rgba(0, 0, 0, 0.26),
+    0 2px 4px rgba(0, 0, 0, 0.16);
+  transform: translateX(-50%);
+}
+
+.custom-marker-shell.new-print::before,
+.custom-marker-shell.new-print::after {
   position: absolute;
   pointer-events: none;
 }
 
-.custom-marker-shell.new-print .custom-marker::before {
+.custom-marker-shell.new-print::before {
   content: "";
-  inset: -8px;
-  border: 2px solid rgba(12, 52, 122, 0.34);
+  top: -6px;
+  left: 50%;
+  z-index: 1;
+  width: calc(var(--map-marker-size) + 10px);
+  height: calc(var(--map-marker-size) + 10px);
+  border: 2px solid rgba(12, 52, 122, 0.18);
   border-radius: 999px;
   animation: newMarkerPulse 2.4s ease-out 3;
+  transform: translateX(-50%);
 }
 
-.custom-marker-shell.new-print .custom-marker::after {
+.custom-marker-shell.new-print::after {
   content: "New";
-  top: -9px;
-  right: -11px;
+  top: -18px;
+  right: -16px;
+  z-index: 12;
   border: 2px solid #fff;
   border-radius: 999px;
-  padding: 2px 6px;
+  padding: 2px 5px;
   background: #0c347a;
   color: #fff;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 900;
   line-height: 1;
   box-shadow: 0 5px 12px rgba(12, 52, 122, 0.28);
@@ -2233,45 +2260,58 @@ body.marker-active #carousel {
 .custom-marker-label {
   position: absolute;
   left: 50%;
-  top: calc(100% + 7px);
-  max-width: 130px;
+  top: calc(var(--map-marker-size) + 5px);
+  width: max-content;
+  max-width: 148px;
   display: none;
   transform: translateX(-50%);
-  border-radius: 999px;
-  padding: 5px 8px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #202124;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.1;
+  padding: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 0.98;
   text-align: center;
-  white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  text-transform: uppercase;
+  white-space: normal;
+  text-wrap: balance;
+  text-shadow:
+    -1px -1px 0 #050505,
+    1px -1px 0 #050505,
+    -1px 1px 0 #050505,
+    1px 1px 0 #050505,
+    0 2px 4px rgba(0, 0, 0, 0.38);
+  -webkit-text-stroke: 1px #050505;
+  paint-order: stroke fill;
+  box-shadow: none;
   pointer-events: none;
 }
 
 .custom-marker-shell:hover .custom-marker-label,
+.custom-marker-shell.active .custom-marker-label,
 .custom-marker-shell:focus-visible .custom-marker-label {
   display: block;
 }
 
 .custom-marker:hover,
 .custom-marker.hover {
-  transform: scale(1.55) translateY(-12px);
-  box-shadow:
-    0 24px 42px rgba(0, 0, 0, 0.32),
-    0 10px 20px rgba(0, 0, 0, 0.2);
+  transform: scale(1.22) translateY(-5px);
   filter: saturate(1.08);
 }
 
 .custom-marker.active {
-  transform: scale(1.22) translateY(-6px);
-  border-width: 3px;
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.28),
-    0 6px 14px rgba(0, 0, 0, 0.18);
+  transform: scale(1.18) translateY(-6px);
   filter: saturate(1.08);
   z-index: 8;
+}
+
+.custom-marker.active::before,
+.custom-marker.active::after {
+  opacity: 1;
+}
+
+.custom-marker-shell.active .custom-marker-label {
+  top: calc(100% + 1px);
 }
 
 
@@ -2318,12 +2358,6 @@ body.marker-active #carousel {
   100% {
     opacity: 0;
     transform: scale(1.42);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sheet-photo-popout {
-    transition: none;
   }
 }
 
@@ -2725,10 +2759,6 @@ body.marker-active #carousel {
 }
  
 @media (max-width: 700px) {
-  .sheet-photo-popout {
-    display: none !important;
-  }
-
   .gm-topbar,
   .gm-fabs {
     display: none;
@@ -2809,12 +2839,14 @@ body.marker-active #carousel {
     font-size: 7px;
   }
 
-  .custom-marker-shell.new-print .custom-marker::after {
+  .custom-marker-shell.new-print::after {
     display: none;
   }
 
-  .custom-marker-shell.new-print .custom-marker::before {
-    inset: -6px;
+  .custom-marker-shell.new-print::before {
+    top: -5px;
+    width: calc(var(--map-marker-size) + 10px);
+    height: calc(var(--map-marker-size) + 10px);
     border-width: 1px;
     animation-duration: 2s;
   }
