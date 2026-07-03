@@ -496,6 +496,10 @@ function getPinMarkerLabel(item) {
   return location.replace(/\s+/g, " ").trim();
 }
 
+function getPinMarkerMomentLabel(item) {
+  return (item?.moment || "").replace(/\s+/g, " ").trim();
+}
+
 function getMarkerPreviewTopLine(item) {
   return item?.moment || item?.title || "Print";
 }
@@ -4065,10 +4069,15 @@ function render() {
     offset.className = "custom-marker-offset";
     offset.appendChild(el);
 
+    const momentLabel = document.createElement("div");
+    momentLabel.className = "custom-marker-moment";
+    momentLabel.textContent = getPinMarkerMomentLabel(item);
+
     const label = document.createElement("div");
     label.className = "custom-marker-label";
     label.textContent = getPinMarkerLabel(item);
 
+    shell.appendChild(momentLabel);
     shell.appendChild(offset);
     shell.appendChild(label);
 

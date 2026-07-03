@@ -2092,6 +2092,7 @@ body.marker-active #carousel {
   --marker-shift-y: 0px;
   width: calc(var(--map-marker-size) * 1.45);
   height: calc(var(--map-marker-size) * 1.52);
+  overflow: visible;
 }
 
 .custom-marker-offset {
@@ -2287,9 +2288,42 @@ body.marker-active #carousel {
   pointer-events: none;
 }
 
+.custom-marker-moment {
+  position: absolute;
+  left: 50%;
+  top: -32px;
+  z-index: 14;
+  width: max-content;
+  max-width: 132px;
+  display: none;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow:
+    -1px -1px 0 #050505,
+    1px -1px 0 #050505,
+    -1px 1px 0 #050505,
+    1px 1px 0 #050505,
+    0 2px 4px rgba(0, 0, 0, 0.42);
+  -webkit-text-stroke: 1px #050505;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
 .custom-marker-shell:hover .custom-marker-label,
 .custom-marker-shell.active .custom-marker-label,
 .custom-marker-shell:focus-visible .custom-marker-label {
+  display: block;
+}
+
+.custom-marker-shell:hover .custom-marker-moment,
+.custom-marker-shell.active .custom-marker-moment,
+.custom-marker-shell:focus-visible .custom-marker-moment {
   display: block;
 }
 
