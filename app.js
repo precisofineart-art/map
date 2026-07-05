@@ -276,6 +276,8 @@ let regionMenuCloseTimer = null;
 let regionMenuPointer = null;
 let regionMenuPointerTrackingBound = false;
 
+const IS_MARKER_EMBED_MODE = new URLSearchParams(window.location.search).get("embed") === "marker";
+
 const MARKER_EXPLODE_DISTANCE = 58;
 const MARKER_EXPLODE_RADIUS = 62;
 const MARKER_EXPLODE_MAX_ITEMS = 12;
@@ -336,6 +338,20 @@ function setMarkerStack(markerShell, isActive) {
   if (markerWrapper) {
     markerWrapper.style.removeProperty("z-index");
   }
+}
+
+function setMarkerEmbedVisibility(itemId = "") {
+  if (!IS_MARKER_EMBED_MODE) return;
+
+  document.body.classList.add("marker-embed-mode");
+  markers.forEach((marker) => {
+    const markerItemId = marker.item?.id || "";
+    const markerEl = marker.getElement?.();
+    if (!markerEl) return;
+
+    markerEl.style.display = markerItemId === itemId ? "" : "none";
+    markerEl.style.pointerEvents = "none";
+  });
 }
 
 function setActiveMarkerState(itemId = "") {
@@ -836,35 +852,8 @@ function buildRepresentativeProximityGroups(items, assignedItemIds = new Set()) 
   return groups;
 }
 
-function buildMarkerGroups(items = []) {
-  if (activeItem || isPlaceSheetOpen()) return [];
-
-  const assignedItemIds = new Set();
-  const groups = [];
-
-  if (shouldUseLocationGrouping()) {
-    const locationGroups = new Map();
-
-    items.forEach((item) => {
-      if (!hasValidCoordinates(item)) return;
-
-      const groupKey = getLocationGroupKey(item);
-      if (!locationGroups.has(groupKey)) locationGroups.set(groupKey, []);
-      locationGroups.get(groupKey).push(item);
-    });
-
-    [...locationGroups.entries()].forEach(([groupKey, groupItems]) => {
-      const group = makeMarkerGroup("location", groupKey, groupItems);
-      if (!group) return;
-
-      group.items.forEach((groupItem) => assignedItemIds.add(groupItem.id));
-      groups.push(group);
-    });
-  }
-
-  groups.push(...buildRepresentativeProximityGroups(items, assignedItemIds));
-  groups.push(...buildExactLocationGroups(items, assignedItemIds));
-  return groups;
+function buildMarkerGroups() {
+  return [];
 }
 
 function getMarkerRenderState() {
@@ -1297,52 +1286,6 @@ function groupCloseMarkerEntries(entries = []) {
 
 function applyAutoMarkerOffsets() {
   clearAutoMarkerOffsets();
-  if (!shouldAutoSpreadCloseMarkers()) return;
-
-  const visibleEntries = markers
-    .map((marker) => {
-      const item = marker.item;
-      const markerShell = marker.getElement();
-      if (!item?.id || !markerShell || markerShell.style.display === "none") return null;
-      if (!hasValidCoordinates(item)) return null;
-
-      const point = getProjectedItemPoint(item);
-      if (!point) return null;
-
-      return { item, markerShell, point };
-    })
-    .filter(Boolean);
-
-  groupCloseMarkerEntries(visibleEntries).forEach((groupItems) => {
-    const sortedItems = groupItems.sort((a, b) => {
-      if (a.item.id === activeItem?.id) return -1;
-      if (b.item.id === activeItem?.id) return 1;
-
-      const createdDelta = getCreatedTimestamp(b.item) - getCreatedTimestamp(a.item);
-      return createdDelta || getMarkerLabel(a.item).localeCompare(getMarkerLabel(b.item));
-    });
-    const anchor = getAutoSpreadAnchor(sortedItems);
-    if (!anchor) return;
-
-    sortedItems
-      .filter((entry) => entry.item.id !== anchor.item.id)
-      .sort((a, b) => {
-        const angleA = Math.atan2(a.point.y - anchor.point.y, a.point.x - anchor.point.x);
-        const angleB = Math.atan2(b.point.y - anchor.point.y, b.point.x - anchor.point.x);
-        return angleA - angleB || getMarkerLabel(a.item).localeCompare(getMarkerLabel(b.item));
-      })
-      .forEach((entry, index, shiftedItems) => {
-        const offset = getAutoSpreadOffset(index, shiftedItems.length);
-        const zIndex = 8200 + shiftedItems.length - index;
-        const markerWrapper = entry.markerShell.closest(".mapboxgl-marker");
-
-        entry.markerShell.classList.add("auto-spread");
-        entry.markerShell.style.setProperty("--marker-shift-x", `${offset.x}px`);
-        entry.markerShell.style.setProperty("--marker-shift-y", `${offset.y}px`);
-        entry.markerShell.style.zIndex = `${zIndex}`;
-        markerWrapper?.style.setProperty("z-index", `${zIndex}`);
-      });
-  });
 }
 
 function getExplodedGroupFitPadding() {
@@ -2521,21 +2464,11 @@ function setMarkerVisibilityByZoom() {
     markerEl.style.pointerEvents = "auto";
 
     if (item?.id) {
-      const markerGroup = activeMarkerGroups.get(item.id);
-      const isGroupRepresentative = Boolean(
-        markerGroup &&
-        markerGroup.representative.id === item.id &&
-        markerGroup.items.length > 1 &&
-        visibleItemIds.has(item.id)
-      );
-
-      markerEl.classList.toggle("group-representative", isGroupRepresentative);
-      markerEl.dataset.groupType = isGroupRepresentative ? markerGroup.type : "";
+      markerEl.classList.remove("group-representative");
+      markerEl.dataset.groupType = "";
       markerEl.setAttribute(
         "aria-label",
-        isGroupRepresentative
-          ? `${item.title || "Map marker"}, grouped prints at this real marker location`
-          : item.title || "Map marker"
+        item.title || "Map marker"
       );
 
       setMarkerShellVisibility(item.id, visibleItemIds.has(item.id));
@@ -3961,12 +3894,6 @@ function handleMarkerClick(item, options = {}) {
     !options.smoothNearbyTransition
   );
 
-  const shouldOpenExplodedMarker = explodedMarkerGroup?.itemIds?.has(item.id);
-  const canExplode = !options.skipExplosion && !activeItem && !isPlaceSheetOpen() && !shouldOpenExplodedMarker;
-  if (canExplode && explodeMarkersForItem(item)) {
-    return;
-  }
-
   if (activeItem?.id === item.id && !document.getElementById("place-sheet")?.classList.contains("hidden")) {
     return;
   }
@@ -4110,6 +4037,7 @@ function render() {
     shell.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (IS_MARKER_EMBED_MODE) return;
       el.classList.remove("hover");
       hideMarkerPreview();
       handleMarkerClick(item);
@@ -4150,17 +4078,29 @@ function openMarkerFromHash() {
     if (!activeItem || activeItem.id !== item.id) {
       const flyToOptions = getFlyToOptions(item);
       if (!flyToOptions) return;
-      flyToOptions.duration = REGION_MARKER_TRANSITION_MS;
-      flyToOptions.curve = 1.18;
+      flyToOptions.duration = IS_MARKER_EMBED_MODE ? 0 : REGION_MARKER_TRANSITION_MS;
+      flyToOptions.curve = IS_MARKER_EMBED_MODE ? 1 : 1.18;
       delete flyToOptions.speed;
 
       activeItem = item;
       setActiveItemRegion(item);
-      showPlaceSheet(item);
+      hideRegionExperience();
+      if (!IS_MARKER_EMBED_MODE) {
+        showPlaceSheet(item);
+      } else {
+        document.getElementById("place-sheet")?.classList.add("hidden");
+        document.body.classList.remove("marker-active");
+        setActiveMarkerState(item.id);
+        forceActiveMarkerVisible();
+        setMarkerEmbedVisibility(item.id);
+      }
       map.flyTo(flyToOptions);
       map.once("moveend", () => {
         if (activeItem?.id === item.id) {
-          openSheetToLevel2();
+          if (!IS_MARKER_EMBED_MODE) {
+            openSheetToLevel2();
+          }
+          setMarkerEmbedVisibility(item.id);
           window.setTimeout(() => {
             triggerActiveMarkerPop(item.id);
           }, 40);
@@ -4221,6 +4161,7 @@ map.on("load", async () => {
       renderRegionExperience(activeRegionKey);
     }
     setMarkerVisibilityByZoom();
+    setMarkerEmbedVisibility(activeItem?.id);
     updateEdgeIndicator();
   });
 
@@ -4249,6 +4190,7 @@ map.on("zoom", () => {
   hideMarkerPreview();
   clearMarkerHoverStates();
   setMarkerVisibilityByZoom();
+  setMarkerEmbedVisibility(activeItem?.id);
   updateEdgeIndicator();
   forceActiveMarkerVisible();
   updateMapControlState();
@@ -4256,6 +4198,7 @@ map.on("zoom", () => {
 
 map.on("moveend", () => {
   setMarkerVisibilityByZoom();
+  setMarkerEmbedVisibility(activeItem?.id);
   updateEdgeIndicator();
   forceActiveMarkerVisible();
   updateMapControlState();

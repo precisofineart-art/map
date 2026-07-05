@@ -2108,37 +2108,6 @@ body.marker-active #carousel {
   will-change: transform;
 }
 
-.custom-marker-shell.group-representative .custom-marker-offset::before,
-.custom-marker-shell.group-representative .custom-marker-offset::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: var(--map-marker-size);
-  height: var(--map-marker-size);
-  border: 2px solid #fff;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  pointer-events: none;
-  box-shadow: 0 7px 15px rgba(0, 0, 0, 0.16);
-}
-
-.custom-marker-shell.group-representative .custom-marker-offset::before {
-  z-index: 0;
-  transform: translate(calc(-50% + 6px), 5px) scale(0.92);
-}
-
-.custom-marker-shell.group-representative .custom-marker-offset::after {
-  z-index: 1;
-  transform: translate(calc(-50% + 11px), 9px) scale(0.82);
-  opacity: 0.78;
-}
-
-.custom-marker-shell.group-representative.exploded .custom-marker-offset::before,
-.custom-marker-shell.group-representative.exploded .custom-marker-offset::after {
-  opacity: 0;
-}
-
 .custom-marker-shell.exploded {
   z-index: 9000 !important;
 }
