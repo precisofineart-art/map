@@ -3861,6 +3861,18 @@ body.markers-exploded .edge-indicator {
     box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
     filter: none;
   }
+
+  body.marker-active .place-sheet.level-2,
+  body.marker-active .place-sheet.level-3,
+  body.marker-active .place-sheet.level-4 {
+    transform: translateY(0);
+  }
+
+  body.marker-active .place-sheet.level-2 .sheet-nearby,
+  body.marker-active .place-sheet.level-3 .sheet-nearby,
+  body.marker-active .place-sheet.level-4 .sheet-nearby {
+    display: block !important;
+  }
 }
 
 @media (max-width: 390px) {

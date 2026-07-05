@@ -305,6 +305,7 @@ const MAP_CONTROL_ZOOM_STEP = 1;
 const PRODUCT_FETCH_PAGE_SIZE = 250;
 const NEW_PRINT_COUNT = 6;
 const MOBILE_HOME_MARKER_LIMIT = 10;
+const MOBILE_MARKER_SHEET_OPEN_LEVEL = 4;
 
 /* =========================
    HELPERS
@@ -607,6 +608,10 @@ function hasValidCoordinates(item) {
 
 function isMobileMapViewport() {
   return window.matchMedia("(max-width: 700px)").matches;
+}
+
+function getMarkerSheetOpenLevel() {
+  return isMobileMapViewport() ? MOBILE_MARKER_SHEET_OPEN_LEVEL : 2;
 }
 
 function isMobileHeaderLocationMenu(menu) {
@@ -2686,18 +2691,11 @@ function nudgeActiveMarkerIntoView() {
 function getFlyToOptions(item, zoom) {
   if (!hasValidCoordinates(item)) return null;
 
-  const sheet = document.getElementById("place-sheet");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
-
-  let mobileZoom = 15.6;
-
-  if (sheet?.classList.contains("level-2")) {
-    mobileZoom = 15.2;
-  }
 
   return {
     center: [item.lng, item.lat],
-    zoom: zoom ?? (isMobileViewport ? mobileZoom : 16.5),
+    zoom: zoom ?? (isMobileViewport ? 15.6 : 16.5),
     offset: getSheetOffset(),
     speed: 0.55,
     curve: 1.42,
@@ -2719,7 +2717,7 @@ function keepActiveMarkerVisible() {
   };
 
   if (isMobileViewport) {
-    easeOptions.zoom = sheet?.classList.contains("level-2") ? 15.2 : 15.6;
+    easeOptions.zoom = 15.6;
   }
 
   map.easeTo(easeOptions);
@@ -2879,7 +2877,10 @@ function showPlaceSheet(item, options = {}) {
 
   document.body.classList.add("marker-active");
   sheet.classList.remove("hidden");
-  if (keepExpanded) {
+  if (isMobileMapViewport()) {
+    sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+    sheet.classList.add(`level-${MOBILE_MARKER_SHEET_OPEN_LEVEL}`);
+  } else if (keepExpanded) {
     const nextLevel = sheet.classList.contains("level-4")
       ? "level-4"
       : sheet.classList.contains("level-3")
@@ -2898,8 +2899,9 @@ function openSheetToLevel2() {
   const sheet = document.getElementById("place-sheet");
   if (!sheet) return;
 
-  sheet.classList.remove("hidden", "level-1", "level-3", "level-4");
-  sheet.classList.add("level-2");
+  const nextLevel = getMarkerSheetOpenLevel();
+  sheet.classList.remove("hidden", "level-1", "level-2", "level-3", "level-4");
+  sheet.classList.add(`level-${nextLevel}`);
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
