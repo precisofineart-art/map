@@ -3543,10 +3543,10 @@ body.markers-exploded .edge-indicator {
     left: 10px;
     width: auto;
     max-width: none;
-    height: min(76dvh, calc(var(--app-height) - var(--app-top) - 68px));
-    max-height: calc(var(--app-height) - var(--app-top) - 68px);
-    min-height: 420px;
-    padding: 0 16px max(16px, env(safe-area-inset-bottom, 0px));
+    height: auto;
+    max-height: min(76dvh, calc(var(--app-height) - var(--app-top) - 68px));
+    min-height: 0;
+    padding: 0 16px 0;
     border: 1px solid rgba(34, 214, 202, 0.42);
     border-radius: 30px;
     background:
@@ -3879,7 +3879,7 @@ body.markers-exploded .edge-indicator {
   .place-sheet {
     right: 8px;
     left: 8px;
-    min-height: 390px;
+    min-height: 0;
     padding-right: 12px;
     padding-left: 12px;
     border-radius: 26px;
