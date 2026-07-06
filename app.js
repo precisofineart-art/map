@@ -2029,12 +2029,21 @@ async function shareActivePlace() {
   }
 }
 
+function openActiveProduct() {
+  const productLink = document.getElementById("sheet-product-link");
+  const productUrl = activeItem?.link || productLink?.href || "";
+
+  if (!productUrl || productUrl === "#") return;
+
+  window.open(productUrl, "_blank", "noopener,noreferrer");
+}
+
 function initNearbyControls() {
   const prevButton = document.getElementById("nearby-prev");
   const nextButton = document.getElementById("nearby-next");
   const desktopPrevButton = document.getElementById("desktop-nearby-prev");
   const desktopNextButton = document.getElementById("desktop-nearby-next");
-  const shareButton = document.getElementById("sheet-share");
+  const buyButton = document.getElementById("sheet-buy");
   const nearbyToggle = document.getElementById("sheet-nearby-toggle");
   const photoFocusButton = document.getElementById("sheet-photo-focus");
 
@@ -2062,10 +2071,10 @@ function initNearbyControls() {
     navigateToNearbyMarker("next");
   });
 
-  shareButton?.addEventListener("click", (e) => {
+  buyButton?.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    shareActivePlace();
+    openActiveProduct();
   });
 
   nearbyToggle?.addEventListener("click", (e) => {
@@ -2835,6 +2844,7 @@ function showPlaceSheet(item, options = {}) {
   const location2 = document.getElementById("sheet-location-2");
   const image = document.getElementById("sheet-image-main");
   const productLink = document.getElementById("sheet-product-link");
+  const buyButton = document.getElementById("sheet-buy");
   const closeButton = document.getElementById("sheet-close");
 
   if (title) title.textContent = item.moment || "Explore";
@@ -2869,6 +2879,12 @@ function showPlaceSheet(item, options = {}) {
   if (productLink) {
     productLink.href = item.link || "#";
     productLink.setAttribute("aria-label", `Buy ${item.title || "product"}`);
+  }
+
+  if (buyButton) {
+    const canBuy = Boolean(item.link);
+    buyButton.disabled = !canBuy;
+    buyButton.setAttribute("aria-label", canBuy ? `Buy ${item.title || "print"}` : "Buy print unavailable");
   }
 
   renderNearbyPrints(item, { animate: options.animateNearby });
