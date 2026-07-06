@@ -306,6 +306,9 @@ const PRODUCT_FETCH_PAGE_SIZE = 250;
 const NEW_PRINT_COUNT = 6;
 const MOBILE_HOME_MARKER_LIMIT = 10;
 const MOBILE_MARKER_SHEET_OPEN_LEVEL = 4;
+const MOBILE_MARKER_SHEET_ANCHOR_GAP = 54;
+const MOBILE_MARKER_SHEET_ANCHOR_TRANSITION_MS = 220;
+const MOBILE_MARKER_SHEET_REANCHOR_DELAY_MS = 280;
 
 /* =========================
    HELPERS
@@ -612,6 +615,47 @@ function isMobileMapViewport() {
 
 function getMarkerSheetOpenLevel() {
   return isMobileMapViewport() ? MOBILE_MARKER_SHEET_OPEN_LEVEL : 2;
+}
+
+function getMobileSheetOpenTop(sheet) {
+  if (!sheet) return window.innerHeight * 0.62;
+
+  const rect = sheet.getBoundingClientRect();
+  if (!sheet.classList.contains("hidden")) {
+    return rect.top;
+  }
+
+  const styles = window.getComputedStyle(sheet);
+  const bottom = Number.parseFloat(styles.bottom);
+  const sheetBottom = Number.isFinite(bottom) ? bottom : 0;
+  const measuredHeight = rect.height || sheet.offsetHeight || 0;
+  const mobileSheetHeightFloor = Math.min(
+    window.innerHeight * 0.76,
+    Math.max(440, window.innerHeight * 0.62)
+  );
+  const sheetHeight = Math.max(measuredHeight, mobileSheetHeightFloor);
+
+  return window.innerHeight - sheetBottom - sheetHeight;
+}
+
+function getMobileMarkerSheetAnchorY(sheet = document.getElementById("place-sheet")) {
+  const header = document.getElementById("header");
+  const headerRect = header?.getBoundingClientRect();
+  const sheetTop = getMobileSheetOpenTop(sheet);
+  const markerSize = getMarkerSizePx();
+  const anchorGap = Math.max(
+    MOBILE_MARKER_SHEET_ANCHOR_GAP,
+    Math.round(markerSize * 1.2)
+  );
+  const topSafe = Math.round((headerRect?.bottom || 0) + markerSize * 2.05);
+  const bottomSafe = Math.round(sheetTop - markerSize * 0.65);
+  const desiredY = Math.round(sheetTop - anchorGap);
+
+  if (bottomSafe <= topSafe) {
+    return Math.max(24, bottomSafe);
+  }
+
+  return Math.min(bottomSafe, Math.max(topSafe, desiredY));
 }
 
 function isMobileHeaderLocationMenu(menu) {
@@ -2603,7 +2647,6 @@ function updateEdgeIndicator() {
 
 function getSheetOffset() {
   const sheet = document.getElementById("place-sheet");
-  const header = document.getElementById("header");
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
 
   if (!sheet) {
@@ -2611,7 +2654,7 @@ function getSheetOffset() {
   }
 
   const sheetIsHidden = sheet.classList.contains("hidden");
-  if (sheetIsHidden) {
+  if (sheetIsHidden && !isMobileViewport) {
     return [0, 0];
   }
 
@@ -2626,15 +2669,7 @@ function getSheetOffset() {
     return [offsetX, 0];
   }
 
-  const sheetRect = sheet.getBoundingClientRect();
-  const headerRect = header?.getBoundingClientRect();
-
-  const topSafe = Math.round((headerRect?.bottom || 0) + (isMobileViewport ? 36 : 20));
-  const bottomSafe = Math.round(sheetRect.top - (isMobileViewport ? 102 : 72));
-
-  const desiredY = bottomSafe > topSafe
-    ? Math.round((topSafe + bottomSafe) / 2)
-    : topSafe;
+  const desiredY = getMobileMarkerSheetAnchorY(sheet);
 
   const viewportCenterY = Math.round(window.innerHeight / 2);
   const offsetY = desiredY - viewportCenterY;
@@ -2661,6 +2696,24 @@ function nudgeActiveMarkerIntoView() {
 
   const isMobileViewport = window.matchMedia("(max-width: 700px)").matches;
   const padding = 72;
+
+  if (sheetRect && isMobileViewport) {
+    const targetX = Math.round(window.innerWidth / 2 - mapRect.left);
+    const targetY = Math.round(getMobileMarkerSheetAnchorY(sheet) - mapRect.top);
+    const panX = markerPoint.x - targetX;
+    const panY = markerPoint.y - targetY;
+
+    if (!Number.isFinite(panX) || !Number.isFinite(panY)) return;
+
+    if (Math.abs(panX) > 1 || Math.abs(panY) > 1) {
+      map.panBy([panX, panY], {
+        duration: MOBILE_MARKER_SHEET_ANCHOR_TRANSITION_MS,
+        essential: true
+      });
+    }
+
+    return;
+  }
 
   const safeLeft = sheetRect && !isMobileViewport
     ? sheetRect.right - mapRect.left + padding
@@ -2695,6 +2748,15 @@ function nudgeActiveMarkerIntoView() {
       essential: true
     });
   }
+}
+
+function scheduleMobileMarkerSheetAnchor(item = activeItem) {
+  if (!item || activeItem?.id !== item.id || !isMobileMapViewport()) return;
+
+  requestAnimationFrame(() => {
+    keepActiveMarkerVisible();
+    window.setTimeout(nudgeActiveMarkerIntoView, MOBILE_MARKER_SHEET_REANCHOR_DELAY_MS);
+  });
 }
 
 function getFlyToOptions(item, zoom) {
@@ -2863,12 +2925,14 @@ function showPlaceSheet(item, options = {}) {
     }
     image.onload = () => {
       updateSheetPhotoOrientation(image, item);
+      scheduleMobileMarkerSheetAnchor(item);
     };
     image.alt = item.title || "";
     image.onerror = () => {
       image.onerror = null;
       image.onload = () => {
         updateSheetPhotoOrientation(image, {});
+        scheduleMobileMarkerSheetAnchor(item);
       };
       image.src = FALLBACK_IMAGE;
     };
