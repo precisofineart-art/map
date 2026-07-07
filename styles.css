@@ -2917,21 +2917,49 @@ body.marker-active #carousel {
     font-size: 10px;
   }
 
+  #header .region-pills .region-count,
+  #header .region-pills .region-pill-caret {
+    display: none;
+  }
+
   .region-pills {
     flex-wrap: nowrap;
     justify-content: center;
-    gap: 5px;
-    width: min(178px, calc(100vw - 24px));
+    gap: 7px;
+    width: max-content;
     max-width: calc(100vw - 24px);
-    padding: 4px;
+    padding: 0;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
     border-radius: 999px;
-    background: var(--glass-panel);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-filter);
-    -webkit-backdrop-filter: var(--glass-filter);
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  #header .region-pills .region-pill,
+  #header .region-pills .region-pill.active {
+    min-height: 32px;
+    padding: 0 18px;
+    border: 1px solid rgba(17, 17, 17, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #111;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  #header .region-pills .region-pill.active {
+    border-color: rgba(17, 17, 17, 0.32);
+    background: rgba(255, 255, 255, 0.98);
   }
 
   .region-pills:not(.mobile-menu-open) > .region-pill:not(.active),
@@ -2940,78 +2968,122 @@ body.marker-active #carousel {
   }
 
   .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) {
-    width: 100%;
+    width: auto;
   }
 
   .region-pills:not(.mobile-menu-open) .region-pill.active {
-    flex: 1 1 auto;
-    width: 100%;
-    justify-content: space-between;
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: center;
     min-width: 0;
   }
 
   .region-pills::after {
-    display: block;
+    display: none;
     width: 16px;
     margin-left: -16px;
     background: linear-gradient(to right, rgba(236, 242, 247, 0), rgba(236, 242, 247, 0.54));
   }
 
   .region-pills:not(.mobile-menu-open)::after {
-    content: "v";
-    position: static;
-    width: auto;
-    height: auto;
-    flex: 0 0 auto;
-    margin-left: -2px;
-    padding-right: 6px;
-    background: none;
-    color: #0c347a;
-    font-size: 9px;
-    font-weight: 900;
-    line-height: 1;
-    transform: translateY(-1px);
+    display: none;
   }
 
   .region-pills.mobile-menu-open {
-    width: min(224px, calc(100vw - 24px));
-    max-height: min(56vh, 430px);
+    width: min(250px, calc(100vw - 28px));
+    max-height: min(50vh, 370px);
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     justify-content: flex-start;
-    border-radius: 21px;
-    padding: 6px;
+    gap: 8px;
+    border-radius: 18px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
     overflow-y: auto;
     overflow-x: hidden;
   }
 
-  .region-pills.mobile-menu-open::after {
+  .region-pills.mobile-menu-open::after,
+  .region-pills.mobile-menu-open::before {
     display: none;
   }
 
   .region-pills.mobile-menu-open .region-pill,
   .region-pills.mobile-menu-open .region-menu-group {
-    width: 100%;
+    width: max-content;
+    max-width: 100%;
   }
 
   .region-pills.mobile-menu-open .region-pill {
-    justify-content: space-between;
+    justify-content: center;
   }
 
   .region-pills.mobile-menu-open .region-menu-group {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
+    align-items: center;
+    gap: 8px;
   }
 
   .region-pills.mobile-menu-open .region-submenu {
     position: static;
-    width: 100%;
-    max-height: 214px;
+    width: max-content;
+    max-width: 100%;
+    max-height: 224px;
     grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     transform: none;
     overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .region-pills.mobile-menu-open[data-mobile-menu-view="countries"] .region-submenu {
+    display: none;
+  }
+
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) > .region-pill[data-country-filter="true"],
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-menu-group:not(.open),
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-parent-pill {
+    display: none;
+  }
+
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-submenu.open {
+    display: grid;
+  }
+
+  .region-pills.mobile-menu-open .region-submenu-item {
+    min-height: 32px;
+    width: max-content;
+    max-width: 100%;
+    padding: 0 18px;
+    border: 1px solid rgba(17, 17, 17, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #111;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .region-pills.mobile-menu-open .region-submenu-item.active,
+  #header .region-pills.mobile-menu-open .mobile-region-back {
+    border-color: rgba(17, 17, 17, 0.32);
+    background: rgba(255, 255, 255, 0.98);
+    color: #111;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   }
 
   .region-pills.mobile-menu-open .region-submenu:not(.open) {
@@ -3704,14 +3776,15 @@ body.markers-exploded .edge-indicator {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 35px;
+    height: 35px;
     border: 0;
     border-radius: 999px;
     background: rgba(12, 16, 17, 0.62);
     color: #fff;
     font-size: 22px;
     line-height: 1;
+    opacity: 0.60;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       0 10px 24px rgba(0, 0, 0, 0.22);

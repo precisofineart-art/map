@@ -72,6 +72,9 @@ const REGION_MATCH_BOUNDS = {
 };
 
 const USA_FILTER_KEY = "country:usa";
+const MOBILE_LOCATION_MENU_COUNTRIES_VIEW = "countries";
+const MOBILE_LOCATION_MENU_USA_STATES_VIEW = "usa-states";
+const MOBILE_LOCATION_MENU_CITY_VIEW_PREFIX = "cities:";
 const USA_COORDINATE_BOUNDS = [[-125, 24], [-66, 50]];
 const LOCATION_FILTER_PADDING = {
   top: 145,
@@ -664,15 +667,64 @@ function isMobileHeaderLocationMenu(menu) {
 
 function closeMobileLocationMenus(exceptMenu = null) {
   document.querySelectorAll("#header [data-location-menu].mobile-menu-open").forEach((menu) => {
-    if (menu !== exceptMenu) menu.classList.remove("mobile-menu-open");
+    if (menu === exceptMenu) return;
+    menu.classList.remove("mobile-menu-open");
+    delete menu.dataset.mobileMenuView;
+    syncMobileLocationMenuView(menu);
   });
 }
 
-function openMobileLocationMenu(menu) {
+function syncMobileLocationMenuView(menu) {
+  if (!isMobileHeaderLocationMenu(menu)) return;
+
+  const view = menu.dataset.mobileMenuView || MOBILE_LOCATION_MENU_COUNTRIES_VIEW;
+  menu.querySelectorAll(".region-menu-group").forEach((group) => {
+    const toggle = group.querySelector("[data-region-menu-toggle]");
+    const submenu = getRegionSubmenuForGroup(group);
+    const targetView = toggle?.dataset.mobileMenuTargetView || "";
+    const isOpen = Boolean(targetView) && view === targetView;
+
+    group.classList.toggle("open", isOpen);
+    submenu?.classList.toggle("open", isOpen);
+    toggle?.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  updateMobileLocationMenuLabels();
+}
+
+function setMobileLocationMenuView(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_VIEW) {
+  if (!isMobileHeaderLocationMenu(menu)) return;
+
+  menu.dataset.mobileMenuView = view;
+  syncMobileLocationMenuView(menu);
+}
+
+function updateMobileLocationMenuLabels(regionKey = activeRegionKey) {
+  const activeFilter = locationFilters.get(regionKey);
+
+  document.querySelectorAll("#header [data-location-menu]").forEach((menu) => {
+    const usaToggle = menu.querySelector("[data-country-toggle='usa']");
+    if (!usaToggle) return;
+
+    const isUsaRegion = regionKey === USA_FILTER_KEY || activeFilter?.parentKey === USA_FILTER_KEY;
+    const shouldShowSelectedState = (
+      isUsaRegion &&
+      regionKey !== USA_FILTER_KEY &&
+      !menu.classList.contains("mobile-menu-open")
+    );
+
+    const label = shouldShowSelectedState ? getActiveViewLabel(regionKey) : "USA";
+    const count = locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0;
+    setRegionButtonContent(usaToggle, label, count, { caret: true });
+  });
+}
+
+function openMobileLocationMenu(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_VIEW) {
   if (!isMobileHeaderLocationMenu(menu)) return;
 
   closeMobileLocationMenus(menu);
   menu.classList.add("mobile-menu-open");
+  setMobileLocationMenuView(menu, view);
 }
 
 function getDistanceMiles(a, b) {
@@ -1520,6 +1572,28 @@ function getCountryLabelForItem(item) {
   return "Other";
 }
 
+function getCityLabelForItem(item) {
+  for (const candidate of getLocationCandidates(item)) {
+    const parts = candidate
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length > 1) {
+      return parts.slice(0, -1).join(", ").replace(/\s+/g, " ").trim();
+    }
+  }
+
+  const fallback = item?.location1 || item?.location2 || item?.title || "";
+  return String(fallback)
+    .split("•")
+    .at(-1)
+    ?.split(",")
+    .at(0)
+    ?.replace(/\s+/g, " ")
+    .trim() || "";
+}
+
 function buildViewForItems(items, zoom = 5.8) {
   const validItems = items.filter(hasValidCoordinates);
   if (!validItems.length) return REGION_VIEWS.all;
@@ -1576,6 +1650,7 @@ function buildLocationFilters() {
   const usaItems = [];
   const stateBuckets = new Map();
   const countryBuckets = new Map();
+  const cityBuckets = new Map();
 
   listings.forEach((item) => {
     const countryLabel = getCountryLabelForItem(item);
@@ -1617,6 +1692,23 @@ function buildLocationFilters() {
     }
 
     countryBuckets.get(countryKey).items.push(item);
+
+    const cityLabel = getCityLabelForItem(item) || countryLabel;
+    const cityKey = `city:${slugifyLocationLabel(countryLabel) || "other"}:${slugifyLocationLabel(cityLabel) || "city"}`;
+    item.cityLabel = cityLabel;
+    item.cityKey = cityKey;
+
+    if (!cityBuckets.has(cityKey)) {
+      cityBuckets.set(cityKey, {
+        key: cityKey,
+        label: cityLabel,
+        parentKey: countryKey,
+        type: "city",
+        items: []
+      });
+    }
+
+    cityBuckets.get(cityKey).items.push(item);
   });
 
   if (usaItems.length) {
@@ -1644,6 +1736,15 @@ function buildLocationFilters() {
       nextFilters.set(filter.key, {
         ...filter,
         view: buildCountryView(filter.key, filter.items, 5.7)
+      });
+    });
+
+  [...cityBuckets.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .forEach((filter) => {
+      nextFilters.set(filter.key, {
+        ...filter,
+        view: buildViewForItems(filter.items, 11.2)
       });
     });
 
@@ -1698,6 +1799,7 @@ function getRegionHash(regionKey) {
   if (!regionKey || regionKey === "all") return "";
   if (regionKey.startsWith("country:")) return `country=${encodeURIComponent(regionKey.replace("country:", ""))}`;
   if (regionKey.startsWith("state:")) return `state=${encodeURIComponent(regionKey.replace("state:", ""))}`;
+  if (regionKey.startsWith("city:")) return `city=${encodeURIComponent(regionKey.replace("city:", ""))}`;
   return `view=${encodeURIComponent(regionKey)}`;
 }
 
@@ -1719,6 +1821,7 @@ function getRegionKeyFromHash() {
   const params = new URLSearchParams(hash);
   if (params.has("country")) return `country:${params.get("country")}`;
   if (params.has("state")) return `state:${params.get("state")}`;
+  if (params.has("city")) return `city:${params.get("city")}`;
   if (params.has("view")) return params.get("view") || "";
   return "";
 }
@@ -1788,19 +1891,100 @@ function makeLocationMenuButton(className, filter) {
   return button;
 }
 
+function makeMobileLocationMenuBackButton() {
+  const button = document.createElement("button");
+  button.className = "region-submenu-item mobile-region-back";
+  button.type = "button";
+  button.dataset.mobileMenuBack = "countries";
+  button.textContent = "BACK";
+  return button;
+}
+
+function makeMobileAllUsaButton() {
+  const button = document.createElement("button");
+  button.className = "region-submenu-item mobile-region-all-usa";
+  button.type = "button";
+  button.dataset.region = USA_FILTER_KEY;
+  button.dataset.mobileAllUsa = "true";
+  setRegionButtonContent(button, "ALL USA", locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0);
+  return button;
+}
+
+function getMobileMenuTargetViewForCountry(countryKey) {
+  return countryKey === USA_FILTER_KEY
+    ? MOBILE_LOCATION_MENU_USA_STATES_VIEW
+    : `${MOBILE_LOCATION_MENU_CITY_VIEW_PREFIX}${countryKey}`;
+}
+
+function makeMobileAllCountryButton(countryFilter) {
+  const button = document.createElement("button");
+  button.className = "region-submenu-item mobile-region-all-country";
+  button.type = "button";
+  button.dataset.region = countryFilter.key;
+  setRegionButtonContent(button, `All ${countryFilter.label}`, countryFilter.items?.length ?? 0);
+  return button;
+}
+
+function makeMobileCountryGroup(countryFilter, childFilters) {
+  const countrySlug = slugifyLocationLabel(countryFilter.key);
+  const targetView = getMobileMenuTargetViewForCountry(countryFilter.key);
+  const group = document.createElement("div");
+  group.className = "region-menu-group mobile-country-menu-group";
+  group.dataset.dynamicCountryGroup = "true";
+  group.dataset.countryGroup = countryFilter.key;
+
+  const toggle = makeLocationMenuButton("region-pill region-parent-pill", countryFilter);
+  toggle.dataset.countryFilter = "true";
+  toggle.dataset.countryToggle = countryFilter.key;
+  toggle.dataset.regionMenuToggle = "true";
+  toggle.dataset.mobileMenuTargetView = targetView;
+  toggle.setAttribute("aria-haspopup", "true");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.setAttribute("aria-controls", `mobile-${countrySlug}-submenu`);
+  setRegionButtonContent(toggle, countryFilter.label, countryFilter.items?.length ?? 0, { caret: true });
+
+  const submenu = document.createElement("div");
+  submenu.id = `mobile-${countrySlug}-submenu`;
+  submenu.className = "region-submenu mobile-location-submenu";
+  submenu.setAttribute("aria-label", `${countryFilter.label} locations`);
+  submenu.dataset.countrySubmenu = countryFilter.key;
+  submenu.appendChild(makeMobileLocationMenuBackButton());
+  submenu.appendChild(countryFilter.key === USA_FILTER_KEY ? makeMobileAllUsaButton() : makeMobileAllCountryButton(countryFilter));
+  childFilters.forEach((filter) => {
+    submenu.appendChild(makeLocationMenuButton("region-submenu-item", filter));
+  });
+
+  group.append(toggle, submenu);
+  return group;
+}
+
 function renderLocationMenus() {
   const stateFilters = [...locationFilters.values()].filter((filter) => filter.parentKey === USA_FILTER_KEY);
   const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
+  const cityFiltersByCountry = new Map();
+  [...locationFilters.values()]
+    .filter((filter) => filter.type === "city")
+    .forEach((filter) => {
+      if (!cityFiltersByCountry.has(filter.parentKey)) cityFiltersByCountry.set(filter.parentKey, []);
+      cityFiltersByCountry.get(filter.parentKey).push(filter);
+    });
+
+  cityFiltersByCountry.forEach((filters) => {
+    filters.sort((a, b) => a.label.localeCompare(b.label));
+  });
 
   document.querySelectorAll("[data-location-menu]").forEach((menu) => {
+    const isHeaderMenu = Boolean(menu.closest("#header"));
     const usaGroup = menu.querySelector("[data-country-group='usa']");
     const usaSubmenu = menu.querySelector("[data-country-submenu='usa']");
     const usaToggle = menu.querySelector("[data-country-toggle='usa']");
 
     menu.querySelectorAll("[data-country-filter='true']").forEach((button) => button.remove());
+    menu.querySelectorAll("[data-dynamic-country-group='true']").forEach((group) => group.remove());
 
     if (usaToggle) {
       usaToggle.dataset.region = USA_FILTER_KEY;
+      usaToggle.dataset.mobileMenuTargetView = MOBILE_LOCATION_MENU_USA_STATES_VIEW;
       usaToggle.hidden = !locationFilters.has(USA_FILTER_KEY);
       setRegionButtonContent(
         usaToggle,
@@ -1816,12 +2000,21 @@ function renderLocationMenus() {
 
     if (usaSubmenu) {
       usaSubmenu.replaceChildren();
+      if (usaSubmenu.closest("#header")) {
+        usaSubmenu.appendChild(makeMobileLocationMenuBackButton());
+        usaSubmenu.appendChild(makeMobileAllUsaButton());
+      }
       stateFilters.forEach((filter) => {
         usaSubmenu.appendChild(makeLocationMenuButton("region-submenu-item", filter));
       });
     }
 
     countryFilters.forEach((filter) => {
+      if (isHeaderMenu) {
+        menu.appendChild(makeMobileCountryGroup(filter, cityFiltersByCountry.get(filter.key) || []));
+        return;
+      }
+
       const button = makeLocationMenuButton("region-pill", filter);
       button.dataset.countryFilter = "true";
       menu.appendChild(button);
@@ -1837,6 +2030,8 @@ function setActiveRegionChip(regionKey = "all") {
     const isActive = chipRegion === regionKey || (chipRegion === activeFilter?.parentKey);
     chip.classList.toggle("active", isActive);
   });
+
+  updateMobileLocationMenuLabels(regionKey);
 }
 
 function pointInBounds(lng, lat, bounds) {
@@ -1856,6 +2051,10 @@ function getRegionKeyForItem(item) {
 
   if (item.stateKey) {
     return item.stateKey;
+  }
+
+  if (item.cityKey) {
+    return item.cityKey;
   }
 
   if (item.countryKey) {
@@ -2371,16 +2570,33 @@ function bindHeaderRegionPills() {
       e.stopPropagation();
 
       const isMobileSelector = isMobileHeaderLocationMenu(menu);
+      if (isMobileSelector) {
+        const isOpen = menu.classList.contains("mobile-menu-open");
+        const currentView = menu.dataset.mobileMenuView || MOBILE_LOCATION_MENU_COUNTRIES_VIEW;
+        const targetView = toggle.dataset.mobileMenuTargetView || getMobileMenuTargetViewForCountry(toggle.dataset.region || "");
+
+        if (!isOpen) {
+          openMobileLocationMenu(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
+          return;
+        }
+
+        if (targetView && currentView !== targetView) {
+          setMobileLocationMenuView(menu, targetView);
+          return;
+        }
+
+        setMobileLocationMenuView(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
+        return;
+      }
+
       const shouldOpen = !group?.classList.contains("open");
       if (shouldOpen) {
-        if (isMobileSelector) openMobileLocationMenu(menu);
         const regionKey = toggle.dataset.region || "all";
         focusRegion(regionKey);
         openRegionMenu(group);
         if (group) group.dataset.regionClickOpen = "true";
       } else {
         closeRegionMenus();
-        if (isMobileSelector) closeMobileLocationMenus();
       }
     });
 
@@ -2462,6 +2678,19 @@ function bindHeaderRegionPills() {
       focusRegion(regionKey);
       closeRegionMenus();
       if (isMobileMapViewport()) closeMobileLocationMenus();
+    });
+  });
+
+  document.querySelectorAll("[data-mobile-menu-back]").forEach((button) => {
+    if (button.dataset.mobileMenuBackBound === "true") return;
+
+    button.dataset.mobileMenuBackBound = "true";
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const menu = button.closest("[data-location-menu]");
+      setMobileLocationMenuView(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
     });
   });
 
@@ -3603,6 +3832,7 @@ function getSearchText(item) {
     item.moment,
     item.location1,
     item.location2,
+    item.cityLabel,
     item.stateLabel,
     item.countryLabel
   ].filter(Boolean).join(" "));
