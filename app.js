@@ -700,22 +700,16 @@ function setMobileLocationMenuView(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_V
 }
 
 function updateMobileLocationMenuLabels(regionKey = activeRegionKey) {
-  const activeFilter = locationFilters.get(regionKey);
-
   document.querySelectorAll("#header [data-location-menu]").forEach((menu) => {
     const usaToggle = menu.querySelector("[data-country-toggle='usa']");
     if (!usaToggle) return;
 
-    const isUsaRegion = regionKey === USA_FILTER_KEY || activeFilter?.parentKey === USA_FILTER_KEY;
-    const shouldShowSelectedState = (
-      isUsaRegion &&
-      regionKey !== USA_FILTER_KEY &&
-      !menu.classList.contains("mobile-menu-open")
+    setRegionButtonContent(
+      usaToggle,
+      "USA",
+      locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0,
+      { caret: true }
     );
-
-    const label = shouldShowSelectedState ? getActiveViewLabel(regionKey) : "USA";
-    const count = locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0;
-    setRegionButtonContent(usaToggle, label, count, { caret: true });
   });
 }
 
@@ -725,6 +719,21 @@ function openMobileLocationMenu(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_VIEW
   closeMobileLocationMenus(menu);
   menu.classList.add("mobile-menu-open");
   setMobileLocationMenuView(menu, view);
+}
+
+function scrollActiveHeaderCarouselIntoView(regionKey = activeRegionKey) {
+  window.requestAnimationFrame(() => {
+    const headerMenu = document.querySelector("#header [data-location-menu]");
+    const parentChip = [...headerMenu?.querySelectorAll(".region-parent-pill[data-region]") || []]
+      .find((chip) => chip.dataset.region === regionKey);
+    const activeChip = parentChip || [...headerMenu?.querySelectorAll(".region-submenu [data-region]") || []]
+      .find((chip) => chip.dataset.region === regionKey);
+
+    activeChip?.scrollIntoView({
+      block: "nearest",
+      inline: "center"
+    });
+  });
 }
 
 function getDistanceMiles(a, b) {
@@ -1056,31 +1065,7 @@ function hideRegionIntro() {
 }
 
 function renderRegionIntro(regionKey = activeRegionKey) {
-  const intro = document.getElementById("region-intro");
-  const title = document.getElementById("region-intro-title");
-  const meta = document.getElementById("region-intro-meta");
-  if (!intro || !title || !meta) return;
-
-  const items = getRegionItems(regionKey);
-  const isMobile = isMobileMapViewport();
-  if (!items.length || (isMobile && regionKey === "all")) {
-    hideRegionIntro();
-    return;
-  }
-
-  const viewLabel = getActiveViewLabel(regionKey);
-  const locationCount = getRegionLocationCount(items);
-  const printLabel = formatCount(items.length, "print");
-  const titleLabel = `${regionKey === "all" ? "Preciso" : viewLabel} · ${printLabel}`;
-
-  title.textContent = titleLabel;
-  meta.textContent = `${formatCount(locationCount, "location")} · ${printLabel}`;
-
-  intro.classList.remove("hidden");
-  intro.setAttribute("aria-hidden", "false");
-  intro.classList.remove("is-fresh");
-  void intro.offsetWidth;
-  intro.classList.add("is-fresh");
+  hideRegionIntro();
 }
 
 function createPhotoStripButton(item, index, total) {
@@ -1858,13 +1843,33 @@ function setActiveItemRegion(item) {
   setActiveRegionChip(regionKey);
 }
 
+function getRegionMenuIcon(regionKey = "", label = "") {
+  const key = String(regionKey).toLowerCase();
+  const normalizedLabel = String(label).toLowerCase();
+
+  if (key === USA_FILTER_KEY || normalizedLabel === "usa") return "⌂";
+  if (key === "country:cuba" || normalizedLabel === "cuba") return "🇨🇺";
+  if (key === "country:guatemala" || normalizedLabel === "guatemala") return "🇬🇹";
+  if (key === "country:mexico" || normalizedLabel === "mexico") return "🇲🇽";
+  if (key === "country:poland" || normalizedLabel === "poland") return "🇵🇱";
+  if (key === "country:thailand" || normalizedLabel === "thailand") return "🇹🇭";
+  return "⌖";
+}
+
 function setRegionButtonContent(button, label, count, options = {}) {
   if (!button) return;
+
+  button.setAttribute("aria-label", Number.isFinite(count) ? `${label}, ${count} prints` : label);
+
+  const iconEl = document.createElement("span");
+  iconEl.className = "region-pill-icon";
+  iconEl.setAttribute("aria-hidden", "true");
+  iconEl.textContent = options.icon || getRegionMenuIcon(button.dataset.region, label);
 
   const labelEl = document.createElement("span");
   labelEl.className = "region-pill-label";
   labelEl.textContent = label;
-  button.replaceChildren(labelEl);
+  button.replaceChildren(iconEl, labelEl);
 
   if (Number.isFinite(count)) {
     const countEl = document.createElement("span");
@@ -1908,6 +1913,12 @@ function makeMobileAllUsaButton() {
   button.dataset.mobileAllUsa = "true";
   setRegionButtonContent(button, "ALL USA", locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0);
   return button;
+}
+
+function getStateFilters() {
+  return [...locationFilters.values()]
+    .filter((filter) => filter.parentKey === USA_FILTER_KEY)
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function getMobileMenuTargetViewForCountry(countryKey) {
@@ -1959,7 +1970,7 @@ function makeMobileCountryGroup(countryFilter, childFilters) {
 }
 
 function renderLocationMenus() {
-  const stateFilters = [...locationFilters.values()].filter((filter) => filter.parentKey === USA_FILTER_KEY);
+  const stateFilters = getStateFilters();
   const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
   const cityFiltersByCountry = new Map();
   [...locationFilters.values()]
@@ -2032,6 +2043,7 @@ function setActiveRegionChip(regionKey = "all") {
   });
 
   updateMobileLocationMenuLabels(regionKey);
+  scrollActiveHeaderCarouselIntoView(regionKey);
 }
 
 function pointInBounds(lng, lat, bounds) {
@@ -2394,7 +2406,7 @@ function positionRegionSubmenu(group) {
   if (!toggle || !submenu) return;
 
   const menu = group.closest("[data-location-menu]");
-  if (group.closest(".desktop-sidebar") || isMobileHeaderLocationMenu(menu)) {
+  if (group.closest(".desktop-sidebar") || group.closest("#header") || isMobileHeaderLocationMenu(menu)) {
     submenu.style.removeProperty("--region-submenu-left");
     submenu.style.removeProperty("--region-submenu-top");
     return;
@@ -2571,21 +2583,9 @@ function bindHeaderRegionPills() {
 
       const isMobileSelector = isMobileHeaderLocationMenu(menu);
       if (isMobileSelector) {
-        const isOpen = menu.classList.contains("mobile-menu-open");
-        const currentView = menu.dataset.mobileMenuView || MOBILE_LOCATION_MENU_COUNTRIES_VIEW;
-        const targetView = toggle.dataset.mobileMenuTargetView || getMobileMenuTargetViewForCountry(toggle.dataset.region || "");
-
-        if (!isOpen) {
-          openMobileLocationMenu(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
-          return;
-        }
-
-        if (targetView && currentView !== targetView) {
-          setMobileLocationMenuView(menu, targetView);
-          return;
-        }
-
-        setMobileLocationMenuView(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
+        const regionKey = toggle.dataset.region || "all";
+        focusRegion(regionKey);
+        closeMobileLocationMenus();
         return;
       }
 
@@ -2601,26 +2601,35 @@ function bindHeaderRegionPills() {
     });
 
     group?.addEventListener("pointerenter", (e) => {
-      if (e.pointerType === "mouse") openRegionMenu(group);
+      if (e.pointerType !== "mouse") return;
+      if (isMobileHeaderLocationMenu(menu)) return;
+      openRegionMenu(group);
     });
     group?.addEventListener("pointerleave", (e) => {
       if (e.pointerType !== "mouse") return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseenter", () => {
-      if (canUseHoverRegionMenu()) openRegionMenu(group);
+      if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
+      openRegionMenu(group);
     });
     group?.addEventListener("mouseleave", (e) => {
       if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
     group?.addEventListener("mouseover", () => {
-      if (canUseHoverRegionMenu()) openRegionMenu(group);
+      if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
+      openRegionMenu(group);
     });
     group?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
@@ -2632,6 +2641,7 @@ function bindHeaderRegionPills() {
     });
     submenu?.addEventListener("pointerleave", (e) => {
       if (e.pointerType !== "mouse") return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
@@ -2640,6 +2650,7 @@ function bindHeaderRegionPills() {
     });
     submenu?.addEventListener("mouseleave", (e) => {
       if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (!isRegionMenuPinned(group)) scheduleCloseRegionMenus();
     });
@@ -2648,6 +2659,7 @@ function bindHeaderRegionPills() {
     });
     submenu?.addEventListener("mouseout", (e) => {
       if (!canUseHoverRegionMenu()) return;
+      if (isMobileHeaderLocationMenu(menu)) return;
       if (isMovingWithinRegionHoverZone(e, group, submenu)) return;
       if (isRegionMenuPinned(group)) return;
       scheduleCloseRegionMenus();
@@ -2670,7 +2682,7 @@ function bindHeaderRegionPills() {
       );
 
       if (isClosedMobileSelector) {
-        openMobileLocationMenu(menu);
+        scrollActiveHeaderCarouselIntoView();
         return;
       }
 

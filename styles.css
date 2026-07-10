@@ -1140,6 +1140,10 @@ body {
   text-overflow: ellipsis;
 }
 
+.region-pill-icon {
+  display: none;
+}
+
 .region-count {
   display: inline-flex;
   align-items: center;
@@ -1317,6 +1321,10 @@ body.marker-active #google-ui {
 .region-intro.hidden,
 #carousel.hidden {
   display: none;
+}
+
+#region-intro {
+  display: none !important;
 }
 
 .region-intro,
@@ -2768,7 +2776,7 @@ body.marker-active #carousel {
   }
 
   .region-intro {
-    top: calc(var(--app-top) + 98px);
+    top: calc(var(--app-top) + 136px);
     left: 50%;
     right: auto;
     max-width: min(250px, calc(100vw - 20px));
@@ -2891,7 +2899,10 @@ body.marker-active #carousel {
 
   #header {
     top: calc(var(--app-top) + 6px);
-    width: calc(100vw - 18px);
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100vw;
     max-width: none;
   }
 
@@ -2923,6 +2934,8 @@ body.marker-active #carousel {
   }
 
   .region-pills {
+    --mobile-flyout-link-width: 106px;
+    --mobile-flyout-gap: 8px;
     flex-wrap: nowrap;
     justify-content: center;
     gap: 7px;
@@ -2978,6 +2991,81 @@ body.marker-active #carousel {
     min-width: 0;
   }
 
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) {
+    width: min(430px, calc(100vw - 22px));
+    max-width: calc(100vw - 22px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    overflow: visible;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-parent-pill.active {
+    max-width: calc(100vw - 42px);
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu {
+    position: static;
+    display: flex;
+    width: min(430px, calc(100vw - 22px));
+    max-width: calc(100vw - 22px);
+    max-height: none;
+    flex: 0 0 auto;
+    grid-template-columns: none;
+    gap: 7px;
+    padding: 0 2px 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .mobile-region-back {
+    display: none;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item {
+    flex: 0 0 auto;
+    min-height: 28px;
+    max-width: 132px;
+    padding: 0 14px;
+    border: 1px solid rgba(17, 17, 17, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #0c347a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: 0 4px 11px rgba(0, 0, 0, 0.12);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    scroll-snap-align: center;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item.active {
+    background: rgb(12, 52, 122);
+    border-color: rgb(12, 52, 122);
+    color: #fff;
+  }
+
   .region-pills::after {
     display: none;
     width: 16px;
@@ -3005,6 +3093,15 @@ body.marker-active #carousel {
     overflow-x: hidden;
   }
 
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) {
+    width: max-content;
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
   .region-pills.mobile-menu-open::after,
   .region-pills.mobile-menu-open::before {
     display: none;
@@ -3025,6 +3122,40 @@ body.marker-active #carousel {
     flex-direction: column;
     align-items: center;
     gap: 8px;
+  }
+
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-menu-group.open {
+    position: relative;
+    width: max-content;
+    max-width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-menu-group.open .region-parent-pill {
+    flex: 0 0 auto;
+    max-width: 126px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #header .region-pills .region-menu-group.open {
+    position: relative;
+    width: max-content;
+    max-width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow: visible;
+  }
+
+  #header .region-pills .region-menu-group.open .region-parent-pill {
+    flex: 0 0 auto;
+    max-width: 126px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .region-pills.mobile-menu-open .region-submenu {
@@ -3051,13 +3182,70 @@ body.marker-active #carousel {
   }
 
   .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) > .region-pill[data-country-filter="true"],
-  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-menu-group:not(.open),
-  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-parent-pill {
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-menu-group:not(.open) {
     display: none;
   }
 
   .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-submenu.open {
-    display: grid;
+    display: flex;
+    position: absolute;
+    top: 50%;
+    left: calc(100% + var(--mobile-flyout-gap));
+    width: min(
+      calc((var(--mobile-flyout-link-width) * 2) + var(--mobile-flyout-gap)),
+      calc(100vw - 160px)
+    );
+    max-width: calc(100vw - 160px);
+    max-height: none;
+    flex: 0 1 auto;
+    grid-template-columns: none;
+    gap: var(--mobile-flyout-gap);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(-50%);
+  }
+
+  #header .region-pills .region-menu-group.open .region-submenu,
+  #header .region-pills .region-menu-group.open .region-submenu.open {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + var(--mobile-flyout-gap));
+    display: flex;
+    width: min(
+      calc((var(--mobile-flyout-link-width) * 2) + var(--mobile-flyout-gap)),
+      calc(100vw - 160px)
+    );
+    max-width: calc(100vw - 160px);
+    max-height: none;
+    flex: 0 1 auto;
+    grid-template-columns: none;
+    gap: var(--mobile-flyout-gap);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: translateY(-50%);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-submenu.open::-webkit-scrollbar,
+  #header .region-pills .region-menu-group.open .region-submenu::-webkit-scrollbar,
+  #header .region-pills .region-menu-group.open .region-submenu.open::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .region-pills.mobile-menu-open .region-submenu-item {
@@ -3078,6 +3266,26 @@ body.marker-active #carousel {
     -webkit-backdrop-filter: none;
   }
 
+  .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-submenu-item {
+    flex: 0 0 var(--mobile-flyout-link-width);
+    width: var(--mobile-flyout-link-width);
+    max-width: var(--mobile-flyout-link-width);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    scroll-snap-align: start;
+  }
+
+  #header .region-pills .region-menu-group.open .region-submenu-item {
+    flex: 0 0 var(--mobile-flyout-link-width);
+    width: var(--mobile-flyout-link-width);
+    max-width: var(--mobile-flyout-link-width);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    scroll-snap-align: start;
+  }
+
   .region-pills.mobile-menu-open .region-submenu-item.active,
   #header .region-pills.mobile-menu-open .mobile-region-back {
     border-color: rgba(17, 17, 17, 0.32);
@@ -3086,8 +3294,263 @@ body.marker-active #carousel {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   }
 
+  #header .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .mobile-region-back {
+    display: none;
+  }
+
+  #header .region-pills .region-menu-group.open .mobile-region-back {
+    display: none;
+  }
+
   .region-pills.mobile-menu-open .region-submenu:not(.open) {
     display: none;
+  }
+
+  #header .region-pills {
+    --mobile-tab-height: 44px;
+    --mobile-tab-gap: 7px;
+    position: fixed;
+    left: max(18px, env(safe-area-inset-left, 0px));
+    right: max(18px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 16px);
+    z-index: 44;
+    width: auto;
+    max-width: none;
+    min-height: 70px;
+    justify-content: space-between;
+    gap: var(--mobile-tab-gap);
+    padding: 10px 10px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 30px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+      rgba(10, 10, 10, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.36),
+      0 16px 40px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(28px) saturate(165%);
+    -webkit-backdrop-filter: blur(28px) saturate(165%);
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-padding: 6px;
+  }
+
+  #header .region-pills > .region-pill,
+  #header .region-pills > .region-menu-group,
+  #header .region-pills:not(.mobile-menu-open) > .region-pill:not(.active),
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:not(:has(.region-parent-pill.active)),
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) {
+    display: flex;
+  }
+
+  #header .region-pills > .region-menu-group,
+  #header .region-pills .region-menu-group.open {
+    position: static;
+    width: auto;
+    max-width: none;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    overflow: visible;
+  }
+
+  #header .region-pills .region-pill,
+  #header .region-pills .region-pill.active,
+  #header .region-pills:not(.mobile-menu-open) .region-pill.active,
+  #header .region-pills .region-menu-group.open .region-parent-pill {
+    flex: 0 0 auto;
+    position: relative;
+    width: var(--mobile-tab-height);
+    min-width: var(--mobile-tab-height);
+    max-width: var(--mobile-tab-height);
+    min-height: var(--mobile-tab-height);
+    justify-content: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    overflow: visible;
+  }
+
+  #header .region-pills .region-pill.active,
+  #header .region-pills:not(.mobile-menu-open) .region-pill.active {
+    width: 58px;
+    min-width: 58px;
+    min-height: 50px;
+    margin: 0;
+    border-color: rgba(255, 255, 255, 0.22);
+    background:
+      radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.42), transparent 38%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
+      rgba(35, 35, 35, 0.72);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -8px 22px rgba(0, 0, 0, 0.18),
+      0 10px 28px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+
+  #header .region-pills > .region-pill .region-pill-label,
+  #header .region-pills > .region-menu-group > .region-parent-pill .region-pill-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  #header .region-pills .region-pill-icon {
+    position: relative;
+    z-index: 1;
+    display: block;
+    font-size: 22px;
+    line-height: 1;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.32));
+  }
+
+  #header .region-pills .region-pill.active .region-pill-icon {
+    font-size: 24px;
+    transform: none;
+  }
+
+  #header .region-pills [data-country-toggle="usa"] {
+    align-self: center;
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+  }
+
+  #header .region-pills [data-country-toggle="usa"].active {
+    width: 46px;
+    min-width: 46px;
+    max-width: 46px;
+    height: 46px;
+    min-height: 46px;
+    max-height: 46px;
+    margin: 0;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -5px 14px rgba(0, 0, 0, 0.14),
+      0 5px 15px rgba(0, 0, 0, 0.26);
+  }
+
+  #header .region-pills [data-country-toggle="usa"] .region-pill-icon {
+    font-size: 17px;
+  }
+
+  #header .region-pills [data-country-toggle="usa"].active .region-pill-icon {
+    font-size: 20px;
+    transform: none;
+  }
+
+  #header .region-pills .region-count,
+  #header .region-pills .region-pill-caret {
+    display: none;
+  }
+
+  #header .region-pills .region-submenu,
+  #header .region-pills .region-submenu.open,
+  #header .region-pills .region-menu-group.open .region-submenu,
+  #header .region-pills .region-menu-group.open .region-submenu.open,
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left, 0px));
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 92px);
+    top: auto;
+    z-index: 43;
+    display: none;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    flex: 0 0 auto;
+    grid-template-columns: none;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding: 10px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #header .region-pills > .region-menu-group:has(.region-parent-pill.active) .region-submenu {
+    display: flex;
+  }
+
+  #header .region-pills .region-submenu::-webkit-scrollbar,
+  #header .region-pills .region-submenu.open::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  #header .region-pills .mobile-region-back {
+    display: none !important;
+  }
+
+  #header .region-pills .region-submenu-item,
+  #header .region-pills.mobile-menu-open .region-submenu-item,
+  #header .region-pills.mobile-menu-open:not([data-mobile-menu-view="countries"]) .region-submenu-item,
+  #header .region-pills .region-menu-group.open .region-submenu-item,
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 74px;
+    max-width: 132px;
+    min-height: 33px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(12, 12, 12, 0.76);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 6px 18px rgba(0, 0, 0, 0.22);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    scroll-snap-align: start;
+  }
+
+  #header .region-pills .region-submenu-item.active,
+  #header .region-pills.mobile-menu-open .region-submenu-item.active,
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item.active {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
   }
 
   body.marker-active #header {
