@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260709-5" />
+  <link rel="stylesheet" href="styles.css?v=20260710-7" />
 </head>
 <body>
   <main id="map" aria-label="Product map"></main>
@@ -18,7 +18,6 @@
       <div class="gm-zoom-divider" aria-hidden="true"></div>
       <button id="gm-zoom-out" class="gm-zoom-button" type="button" aria-label="Zoom out">-</button>
     </div>
-    <button id="gm-reset" class="gm-reset-button" type="button" aria-label="Reset map view">⌂</button>
   </div>
 
   <div id="marker-preview" class="marker-preview hidden" aria-hidden="true"></div>
@@ -149,6 +148,8 @@
     </div>
   </header>
 
+  <div id="mobile-state-tray" class="mobile-state-tray" aria-label="USA states" aria-hidden="true"></div>
+
   <div id="carousel" class="hidden" aria-label="Prints in selected view">
     <div id="listings" class="carousel-track">
       <div id="skeletons">
@@ -160,6 +161,6 @@
   </div>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
-  <script src="app.js?v=20260709-2"></script>
+  <script src="app.js?v=20260710-7"></script>
 </body>
 </html>

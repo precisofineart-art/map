@@ -1144,6 +1144,10 @@ body {
   display: none;
 }
 
+.mobile-state-tray {
+  display: none;
+}
+
 .region-count {
   display: inline-flex;
   align-items: center;
@@ -1705,6 +1709,10 @@ body.marker-active #carousel {
 .gm-reset-button:focus-visible {
   outline: 2px solid #1a73e8;
   outline-offset: -2px;
+}
+
+.gm-reset-button {
+  display: none !important;
 }
 
 .gm-topbar {
@@ -2864,7 +2872,7 @@ body.marker-active #carousel {
 
   .gm-zoom-control {
     right: 8px;
-    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 64px);
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 146px);
     width: 30px;
   }
 
@@ -3309,6 +3317,7 @@ body.marker-active #carousel {
   #header .region-pills {
     --mobile-tab-height: 44px;
     --mobile-tab-gap: 7px;
+    --mobile-dock-edge-pad: max(10px, calc(50vw - 41px));
     position: fixed;
     left: max(18px, env(safe-area-inset-left, 0px));
     right: max(18px, env(safe-area-inset-right, 0px));
@@ -3317,9 +3326,9 @@ body.marker-active #carousel {
     width: auto;
     max-width: none;
     min-height: 70px;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: var(--mobile-tab-gap);
-    padding: 10px 10px 8px;
+    padding: 10px var(--mobile-dock-edge-pad) 8px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 30px;
     background:
@@ -3333,7 +3342,17 @@ body.marker-active #carousel {
     -webkit-backdrop-filter: blur(28px) saturate(165%);
     overflow-x: auto;
     overflow-y: visible;
-    scroll-padding: 6px;
+    scroll-padding-inline: var(--mobile-dock-edge-pad);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #header .region-pills::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   #header .region-pills > .region-pill,
@@ -3355,6 +3374,11 @@ body.marker-active #carousel {
     justify-content: center;
     gap: 0;
     overflow: visible;
+    scroll-snap-align: center;
+  }
+
+  #header .region-pills > .region-pill {
+    scroll-snap-align: center;
   }
 
   #header .region-pills .region-pill,
@@ -3469,33 +3493,38 @@ body.marker-active #carousel {
 
   #header .region-pills .region-submenu,
   #header .region-pills .region-submenu.open,
+  #header .region-pills.usa-state-tray-visible > .region-menu-group[data-country-group="usa"] .region-submenu,
   #header .region-pills .region-menu-group.open .region-submenu,
   #header .region-pills .region-menu-group.open .region-submenu.open,
   #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu {
     position: fixed;
-    left: max(10px, env(safe-area-inset-left, 0px));
-    right: max(10px, env(safe-area-inset-right, 0px));
-    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 92px);
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 98px);
     top: auto;
     z-index: 43;
     display: none;
-    width: auto;
-    max-width: none;
+    width: min(372px, calc(100vw - 32px));
+    max-width: min(372px, calc(100vw - 32px));
     max-height: none;
     flex: 0 0 auto;
     grid-template-columns: none;
     gap: 7px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    transform: none;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+      rgba(10, 10, 10, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 10px 26px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px) saturate(155%);
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    transform: translateX(-50%);
     overflow-x: auto;
     overflow-y: hidden;
-    scroll-padding: 10px;
+    scroll-padding: 5px;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -3503,6 +3532,10 @@ body.marker-active #carousel {
   }
 
   #header .region-pills > .region-menu-group:has(.region-parent-pill.active) .region-submenu {
+    display: flex;
+  }
+
+  #header .region-pills.usa-state-tray-visible > .region-menu-group[data-country-group="usa"] .region-submenu {
     display: flex;
   }
 
@@ -3524,13 +3557,13 @@ body.marker-active #carousel {
   #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item {
     flex: 0 0 auto;
     width: auto;
-    min-width: 74px;
-    max-width: 132px;
-    min-height: 33px;
-    padding: 0 14px;
+    min-width: 84px;
+    max-width: 126px;
+    min-height: 32px;
+    padding: 0 13px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 999px;
-    background: rgba(12, 12, 12, 0.76);
+    background: rgba(255, 255, 255, 0.14);
     color: rgba(255, 255, 255, 0.9);
     font-size: 11px;
     font-weight: 850;
@@ -3545,12 +3578,107 @@ body.marker-active #carousel {
     scroll-snap-align: start;
   }
 
+  #header .region-pills .region-submenu-item .region-pill-icon {
+    display: none;
+  }
+
   #header .region-pills .region-submenu-item.active,
   #header .region-pills.mobile-menu-open .region-submenu-item.active,
   #header .region-pills:not(.mobile-menu-open) > .region-menu-group:has(.region-parent-pill.active) .region-submenu-item.active {
-    border-color: rgba(255, 255, 255, 0.42);
-    background: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.24);
+    background: rgba(12, 52, 122, 0.9);
     color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 8px 20px rgba(0, 0, 0, 0.24);
+  }
+
+  #header .region-pills.usa-state-tray-visible > .region-menu-group[data-country-group="usa"] .region-submenu {
+    display: none !important;
+  }
+
+  .mobile-state-tray {
+    position: fixed;
+    left: max(16px, env(safe-area-inset-left, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 104px);
+    z-index: 48;
+    display: none;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+      rgba(10, 10, 10, 0.66);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 10px 26px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px) saturate(155%);
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding: 5px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-state-tray.visible {
+    display: flex;
+  }
+
+  .mobile-state-tray::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  .mobile-state-tray-item {
+    flex: 0 0 auto;
+    min-width: 84px;
+    max-width: 126px;
+    min-height: 32px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 6px 18px rgba(0, 0, 0, 0.22);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    scroll-snap-align: start;
+  }
+
+  .mobile-state-tray-item .region-pill-icon,
+  .mobile-state-tray-item .region-count {
+    display: none;
+  }
+
+  .mobile-state-tray-item .region-pill-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-state-tray-item.active {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: rgba(12, 52, 122, 0.9);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 8px 20px rgba(0, 0, 0, 0.24);
   }
 
   body.marker-active #header {

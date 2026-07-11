@@ -722,17 +722,33 @@ function openMobileLocationMenu(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_VIEW
 }
 
 function scrollActiveHeaderCarouselIntoView(regionKey = activeRegionKey) {
-  window.requestAnimationFrame(() => {
+  const centerActiveChip = (behavior = "smooth") => {
     const headerMenu = document.querySelector("#header [data-location-menu]");
+    const activeFilter = locationFilters.get(regionKey);
+    const dockRegionKey = activeFilter?.parentKey || regionKey;
     const parentChip = [...headerMenu?.querySelectorAll(".region-parent-pill[data-region]") || []]
-      .find((chip) => chip.dataset.region === regionKey);
+      .find((chip) => chip.dataset.region === dockRegionKey);
     const activeChip = parentChip || [...headerMenu?.querySelectorAll(".region-submenu [data-region]") || []]
       .find((chip) => chip.dataset.region === regionKey);
 
-    activeChip?.scrollIntoView({
-      block: "nearest",
-      inline: "center"
+    if (!activeChip || !headerMenu) return;
+
+    const scrollTarget = activeChip.closest(".region-menu-group") || activeChip;
+    const menuRect = headerMenu.getBoundingClientRect();
+    const targetRect = scrollTarget.getBoundingClientRect();
+    const left = targetRect.left - menuRect.left + headerMenu.scrollLeft - ((menuRect.width - targetRect.width) / 2);
+
+    headerMenu.scrollTo({
+      left: Math.max(0, left),
+      behavior
     });
+  };
+
+  window.requestAnimationFrame(() => {
+    const behavior = isMobileMapViewport() ? "auto" : "smooth";
+    centerActiveChip(behavior);
+    window.requestAnimationFrame(() => centerActiveChip(behavior));
+    window.setTimeout(() => centerActiveChip("auto"), 120);
   });
 }
 
@@ -1847,7 +1863,7 @@ function getRegionMenuIcon(regionKey = "", label = "") {
   const key = String(regionKey).toLowerCase();
   const normalizedLabel = String(label).toLowerCase();
 
-  if (key === USA_FILTER_KEY || normalizedLabel === "usa") return "⌂";
+  if (key === USA_FILTER_KEY || normalizedLabel === "usa") return "🇺🇸";
   if (key === "country:cuba" || normalizedLabel === "cuba") return "🇨🇺";
   if (key === "country:guatemala" || normalizedLabel === "guatemala") return "🇬🇹";
   if (key === "country:mexico" || normalizedLabel === "mexico") return "🇲🇽";
@@ -1915,6 +1931,15 @@ function makeMobileAllUsaButton() {
   return button;
 }
 
+function makeMobileStateTrayAllUsaButton() {
+  const button = document.createElement("button");
+  button.className = "mobile-state-tray-item mobile-state-tray-all";
+  button.type = "button";
+  button.dataset.region = USA_FILTER_KEY;
+  setRegionButtonContent(button, "All USA", locationFilters.get(USA_FILTER_KEY)?.items?.length ?? 0);
+  return button;
+}
+
 function getStateFilters() {
   return [...locationFilters.values()]
     .filter((filter) => filter.parentKey === USA_FILTER_KEY)
@@ -1973,6 +1998,7 @@ function renderLocationMenus() {
   const stateFilters = getStateFilters();
   const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
   const cityFiltersByCountry = new Map();
+  const mobileStateTray = document.getElementById("mobile-state-tray");
   [...locationFilters.values()]
     .filter((filter) => filter.type === "city")
     .forEach((filter) => {
@@ -2032,15 +2058,34 @@ function renderLocationMenus() {
     });
   });
 
+  if (mobileStateTray) {
+    mobileStateTray.replaceChildren();
+    mobileStateTray.appendChild(makeMobileStateTrayAllUsaButton());
+    stateFilters.forEach((filter) => {
+      mobileStateTray.appendChild(makeLocationMenuButton("mobile-state-tray-item", filter));
+    });
+  }
 }
 
 function setActiveRegionChip(regionKey = "all") {
+  const activeFilter = locationFilters.get(regionKey);
+  const showUsaStateTray = regionKey === USA_FILTER_KEY || activeFilter?.parentKey === USA_FILTER_KEY;
+
   document.querySelectorAll("[data-region]").forEach((chip) => {
     const chipRegion = chip.dataset.region;
-    const activeFilter = locationFilters.get(regionKey);
     const isActive = chipRegion === regionKey || (chipRegion === activeFilter?.parentKey);
     chip.classList.toggle("active", isActive);
   });
+
+  document.querySelectorAll("#header [data-location-menu]").forEach((menu) => {
+    menu.classList.toggle("usa-state-tray-visible", showUsaStateTray);
+  });
+
+  const mobileStateTray = document.getElementById("mobile-state-tray");
+  if (mobileStateTray) {
+    mobileStateTray.classList.toggle("visible", showUsaStateTray);
+    mobileStateTray.setAttribute("aria-hidden", String(!showUsaStateTray));
+  }
 
   updateMobileLocationMenuLabels(regionKey);
   scrollActiveHeaderCarouselIntoView(regionKey);
