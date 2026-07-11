@@ -312,6 +312,7 @@ const MOBILE_MARKER_SHEET_OPEN_LEVEL = 4;
 const MOBILE_MARKER_SHEET_ANCHOR_GAP = 54;
 const MOBILE_MARKER_SHEET_ANCHOR_TRANSITION_MS = 220;
 const MOBILE_MARKER_SHEET_REANCHOR_DELAY_MS = 280;
+const MOBILE_SHEET_CLOSE_MARKER_ZOOM = 11.2;
 
 /* =========================
    HELPERS
@@ -722,6 +723,8 @@ function openMobileLocationMenu(menu, view = MOBILE_LOCATION_MENU_COUNTRIES_VIEW
 }
 
 function scrollActiveHeaderCarouselIntoView(regionKey = activeRegionKey) {
+  if (isMobileMapViewport()) return;
+
   const centerActiveChip = (behavior = "smooth") => {
     const headerMenu = document.querySelector("#header [data-location-menu]");
     const activeFilter = locationFilters.get(regionKey);
@@ -745,10 +748,7 @@ function scrollActiveHeaderCarouselIntoView(regionKey = activeRegionKey) {
   };
 
   window.requestAnimationFrame(() => {
-    const behavior = isMobileMapViewport() ? "auto" : "smooth";
-    centerActiveChip(behavior);
-    window.requestAnimationFrame(() => centerActiveChip(behavior));
-    window.setTimeout(() => centerActiveChip("auto"), 120);
+    centerActiveChip();
   });
 }
 
@@ -1994,6 +1994,28 @@ function makeMobileCountryGroup(countryFilter, childFilters) {
   return group;
 }
 
+function updateMobileActiveCountryButton(regionKey = activeRegionKey) {
+  const button = document.getElementById("mobile-active-country-button");
+  if (!button) return;
+
+  const activeFilter = locationFilters.get(regionKey);
+  const dockRegionKey = activeFilter?.parentKey || regionKey;
+  const countryFilter = locationFilters.get(dockRegionKey);
+
+  if (!countryFilter || countryFilter.type !== "country") {
+    button.hidden = true;
+    button.setAttribute("aria-hidden", "true");
+    delete button.dataset.region;
+    return;
+  }
+
+  button.hidden = false;
+  button.dataset.region = countryFilter.key;
+  button.setAttribute("aria-hidden", "false");
+  button.classList.add("active");
+  setRegionButtonContent(button, countryFilter.label, countryFilter.items?.length ?? 0);
+}
+
 function renderLocationMenus() {
   const stateFilters = getStateFilters();
   const countryFilters = [...locationFilters.values()].filter((filter) => filter.type === "country" && filter.key !== USA_FILTER_KEY);
@@ -2070,6 +2092,7 @@ function renderLocationMenus() {
 function setActiveRegionChip(regionKey = "all") {
   const activeFilter = locationFilters.get(regionKey);
   const showUsaStateTray = regionKey === USA_FILTER_KEY || activeFilter?.parentKey === USA_FILTER_KEY;
+  const activeDockRegionKey = activeFilter?.parentKey || regionKey;
 
   document.querySelectorAll("[data-region]").forEach((chip) => {
     const chipRegion = chip.dataset.region;
@@ -2079,6 +2102,15 @@ function setActiveRegionChip(regionKey = "all") {
 
   document.querySelectorAll("#header [data-location-menu]").forEach((menu) => {
     menu.classList.toggle("usa-state-tray-visible", showUsaStateTray);
+    [...menu.children].forEach((child) => {
+      if (!child.classList?.contains("region-menu-group")) return;
+      const parentChip = child.querySelector(".region-parent-pill[data-region]");
+      child.classList.toggle(
+        "mobile-dock-active-country",
+        Boolean(parentChip && parentChip.dataset.region === activeDockRegionKey)
+      );
+    });
+    if (isMobileMapViewport()) menu.scrollLeft = 0;
   });
 
   const mobileStateTray = document.getElementById("mobile-state-tray");
@@ -2088,6 +2120,7 @@ function setActiveRegionChip(regionKey = "all") {
   }
 
   updateMobileLocationMenuLabels(regionKey);
+  updateMobileActiveCountryButton(regionKey);
   scrollActiveHeaderCarouselIntoView(regionKey);
 }
 
@@ -2750,6 +2783,21 @@ function bindHeaderRegionPills() {
       setMobileLocationMenuView(menu, MOBILE_LOCATION_MENU_COUNTRIES_VIEW);
     });
   });
+
+  const activeCountryButton = document.getElementById("mobile-active-country-button");
+  if (activeCountryButton && activeCountryButton.dataset.regionBound !== "true") {
+    activeCountryButton.dataset.regionBound = "true";
+    activeCountryButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const regionKey = activeCountryButton.dataset.region;
+      if (!regionKey) return;
+      focusRegion(regionKey);
+      closeRegionMenus();
+      closeMobileLocationMenus();
+    });
+  }
 
   document.addEventListener("click", (e) => {
     if (e.target.closest(".region-menu-group")) return;
@@ -3532,12 +3580,13 @@ function closePlaceSheetAtMarkerZoom() {
   hideSheetPhotoPopout();
 
   const sheet = document.getElementById("place-sheet");
+  const closingItem = activeItem;
   if (sheet) {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
   }
 
-  if (!activeItem) {
+  if (!closingItem) {
     document.body.classList.remove("marker-active");
     hideNearbyPrints();
     updateDesktopMarkerCaption(null);
@@ -3547,12 +3596,33 @@ function closePlaceSheetAtMarkerZoom() {
     return;
   }
 
-  document.body.classList.add("marker-active");
-  updateDesktopMarkerCaption(activeItem);
-  setActiveMarkerState(activeItem.id);
+  const regionKey = getRegionKeyForItem(closingItem);
+  activeItem = null;
+  document.body.classList.remove("marker-active");
+  hideNearbyPrints();
+  updateDesktopMarkerCaption(null);
+  setActiveMarkerState("");
+  clearMarkerHoverStates();
+  setActiveRegionKey(regionKey);
+  setHashForRegion(regionKey);
+  renderRegionExperience(regionKey);
   setMarkerVisibilityByZoom();
-  clearEdgeIndicators();
   updateMapControlState();
+
+  if (isMobileMapViewport() && hasValidCoordinates(closingItem)) {
+    map.easeTo({
+      center: [closingItem.lng, closingItem.lat],
+      zoom: MOBILE_SHEET_CLOSE_MARKER_ZOOM,
+      duration: REGION_TRANSITION_MS,
+      curve: 1.28,
+      essential: true
+    });
+  }
+
+  window.setTimeout(() => {
+    updateEdgeIndicator();
+    forceActiveMarkerVisible();
+  }, isMobileMapViewport() ? REGION_TRANSITION_MS + 80 : 80);
 }
 
 /* =========================
@@ -4607,6 +4677,10 @@ map.on("click", (e) => {
   if (isResetting) return;
   if (e.originalEvent?.target?.closest?.(".custom-marker-shell")) return;
   if (e.originalEvent?.target?.closest?.("#place-sheet")) return;
+  if (isPlaceSheetOpen() && activeItem) {
+    closePlaceSheetAtMarkerZoom();
+    return;
+  }
   if (explodedMarkerGroup) {
     resetExplodedMarkers();
     setMarkerVisibilityByZoom();

@@ -1148,6 +1148,10 @@ body {
   display: none;
 }
 
+.mobile-active-country-button {
+  display: none;
+}
+
 .region-count {
   display: inline-flex;
   align-items: center;
@@ -2927,7 +2931,7 @@ body.marker-active #carousel {
   }
 
   .logo {
-    height: 31px;
+    height: 40px;
   }
 
   .region-pill {
@@ -3317,7 +3321,8 @@ body.marker-active #carousel {
   #header .region-pills {
     --mobile-tab-height: 44px;
     --mobile-tab-gap: 7px;
-    --mobile-dock-edge-pad: max(10px, calc(50vw - 41px));
+    --mobile-dock-edge-pad: 12px;
+    --mobile-active-icon-gap: 42px;
     position: fixed;
     left: max(18px, env(safe-area-inset-left, 0px));
     right: max(18px, env(safe-area-inset-right, 0px));
@@ -3328,7 +3333,7 @@ body.marker-active #carousel {
     min-height: 70px;
     justify-content: flex-start;
     gap: var(--mobile-tab-gap);
-    padding: 10px var(--mobile-dock-edge-pad) 8px;
+    padding: 10px var(--mobile-dock-edge-pad) 8px calc(50% + var(--mobile-active-icon-gap));
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 30px;
     background:
@@ -3342,7 +3347,8 @@ body.marker-active #carousel {
     -webkit-backdrop-filter: blur(28px) saturate(165%);
     overflow-x: auto;
     overflow-y: visible;
-    scroll-padding-inline: var(--mobile-dock-edge-pad);
+    scroll-padding-left: calc(50% + var(--mobile-active-icon-gap));
+    scroll-padding-right: var(--mobile-dock-edge-pad);
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -3375,6 +3381,59 @@ body.marker-active #carousel {
     gap: 0;
     overflow: visible;
     scroll-snap-align: center;
+  }
+
+  #header .region-pills:not(.mobile-menu-open) > .region-menu-group.mobile-dock-active-country {
+    display: none !important;
+    pointer-events: none;
+  }
+
+  .mobile-active-country-button {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 26px);
+    z-index: 49;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 50px;
+    min-width: 58px;
+    min-height: 50px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.42), transparent 38%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
+      rgba(35, 35, 35, 0.72);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -8px 22px rgba(0, 0, 0, 0.18),
+      0 10px 28px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    transform: translateX(-50%);
+    cursor: pointer;
+  }
+
+  .mobile-active-country-button[hidden] {
+    display: none !important;
+  }
+
+  .mobile-active-country-button .region-pill-icon {
+    display: block;
+    font-size: 30px;
+    line-height: 1;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.32));
+  }
+
+  .mobile-active-country-button .region-pill-label,
+  .mobile-active-country-button .region-count,
+  .mobile-active-country-button .region-pill-caret {
+    display: none;
   }
 
   #header .region-pills > .region-pill {
@@ -3599,15 +3658,18 @@ body.marker-active #carousel {
 
   .mobile-state-tray {
     position: fixed;
-    left: max(16px, env(safe-area-inset-left, 0px));
-    right: max(16px, env(safe-area-inset-right, 0px));
+    left: 50%;
+    right: auto;
     bottom: calc(var(--app-bottom) + env(safe-area-inset-bottom, 0px) + 104px);
+    width: min(560px, calc(100vw - 72px));
+    max-width: calc(100vw - 72px);
+    transform: translateX(-50%);
     z-index: 48;
     display: none;
     align-items: center;
-    gap: 7px;
-    min-height: 42px;
-    padding: 5px;
+    gap: 6px;
+    min-height: 36px;
+    padding: 4px;
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 999px;
     background:
@@ -3639,15 +3701,15 @@ body.marker-active #carousel {
 
   .mobile-state-tray-item {
     flex: 0 0 auto;
-    min-width: 84px;
-    max-width: 126px;
-    min-height: 32px;
-    padding: 0 13px;
+    min-width: 76px;
+    max-width: 116px;
+    min-height: 28px;
+    padding: 0 11px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.14);
     color: rgba(255, 255, 255, 0.9);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 850;
     letter-spacing: 0;
     text-transform: none;
@@ -3690,11 +3752,17 @@ body.marker-active #carousel {
   }
 
   body.marker-active .logo {
-    height: 32px;
+    height: 40px;
   }
 
-  body.marker-active .region-pills {
-    display: none;
+  body.marker-active .region-pills,
+  body.marker-active .mobile-active-country-button,
+  body.marker-active .mobile-state-tray,
+  body.marker-active #header .region-submenu,
+  body.marker-active #header .region-submenu.open,
+  body.marker-active #header .region-pills.usa-state-tray-visible > .region-menu-group[data-country-group="usa"] .region-submenu {
+    display: none !important;
+    pointer-events: none;
   }
 
   #footer,
