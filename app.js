@@ -662,6 +662,90 @@ function getMobileMarkerSheetAnchorY(sheet = document.getElementById("place-shee
   return Math.min(bottomSafe, Math.max(topSafe, desiredY));
 }
 
+function getRectArea(rect) {
+  return Math.max(0, rect.right - rect.left) * Math.max(0, rect.bottom - rect.top);
+}
+
+function getCenteredPointInRect(rect) {
+  return {
+    x: Math.round(rect.left + (rect.right - rect.left) / 2),
+    y: Math.round(rect.top + (rect.bottom - rect.top) / 2)
+  };
+}
+
+function getVisibleRectForElement(element) {
+  if (!element) return null;
+
+  const styles = window.getComputedStyle(element);
+  if (styles.display === "none" || styles.visibility === "hidden" || styles.opacity === "0") return null;
+
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+
+  return rect;
+}
+
+function getSheetMarkerAnchor(sheet = document.getElementById("place-sheet")) {
+  const markerSize = getMarkerSizePx();
+  const fallbackX = Math.round(window.innerWidth / 2);
+  const fallbackY = Math.round(window.innerHeight / 2);
+
+  if (!sheet || sheet.classList.contains("hidden")) {
+    return { x: fallbackX, y: fallbackY };
+  }
+
+  if (isMobileMapViewport()) {
+    return {
+      x: fallbackX,
+      y: Math.round(getMobileMarkerSheetAnchorY(sheet))
+    };
+  }
+
+  const mapRect = document.getElementById("map")?.getBoundingClientRect();
+  const sheetRect = sheet.getBoundingClientRect();
+  if (!mapRect || mapRect.width <= 0 || mapRect.height <= 0 || sheetRect.width <= 0 || sheetRect.height <= 0) {
+    return { x: fallbackX, y: fallbackY };
+  }
+
+  const mapPadding = Math.max(38, markerSize * 1.35);
+  const blockerGap = Math.max(28, markerSize * 0.92);
+  const sidebarRect = getVisibleRectForElement(document.getElementById("desktop-sidebar"));
+  const safeRect = {
+    left: Math.max(mapRect.left + mapPadding, sidebarRect ? sidebarRect.right + mapPadding : mapRect.left + mapPadding),
+    right: mapRect.right - mapPadding,
+    top: mapRect.top + mapPadding,
+    bottom: mapRect.bottom - mapPadding
+  };
+
+  if (safeRect.right <= safeRect.left || safeRect.bottom <= safeRect.top) {
+    return { x: fallbackX, y: fallbackY };
+  }
+
+  const blocker = {
+    left: Math.max(safeRect.left, sheetRect.left - blockerGap),
+    right: Math.min(safeRect.right, sheetRect.right + blockerGap),
+    top: Math.max(safeRect.top, sheetRect.top - blockerGap),
+    bottom: Math.min(safeRect.bottom, sheetRect.bottom + blockerGap)
+  };
+
+  const candidates = [
+    { left: safeRect.left, right: blocker.left, top: safeRect.top, bottom: safeRect.bottom },
+    { left: blocker.right, right: safeRect.right, top: safeRect.top, bottom: safeRect.bottom },
+    { left: safeRect.left, right: safeRect.right, top: safeRect.top, bottom: blocker.top },
+    { left: safeRect.left, right: safeRect.right, top: blocker.bottom, bottom: safeRect.bottom }
+  ].filter((candidate) => (
+    candidate.right - candidate.left >= markerSize * 2.4 &&
+    candidate.bottom - candidate.top >= markerSize * 2.4
+  ));
+
+  if (candidates.length === 0) {
+    return getCenteredPointInRect(safeRect);
+  }
+
+  candidates.sort((a, b) => getRectArea(b) - getRectArea(a));
+  return getCenteredPointInRect(candidates[0]);
+}
+
 function isMobileHeaderLocationMenu(menu) {
   return Boolean(menu?.closest("#header")) && isMobileMapViewport();
 }
@@ -2451,6 +2535,7 @@ function focusRegion(regionKey, options = {}) {
   if (sheet) {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+    clearSheetActionPosition(sheet);
   }
   document.body.classList.remove("marker-active");
   hideNearbyPrints();
@@ -2993,14 +3078,13 @@ function getSheetOffset() {
   }
 
   if (!isMobileViewport) {
-    const rect = sheet.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const visibleSheetWidth = Math.max(0, rect.right - rect.left);
-    const freeMapWidth = Math.max(0, viewportWidth - visibleSheetWidth);
-    const targetX = visibleSheetWidth + freeMapWidth * 0.45;
-    const viewportCenterX = viewportWidth / 2;
-    const offsetX = Math.round(targetX - viewportCenterX);
-    return [offsetX, 0];
+    if (!sheetIsHidden) {
+      const anchor = getSheetMarkerAnchor(sheet);
+      return [
+        Math.round(anchor.x - window.innerWidth / 2),
+        Math.round(anchor.y - window.innerHeight / 2)
+      ];
+    }
   }
 
   const desiredY = getMobileMarkerSheetAnchorY(sheet);
@@ -3034,6 +3118,25 @@ function nudgeActiveMarkerIntoView() {
   if (sheetRect && isMobileViewport) {
     const targetX = Math.round(window.innerWidth / 2 - mapRect.left);
     const targetY = Math.round(getMobileMarkerSheetAnchorY(sheet) - mapRect.top);
+    const panX = markerPoint.x - targetX;
+    const panY = markerPoint.y - targetY;
+
+    if (!Number.isFinite(panX) || !Number.isFinite(panY)) return;
+
+    if (Math.abs(panX) > 1 || Math.abs(panY) > 1) {
+      map.panBy([panX, panY], {
+        duration: MOBILE_MARKER_SHEET_ANCHOR_TRANSITION_MS,
+        essential: true
+      });
+    }
+
+    return;
+  }
+
+  if (sheetRect && !isMobileViewport) {
+    const anchor = getSheetMarkerAnchor(sheet);
+    const targetX = Math.round(anchor.x - mapRect.left);
+    const targetY = Math.round(anchor.y - mapRect.top);
     const panX = markerPoint.x - targetX;
     const panY = markerPoint.y - targetY;
 
@@ -3084,8 +3187,8 @@ function nudgeActiveMarkerIntoView() {
   }
 }
 
-function scheduleMobileMarkerSheetAnchor(item = activeItem) {
-  if (!item || activeItem?.id !== item.id || !isMobileMapViewport()) return;
+function scheduleActiveMarkerAnchor(item = activeItem) {
+  if (!item || activeItem?.id !== item.id) return;
 
   requestAnimationFrame(() => {
     keepActiveMarkerVisible();
@@ -3202,6 +3305,8 @@ function setSheetPhotoOrientation(orientation) {
   const isPortrait = orientation === "portrait";
   sheet.classList.toggle("sheet-photo-portrait", isPortrait);
   sheet.classList.toggle("sheet-photo-landscape", !isPortrait);
+  scheduleSheetActionPosition();
+  scheduleActiveMarkerAnchor(activeItem);
 }
 
 function updateSheetPhotoOrientation(image, item = {}) {
@@ -3218,6 +3323,52 @@ function applyLoadedSheetPhotoOrientation(image, item = {}) {
 
   requestAnimationFrame(() => {
     updateSheetPhotoOrientation(image, item);
+  });
+}
+
+function clearSheetActionPosition(sheet = document.getElementById("place-sheet")) {
+  if (!sheet) return;
+
+  sheet.style.removeProperty("--sheet-action-top");
+  sheet.style.removeProperty("--sheet-action-right");
+  sheet.style.removeProperty("--sheet-action-left");
+}
+
+function updateSheetActionPosition() {
+  const sheet = document.getElementById("place-sheet");
+  if (!sheet) return;
+
+  clearSheetActionPosition(sheet);
+  if (sheet.classList.contains("hidden") || !sheet.classList.contains("sheet-photo-portrait")) return;
+
+  const media = sheet.querySelector(".sheet-media");
+  const actionContainer = sheet.querySelector(".place-sheet-header") || sheet;
+  if (!media || !actionContainer) return;
+
+  const containerRect = actionContainer.getBoundingClientRect();
+  const mediaRect = media.getBoundingClientRect();
+  if (
+    containerRect.width <= 0 ||
+    containerRect.height <= 0 ||
+    mediaRect.width <= 0 ||
+    mediaRect.height <= 0
+  ) {
+    return;
+  }
+
+  const inset = isMobileMapViewport() ? 8 : 10;
+  const top = Math.max(8, Math.round(mediaRect.top - containerRect.top + inset));
+  const right = Math.max(8, Math.round(containerRect.right - mediaRect.right + inset));
+  const left = Math.max(8, Math.round(mediaRect.left - containerRect.left + inset));
+
+  sheet.style.setProperty("--sheet-action-top", `${top}px`);
+  sheet.style.setProperty("--sheet-action-right", `${right}px`);
+  sheet.style.setProperty("--sheet-action-left", `${left}px`);
+}
+
+function scheduleSheetActionPosition() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(updateSheetActionPosition);
   });
 }
 
@@ -3259,14 +3410,14 @@ function showPlaceSheet(item, options = {}) {
     }
     image.onload = () => {
       updateSheetPhotoOrientation(image, item);
-      scheduleMobileMarkerSheetAnchor(item);
+      scheduleActiveMarkerAnchor(item);
     };
     image.alt = item.title || "";
     image.onerror = () => {
       image.onerror = null;
       image.onload = () => {
         updateSheetPhotoOrientation(image, {});
-        scheduleMobileMarkerSheetAnchor(item);
+        scheduleActiveMarkerAnchor(item);
       };
       image.src = FALLBACK_IMAGE;
     };
@@ -3307,6 +3458,9 @@ function showPlaceSheet(item, options = {}) {
     sheet.classList.add("level-2");
     if (!isMobileMapViewport()) closeButton?.focus({ preventScroll: true });
   }
+
+  scheduleSheetActionPosition();
+  scheduleActiveMarkerAnchor(item);
 }
 
 function openSheetToLevel2() {
@@ -3316,6 +3470,7 @@ function openSheetToLevel2() {
   const nextLevel = getMarkerSheetOpenLevel();
   sheet.classList.remove("hidden", "level-1", "level-2", "level-3", "level-4");
   sheet.classList.add(`level-${nextLevel}`);
+  scheduleSheetActionPosition();
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -3373,6 +3528,7 @@ function initSheetDrag() {
     sheet.style.transform = "";
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
     sheet.classList.add(`level-${level}`);
+    scheduleSheetActionPosition();
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -3538,6 +3694,7 @@ function resetView() {
   if (sheet) {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+    clearSheetActionPosition(sheet);
   }
   document.body.classList.remove("marker-active");
   hideNearbyPrints();
@@ -3584,6 +3741,7 @@ function closePlaceSheetAtMarkerZoom() {
   if (sheet) {
     sheet.classList.add("hidden");
     sheet.classList.remove("level-1", "level-2", "level-3", "level-4");
+    clearSheetActionPosition(sheet);
   }
 
   if (!closingItem) {
@@ -4416,7 +4574,7 @@ function render() {
     const shell = document.createElement("div");
     shell.className = "custom-marker-shell";
     if (item.isNewPrint) {
-      shell.classList.add("new-print", "new-print-pulse");
+      shell.classList.add("new-print");
     }
     shell.dataset.itemId = item.id;
     shell.setAttribute("role", "button");
@@ -4663,6 +4821,9 @@ window.addEventListener("resize", () => {
 
   if (isSheetOpen && activeItem) {
     keepActiveMarkerVisible();
+    scheduleSheetActionPosition();
+  } else if (sheet) {
+    clearSheetActionPosition(sheet);
   }
 
   resetExplodedMarkers();

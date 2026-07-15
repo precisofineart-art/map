@@ -707,17 +707,20 @@ body {
 
   .sheet-icon-actions {
     position: absolute;
-    top: 18px;
-    right: 18px;
+    top: 10px;
+    right: 10px;
     z-index: 6;
     pointer-events: auto;
   }
 
   .sheet-icon-actions button {
-    width: 40px;
-    height: 40px;
-    background: rgba(0, 0, 0, 0.46);
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.42);
     color: #fff;
+    opacity: 0.72;
+    font-size: 16px;
+    line-height: 1;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       0 10px 24px rgba(0, 0, 0, 0.24);
@@ -897,17 +900,20 @@ body {
 
   .sheet-icon-actions {
     position: absolute;
-    top: 18px;
-    right: 18px;
+    top: 10px;
+    right: 10px;
     z-index: 6;
     pointer-events: auto;
   }
 
   .sheet-icon-actions button {
-    width: 44px;
-    height: 44px;
-    background: rgba(0, 0, 0, 0.46);
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.42);
     color: #fff;
+    opacity: 0.72;
+    font-size: 16px;
+    line-height: 1;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       0 10px 24px rgba(0, 0, 0, 0.24);
@@ -2212,23 +2218,9 @@ body.marker-active #carousel {
   transform: translateX(-50%);
 }
 
-.custom-marker-shell.new-print::before,
 .custom-marker-shell.new-print::after {
   position: absolute;
   pointer-events: none;
-}
-
-.custom-marker-shell.new-print::before {
-  content: "";
-  top: -6px;
-  left: 50%;
-  z-index: 1;
-  width: calc(var(--map-marker-size) + 10px);
-  height: calc(var(--map-marker-size) + 10px);
-  border: 2px solid rgba(12, 52, 122, 0.18);
-  border-radius: 999px;
-  animation: newMarkerPulse 2.4s ease-out 3;
-  transform: translateX(-50%);
 }
 
 .custom-marker-shell.new-print::after {
@@ -2366,21 +2358,6 @@ body.marker-active #carousel {
     box-shadow:
       0 14px 30px rgba(0, 0, 0, 0.28),
       0 6px 14px rgba(0, 0, 0, 0.18);
-  }
-}
-
-@keyframes newMarkerPulse {
-  0% {
-    opacity: 0.55;
-    transform: scale(0.78);
-  }
-  70% {
-    opacity: 0;
-    transform: scale(1.42);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.42);
   }
 }
 
@@ -2679,17 +2656,20 @@ body.marker-active #carousel {
 
   .sheet-icon-actions {
     position: absolute;
-    top: 18px;
-    right: 18px;
+    top: 10px;
+    right: 10px;
     z-index: 6;
     pointer-events: auto;
   }
 
   .sheet-icon-actions button {
-    width: 44px;
-    height: 44px;
-    background: rgba(0, 0, 0, 0.46);
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.42);
     color: #fff;
+    opacity: 0.72;
+    font-size: 16px;
+    line-height: 1;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       0 10px 24px rgba(0, 0, 0, 0.24);
@@ -2864,14 +2844,6 @@ body.marker-active #carousel {
 
   .custom-marker-shell.new-print::after {
     display: none;
-  }
-
-  .custom-marker-shell.new-print::before {
-    top: -5px;
-    width: calc(var(--map-marker-size) + 10px);
-    height: calc(var(--map-marker-size) + 10px);
-    border-width: 1px;
-    animation-duration: 2s;
   }
 
   .gm-zoom-control {
@@ -4421,9 +4393,9 @@ body.markers-exploded .edge-indicator {
   .place-sheet.level-4 .sheet-icon-actions,
   .sheet-icon-actions {
     position: absolute;
-    top: 6px;
-    right: 0;
-    left: 0;
+    top: -2px;
+    right: 14px;
+    left: 14px;
     z-index: 4;
     display: flex;
     justify-content: space-between;
@@ -4652,8 +4624,8 @@ body.markers-exploded .edge-indicator {
   }
 
   .sheet-icon-actions {
-    right: -4px;
-    left: -4px;
+    right: 8px;
+    left: 8px;
   }
 
   .sheet-product-link,
@@ -4688,6 +4660,11 @@ body.markers-exploded .edge-indicator {
     height: auto;
     min-height: 0;
   }
+
+  .place-sheet.sheet-photo-portrait .sheet-icon-actions {
+    top: var(--sheet-action-top, 10px);
+    right: var(--sheet-action-right, 10px);
+  }
 }
 
 @media (max-width: 700px) {
@@ -4701,5 +4678,11 @@ body.markers-exploded .edge-indicator {
 
   .place-sheet.sheet-photo-portrait .sheet-media {
     width: min(72vw, 390px);
+  }
+
+  .place-sheet.sheet-photo-portrait .sheet-icon-actions {
+    top: var(--sheet-action-top, -2px);
+    right: var(--sheet-action-right, 14px);
+    left: var(--sheet-action-left, 14px);
   }
 }
