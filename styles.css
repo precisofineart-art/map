@@ -1868,7 +1868,7 @@ body.marker-active #carousel {
 .sheet-nearby-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin-bottom: 6px;
   color: #202124;
@@ -4210,7 +4210,7 @@ body.markers-exploded .edge-indicator {
 
   .place-sheet .sheet-media {
     inset: 0;
-    padding: 18px;
+    padding: 18px 18px 28px;
     border: 1px solid rgba(12, 52, 122, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.98);
@@ -4249,7 +4249,7 @@ body.markers-exploded .edge-indicator {
     height: auto;
     max-height: min(76dvh, calc(var(--app-height) - var(--app-top) - 68px));
     min-height: 0;
-    padding: 0 16px 0;
+    padding: 0 16px 16px;
     border: 1px solid rgba(34, 214, 202, 0.42);
     border-radius: 30px;
     background:
@@ -4567,7 +4567,7 @@ body.markers-exploded .edge-indicator {
     width: 100%;
     height: clamp(210px, 32dvh, 310px);
     min-height: 0;
-    padding: 0 0 2px;
+    padding: 0 0 12px;
     overflow: visible;
   }
 

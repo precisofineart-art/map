@@ -728,22 +728,39 @@ function getSheetMarkerAnchor(sheet = document.getElementById("place-sheet")) {
     bottom: Math.min(safeRect.bottom, sheetRect.bottom + blockerGap)
   };
 
-  const candidates = [
-    { left: safeRect.left, right: blocker.left, top: safeRect.top, bottom: safeRect.bottom },
-    { left: blocker.right, right: safeRect.right, top: safeRect.top, bottom: safeRect.bottom },
-    { left: safeRect.left, right: safeRect.right, top: safeRect.top, bottom: blocker.top },
-    { left: safeRect.left, right: safeRect.right, top: blocker.bottom, bottom: safeRect.bottom }
-  ].filter((candidate) => (
-    candidate.right - candidate.left >= markerSize * 2.4 &&
-    candidate.bottom - candidate.top >= markerSize * 2.4
+  const halfMarker = markerSize / 2;
+  const minimumUsableSpan = Math.max(48, markerSize * 0.72);
+  const rawCandidates = [
+    { left: safeRect.left, right: blocker.left, top: safeRect.top, bottom: safeRect.bottom, weight: 1 },
+    { left: blocker.right, right: safeRect.right, top: safeRect.top, bottom: safeRect.bottom, weight: 1.05 },
+    { left: safeRect.left, right: safeRect.right, top: safeRect.top, bottom: blocker.top, weight: 0.82 },
+    { left: safeRect.left, right: safeRect.right, top: blocker.bottom, bottom: safeRect.bottom, weight: 1.55 }
+  ].map((candidate) => ({
+    ...candidate,
+    width: Math.max(0, candidate.right - candidate.left),
+    height: Math.max(0, candidate.bottom - candidate.top)
+  })).filter((candidate) => candidate.width > 0 && candidate.height > 0);
+
+  const usableCandidates = rawCandidates.filter((candidate) => (
+    candidate.width >= minimumUsableSpan &&
+    candidate.height >= minimumUsableSpan
   ));
+  const candidates = usableCandidates.length > 0 ? usableCandidates : rawCandidates;
 
   if (candidates.length === 0) {
-    return getCenteredPointInRect(safeRect);
+    return {
+      x: Math.round(safeRect.right - halfMarker),
+      y: Math.round(Math.min(safeRect.bottom - halfMarker, Math.max(safeRect.top + halfMarker, blocker.bottom + halfMarker)))
+    };
   }
 
-  candidates.sort((a, b) => getRectArea(b) - getRectArea(a));
-  return getCenteredPointInRect(candidates[0]);
+  candidates.sort((a, b) => (getRectArea(b) * b.weight) - (getRectArea(a) * a.weight));
+
+  const anchor = getCenteredPointInRect(candidates[0]);
+  return {
+    x: Math.round(Math.min(safeRect.right - halfMarker, Math.max(safeRect.left + halfMarker, anchor.x))),
+    y: Math.round(Math.min(safeRect.bottom - halfMarker, Math.max(safeRect.top + halfMarker, anchor.y)))
+  };
 }
 
 function isMobileHeaderLocationMenu(menu) {
